@@ -1,10 +1,13 @@
-import { Update, UserFromGetMe } from "@grammyjs/types";
-import { Context as DefaultContext, SessionFlavor, type Api } from "grammy";
-import type { AutoChatActionFlavor } from "@grammyjs/auto-chat-action";
-import type { HydrateFlavor } from "@grammyjs/hydrate";
-import type { I18nFlavor } from "@grammyjs/i18n";
-import type { ParseModeFlavor } from "@grammyjs/parse-mode";
-import type { Logger } from "#root/logger.js";
+import { Context as DefaultContext, SessionFlavor } from "grammy";
+import { AutoChatActionFlavor } from "@grammyjs/auto-chat-action";
+import { HydrateFlavor } from "@grammyjs/hydrate";
+import { I18nFlavor } from "@grammyjs/i18n";
+import { ParseModeFlavor } from "@grammyjs/parse-mode";
+import { Logger } from "#root/logger.js";
+import {
+  ConversationFlavor,
+  Conversation as DefaultConversation,
+} from "@grammyjs/conversations";
 
 export type SessionData = {
   // field?: string;
@@ -20,24 +23,9 @@ export type Context = ParseModeFlavor<
       ExtendedContextFlavor &
       SessionFlavor<SessionData> &
       I18nFlavor &
-      AutoChatActionFlavor
+      AutoChatActionFlavor &
+      ConversationFlavor
   >
 >;
 
-interface Dependencies {
-  logger: Logger;
-}
-
-export function createContextConstructor({ logger }: Dependencies) {
-  return class extends DefaultContext implements ExtendedContextFlavor {
-    logger: Logger;
-
-    constructor(update: Update, api: Api, me: UserFromGetMe) {
-      super(update, api, me);
-
-      this.logger = logger.child({
-        update_id: this.update.update_id,
-      });
-    }
-  } as unknown as new (update: Update, api: Api, me: UserFromGetMe) => Context;
-}
+export type Conversation = DefaultConversation<Context>;
