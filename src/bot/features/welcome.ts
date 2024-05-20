@@ -1,13 +1,25 @@
 import { Composer } from "grammy";
 import type { Context } from "#root/bot/context.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
+import { registerCommandHelpProvider } from "#root/bot/features/help.js";
+import { BotCommand } from "@grammyjs/types";
+import { i18n } from "#root/bot/i18n.js";
+import { enterInitialSurvey } from "#root/bot/conversations/index.js";
 
-const composer = new Composer<Context>();
+export const composer = new Composer<Context>();
 
 const feature = composer.chatType("private");
 
-feature.command("start", logHandle("command-start"), (ctx) => {
-  return ctx.reply(ctx.t("welcome"));
+feature.command("start", logHandle("command-start"), async (ctx) => {
+  await ctx.reply(ctx.t("welcome"));
+  await enterInitialSurvey(ctx);
 });
 
-export { composer as welcomeFeature };
+registerCommandHelpProvider((localeCode: string): BotCommand[] => {
+  return [
+    {
+      command: "start",
+      description: i18n.t(localeCode, "start_command.description"),
+    },
+  ];
+});
