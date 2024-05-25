@@ -1,12 +1,13 @@
-import { Composer, GrammyError, InlineKeyboard } from "grammy";
-import type { Context } from "#root/bot/context.js";
-import { logHandle } from "#root/bot/helpers/logging.js";
-import { i18n, isMultipleLocales } from "#root/bot/i18n.js";
-import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { BotCommand } from "@grammyjs/types";
 import { createCallbackData } from "callback-data";
+import { Composer, GrammyError, InlineKeyboard } from "grammy";
 import ISO6391 from "iso-639-1";
+
+import type { Context } from "#root/bot/context.js";
+import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { chunk } from "#root/bot/helpers/keyboard.js";
+import { logHandle } from "#root/bot/helpers/logging.js";
+import { i18n, isMultipleLocales } from "#root/bot/i18n.js";
 import { logger } from "#root/logger.js";
 
 export const composer = new Composer<Context>();

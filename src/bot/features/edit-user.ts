@@ -1,6 +1,7 @@
-import type { Context, Conversation } from "#root/bot/context.js";
+import { createConversation } from "@grammyjs/conversations";
+import { Composer, Keyboard } from "grammy";
+
 import { UserLite } from "#root/backend/entities/user.js";
-import { waitForSkipCommands } from "#root/bot/helpers/conversations.js";
 import {
   getUserOrFail,
   setUserGender,
@@ -8,9 +9,9 @@ import {
   setUserPronouns,
   setUserSexuality,
 } from "#root/backend/user.js";
-import { Composer, Keyboard } from "grammy";
+import type { Context, Conversation } from "#root/bot/context.js";
 import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
-import { createConversation } from "@grammyjs/conversations";
+import { waitForSkipCommands } from "#root/bot/helpers/conversations.js";
 
 export const composer = new Composer<Context>();
 

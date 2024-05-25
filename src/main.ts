@@ -1,14 +1,13 @@
 #!/usr/bin/env tsx
-
-import { createBot } from "#root/bot/index.js";
-import { config } from "#root/config.js";
-import { logger } from "#root/logger.js";
 import {
   needsMigrations,
   runMigrations,
   shutDownConnection,
 } from "#root/backend/data-source.js";
 import { setCommands } from "#root/bot/features/help.js";
+import { createBot } from "#root/bot/index.js";
+import { config } from "#root/config.js";
+import { logger } from "#root/logger.js";
 
 function onShutdown(cleanUp: () => Promise<void>) {
   let isShuttingDown = false;

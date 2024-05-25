@@ -1,7 +1,8 @@
-import { Middleware } from "grammy";
-import type { Context } from "#root/bot/context.js";
 import { RequestContext } from "@mikro-orm/core";
+import { Middleware } from "grammy";
+
 import { orm } from "#root/backend/data-source.js";
+import type { Context } from "#root/bot/context.js";
 
 export function dataSource(): Middleware<Context> {
   return async (ctx, next) => {

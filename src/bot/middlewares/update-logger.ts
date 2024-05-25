@@ -1,5 +1,6 @@
-import { performance } from "node:perf_hooks";
 import { Middleware, Transformer } from "grammy";
+import { performance } from "node:perf_hooks";
+
 import type { Context } from "#root/bot/context.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
 import { logger } from "#root/logger.js";

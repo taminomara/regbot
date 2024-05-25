@@ -1,8 +1,9 @@
 import { BotCommand } from "@grammyjs/types";
+import { Bot } from "grammy";
+
+import { Context } from "#root/bot/context.js";
 import { i18n, isMultipleLocales } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
-import { Bot } from "grammy";
-import { Context } from "#root/bot/context.js";
 
 export type CommandHelpProvider = (
   localeCode: string,
