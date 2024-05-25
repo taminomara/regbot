@@ -54,7 +54,8 @@
         "importOrder": ["^#root/(.*)$", "^[./]"],
         "importOrderSeparation": true,
         "importOrderSortSpecifiers": true,
-        "plugins": ["@trivago/prettier-plugin-sort-imports"]
+        "plugins": ["@trivago/prettier-plugin-sort-imports"],
+        "importOrderParserPlugins": ["typescript", "decorators"]
       }
     ],
     "unicorn/no-array-method-this-argument": "off",
@@ -81,5 +82,5 @@
       }
     }
   },
-  "ignorePatterns": ["src/backend/migrations/*"]
+  "ignorePatterns": ["build/*", "src/backend/migrations/*"]
 }

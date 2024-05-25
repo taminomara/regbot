@@ -1,5 +1,5 @@
-import { User, UserLite } from "#root/backend/entities/user.js";
 import { orm } from "#root/backend/data-source.js";
+import { User, UserLite } from "#root/backend/entities/user.js";
 
 export { User, UserLite, UserStatus } from "#root/backend/entities/user.js";
 

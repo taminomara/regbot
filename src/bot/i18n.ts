@@ -1,5 +1,6 @@
-import path from "node:path";
 import { I18n } from "@grammyjs/i18n";
+import path from "node:path";
+
 import type { Context } from "#root/bot/context.js";
 import { config } from "#root/config.js";
 

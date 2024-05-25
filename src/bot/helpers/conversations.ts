@@ -1,5 +1,6 @@
-import { Context, Conversation } from "#root/bot/context.js";
 import { Filter, FilterQuery } from "grammy";
+
+import { Context, Conversation } from "#root/bot/context.js";
 
 export function waitForSkipCommands<Q extends FilterQuery>(
   conversation: Conversation,

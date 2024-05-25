@@ -1,5 +1,6 @@
-import { Middleware } from "grammy";
 import type { Update } from "@grammyjs/types";
+import { Middleware } from "grammy";
+
 import type { Context } from "#root/bot/context.js";
 
 /**

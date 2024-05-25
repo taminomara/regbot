@@ -1,5 +1,6 @@
 import { DefaultLogger, LogContext, LoggerNamespace } from "@mikro-orm/core";
-import { logger, Logger as PicoLogger } from "#root/logger.js";
+
+import { Logger as PicoLogger, logger } from "#root/logger.js";
 
 export class MikroPicoLogger extends DefaultLogger {
   // eslint-disable-next-line class-methods-use-this

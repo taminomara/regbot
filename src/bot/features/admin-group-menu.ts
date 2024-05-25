@@ -1,18 +1,19 @@
-import { Composer } from "grammy";
-import type { Context } from "#root/bot/context.js";
-import { config } from "#root/config.js";
 import { Menu } from "@grammyjs/menu";
-import { i18n } from "#root/bot/i18n.js";
+import { Composer } from "grammy";
+
+import type { Context } from "#root/bot/context.js";
+import {
+  formatAboutMe,
+  getUserForTopic,
+} from "#root/bot/features/admin-group.js";
 import {
   enterEditGender,
   enterEditName,
   enterEditPronouns,
   enterEditSexuality,
 } from "#root/bot/features/edit-user.js";
-import {
-  formatAboutMe,
-  getUserForTopic,
-} from "#root/bot/features/admin-group.js";
+import { i18n } from "#root/bot/i18n.js";
+import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
 

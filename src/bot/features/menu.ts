@@ -1,16 +1,17 @@
-import { Composer } from "grammy";
-import type { Context } from "#root/bot/context.js";
-import { registerCommandHelpProvider } from "#root/bot/features/help.js";
-import { i18n } from "#root/bot/i18n.js";
 import { Menu } from "@grammyjs/menu";
-import { getUserOrFail, UserStatus } from "#root/backend/user.js";
-import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
+import { Composer } from "grammy";
+
+import { UserStatus, getUserOrFail } from "#root/backend/user.js";
+import type { Context } from "#root/bot/context.js";
 import {
   enterEditGender,
   enterEditName,
   enterEditPronouns,
   enterEditSexuality,
 } from "#root/bot/features/edit-user.js";
+import { registerCommandHelpProvider } from "#root/bot/features/help.js";
+import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
+import { i18n } from "#root/bot/i18n.js";
 
 export const composer = new Composer<Context>();
 

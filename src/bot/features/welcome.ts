@@ -1,12 +1,13 @@
-import { Composer } from "grammy";
-import type { Context } from "#root/bot/context.js";
-import { logHandle } from "#root/bot/helpers/logging.js";
-import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { BotCommand } from "@grammyjs/types";
-import { i18n } from "#root/bot/i18n.js";
+import { Composer } from "grammy";
+
 import { UserStatus } from "#root/backend/entities/user.js";
+import type { Context } from "#root/bot/context.js";
 import { ensureHasAdminGroupTopic } from "#root/bot/features/admin-group.js";
+import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { enterInterview } from "#root/bot/features/interview.js";
+import { logHandle } from "#root/bot/helpers/logging.js";
+import { i18n } from "#root/bot/i18n.js";
 
 export const composer = new Composer<Context>();
 

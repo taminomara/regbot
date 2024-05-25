@@ -1,4 +1,5 @@
 import { MikroORM } from "@mikro-orm/better-sqlite";
+
 import config from "#root/backend/micro-orm-config.js";
 
 export const orm = await MikroORM.init(config);

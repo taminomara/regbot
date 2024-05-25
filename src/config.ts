@@ -1,6 +1,5 @@
 import { loadEnvFile } from "node:process";
-import { parseEnv, port, z } from "znv";
-import { API_CONSTANTS } from "grammy";
+import { parseEnv, z } from "znv";
 
 // fix for https://github.com/microsoft/TypeScript/issues/47663
 import * as _ from "#root/../node_modules/znv/dist/util.js";
