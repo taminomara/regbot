@@ -8,6 +8,8 @@ import {
   ConversationFlavor,
   Conversation as DefaultConversation,
 } from "@grammyjs/conversations";
+import { UserLite } from "#root/backend/user.js";
+import { MenuFlavor } from "@grammyjs/menu";
 
 export type SessionData = {
   // field?: string;
@@ -15,6 +17,12 @@ export type SessionData = {
 
 type ExtendedContextFlavor = {
   logger: Logger;
+  user: UserLite;
+  interviewEditData?: {
+    userId: number;
+    menuChatId?: number;
+    menuMessageId?: number;
+  };
 };
 
 export type Context = ParseModeFlavor<
@@ -24,7 +32,8 @@ export type Context = ParseModeFlavor<
       SessionFlavor<SessionData> &
       I18nFlavor &
       AutoChatActionFlavor &
-      ConversationFlavor
+      ConversationFlavor &
+      MenuFlavor
   >
 >;
 

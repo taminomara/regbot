@@ -1,11 +1,13 @@
-import { Composer } from "grammy";
-import { changeLanguageData } from "#root/bot/callback-data/index.js";
+import { Composer, GrammyError, InlineKeyboard } from "grammy";
 import type { Context } from "#root/bot/context.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 import { i18n, isMultipleLocales } from "#root/bot/i18n.js";
-import { createChangeLanguageKeyboard } from "#root/bot/keyboards/index.js";
 import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { BotCommand } from "@grammyjs/types";
+import { createCallbackData } from "callback-data";
+import ISO6391 from "iso-639-1";
+import { chunk } from "#root/bot/helpers/keyboard.js";
+import { logger } from "#root/logger.js";
 
 export const composer = new Composer<Context>();
 
@@ -16,6 +18,32 @@ feature.command("language", logHandle("command-language"), async (ctx) => {
     reply_markup: await createChangeLanguageKeyboard(ctx),
   });
 });
+
+const changeLanguageData = createCallbackData("language", {
+  code: String,
+});
+
+async function createChangeLanguageKeyboard(ctx: Context) {
+  const currentLocaleCode = await ctx.i18n.getLocale();
+
+  const getLabel = (code: string) => {
+    const isActive = code === currentLocaleCode;
+
+    return `${isActive ? "✅ " : ""}${ISO6391.getNativeName(code)}`;
+  };
+
+  return InlineKeyboard.from(
+    chunk(
+      i18n.locales.map((localeCode) => ({
+        text: getLabel(localeCode),
+        callback_data: changeLanguageData.pack({
+          code: localeCode,
+        }),
+      })),
+      2,
+    ),
+  );
+}
 
 feature.callbackQuery(
   changeLanguageData.filter(),
@@ -35,9 +63,21 @@ feature.callbackQuery(
 
     await ctx.i18n.setLocale(languageCode);
 
-    return ctx.editMessageText(ctx.t("language.changed"), {
-      reply_markup: await createChangeLanguageKeyboard(ctx),
-    });
+    try {
+      await ctx.editMessageText(ctx.t("language.changed"), {
+        reply_markup: await createChangeLanguageKeyboard(ctx),
+      });
+    } catch (error) {
+      if (error instanceof GrammyError && error.error_code === 400) {
+        if (error.description.includes("message is not modified")) {
+          logger.debug("ignored MESSAGE_NOT_MODIFIED error");
+        } else {
+          logger.warn(error);
+        }
+      } else {
+        throw error;
+      }
+    }
   },
 );
 
