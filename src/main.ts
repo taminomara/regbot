@@ -1,11 +1,14 @@
 #!/usr/bin/env tsx
 
-import { serve } from "@hono/node-server";
 import { createBot } from "#root/bot/index.js";
 import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
-import { createServer } from "#root/server/index.js";
-import { AddressInfo } from "node:net";
+import {
+  needsMigrations,
+  runMigrations,
+  shutDownConnection,
+} from "#root/backend/data-source.js";
+import { setCommands } from "#root/bot/features/help.js";
 
 function onShutdown(cleanUp: () => Promise<void>) {
   let isShuttingDown = false;
@@ -25,79 +28,31 @@ async function startPolling() {
   // graceful shutdown
   onShutdown(async () => {
     await bot.stop();
+    await shutDownConnection();
   });
 
   // start bot
   await bot.start({
-    allowed_updates: config.BOT_ALLOWED_UPDATES,
-    onStart: ({ username }) =>
+    onStart: async ({ username }) => {
+      await setCommands(bot);
+
       logger.info({
         msg: "Bot running...",
         username,
-      }),
-  });
-}
-
-async function startWebhook() {
-  const bot = createBot(config.BOT_TOKEN);
-  const server = await createServer(bot);
-
-  let serverHandle: undefined | ReturnType<typeof serve>;
-  const startServer = () =>
-    new Promise<AddressInfo>((resolve) => {
-      serverHandle = serve(
-        {
-          fetch: server.fetch,
-          hostname: config.BOT_SERVER_HOST,
-          port: config.BOT_SERVER_PORT,
-        },
-        (info) => resolve(info),
-      );
-    });
-  const stopServer = async () =>
-    new Promise<void>((resolve) => {
-      if (serverHandle) {
-        serverHandle.close(() => resolve());
-      } else {
-        resolve();
-      }
-    });
-
-  // graceful shutdown
-  onShutdown(async () => {
-    await stopServer();
-  });
-
-  // to prevent receiving updates before the bot is ready
-  await bot.init();
-
-  // start server
-  const info = await startServer();
-  logger.info({
-    msg: "Server started",
-    url:
-      info.family === "IPv6"
-        ? `http://[${info.address}]:${info.port}`
-        : `http://${info.address}:${info.port}`,
-  });
-
-  // set webhook
-  await bot.api.setWebhook(config.BOT_WEBHOOK, {
-    allowed_updates: config.BOT_ALLOWED_UPDATES,
-    secret_token: config.BOT_WEBHOOK_SECRET,
-  });
-  logger.info({
-    msg: "Webhook was set",
-    url: config.BOT_WEBHOOK,
+      });
+    },
   });
 }
 
 try {
-  if (config.BOT_MODE === "webhook") {
-    await startWebhook();
-  } else if (config.BOT_MODE === "polling") {
-    await startPolling();
+  if (config.isDev) {
+    await runMigrations();
+  } else if (await needsMigrations()) {
+    logger.error({ msg: "Found unapplied migrations" });
+    process.exit(1);
   }
+
+  await startPolling();
 } catch (error) {
   logger.error(error);
   process.exit(1);

@@ -30,12 +30,19 @@
       }
     ],
     "arrow-body-style": "off",
+    "max-classes-per-file": "off",
+    "no-use-before-define": "off",
     "no-shadow": "off",
     "prefer-arrow-callback": "off",
     "consistent-return": "off",
+    "default-case": "off",
     "import/prefer-default-export": "off",
     "import/extensions": "off",
+    "import/no-cycle": "off",
     "no-underscore-dangle": "off",
+    "class-methods-use-this": "off",
+    "no-await-in-loop": "off",
+    "no-constant-condition": "off",
     "no-restricted-syntax": [
       "off",
       "ForOfStatement"
@@ -43,19 +50,26 @@
     "prettier/prettier": [
       "error",
       {
-        "trailingComma": "all"
+        "trailingComma": "all",
+        "importOrder": ["^#root/(.*)$", "^[./]"],
+        "importOrderSeparation": true,
+        "importOrderSortSpecifiers": true,
+        "plugins": ["@trivago/prettier-plugin-sort-imports"]
       }
     ],
     "unicorn/no-array-method-this-argument": "off",
     "unicorn/no-array-callback-reference": "off",
+    "unicorn/no-negated-condition": "off",
     "unicorn/prevent-abbreviations": [
       "error",
       {
         "replacements": {
-          "ctx": false
+          "ctx": false,
+          "db": false
         }
       }
-    ]
+    ],
+    "unicorn/prefer-ternary": "off"
   },
   "settings": {
     "import/parsers": {
@@ -66,5 +80,6 @@
         "extensions": [".js", ".ts"]
       }
     }
-  }
+  },
+  "ignorePatterns": ["src/backend/migrations/*"]
 }
