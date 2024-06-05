@@ -127,10 +127,10 @@ dist
 
 # Data
 data/
+temp/
 
-*.env
-
-# Jetbrains IDE
+# IDE
+.vscode/
 .idea/
 
 # Ignore SQLite database
