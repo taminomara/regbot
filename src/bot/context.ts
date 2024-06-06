@@ -13,17 +13,12 @@ import { UserLite } from "#root/backend/user.js";
 import { Logger } from "#root/logger.js";
 
 export type SessionData = {
-  // field?: string;
+  postInterviewSignupEventId?: number[];
 };
 
 type ExtendedContextFlavor = {
   logger: Logger;
   user: UserLite;
-  interviewEditData?: {
-    userId: number;
-    menuChatId?: number;
-    menuMessageId?: number;
-  };
 };
 
 export type Context = ParseModeFlavor<

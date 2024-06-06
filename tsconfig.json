@@ -12,6 +12,7 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "declaration": true,
+    "resolveJsonModule": true,
     "outDir": "build",
     "rootDir": ".",
     "paths": {

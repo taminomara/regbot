@@ -1,64 +1,66 @@
 import { Entity, PrimaryKey, Property } from "@mikro-orm/core";
 
 export enum UserStatus {
-  New,
-  InterviewInProgress,
-  PendingApproval,
-  Approved,
-  Rejected,
-  Banned,
+  New = "New",
+  InterviewInProgress = "InterviewInProgress",
+  PendingApproval = "PendingApproval",
+  Approved = "Approved",
+  Rejected = "Rejected",
+  Banned = "Banned",
 }
 
 @Entity()
 export class User {
   constructor(id: number) {
     this.id = id;
-    this.status = UserStatus.New;
   }
 
   @PrimaryKey({ autoincrement: false })
   id: number;
 
-  @Property({ default: UserStatus.New })
-  status: UserStatus;
+  @Property()
+  status: UserStatus = UserStatus.New;
 
-  @Property({ default: false })
-  finishedInitialSurvey: boolean;
+  @Property()
+  finishedInitialSurvey: boolean = false;
 
   @Property({ index: true })
-  adminGroupTopic: number | null;
+  adminGroupTopic: number | null = null;
 
   @Property()
-  verifiedBy: number | null;
+  verifiedBy: number | null = null;
 
   @Property()
-  verifiedAt: Date | null;
+  verifiedAt: Date | null = null;
 
   @Property()
-  bannedBy: number | null;
+  bannedBy: number | null = null;
 
   @Property()
-  bannedAt: Date | null;
+  bannedAt: Date | null = null;
 
   @Property()
-  name: string | null;
+  name: string | null = null;
 
   @Property()
-  username: string | null;
+  username: string | null = null;
 
   @Property()
-  pronouns: string | null;
+  locale: string | null = null;
 
   @Property()
-  gender: string | null;
+  pronouns: string | null = null;
 
   @Property()
-  sexuality: string | null;
+  gender: string | null = null;
+
+  @Property()
+  sexuality: string | null = null;
 }
 
 @Entity({
   expression:
-    "select id, status, username, finished_initial_survey, admin_group_topic, name from user",
+    "select id, status, username, finished_initial_survey, admin_group_topic, name, locale from user",
 })
 export class UserLite {
   @Property()
@@ -69,6 +71,9 @@ export class UserLite {
 
   @Property()
   username: string | null;
+
+  @Property()
+  locale: string | null = null;
 
   @Property()
   finishedInitialSurvey: boolean;

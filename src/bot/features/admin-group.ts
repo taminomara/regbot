@@ -1,35 +1,38 @@
+import { Other } from "@grammyjs/hydrate";
 import { Composer, Filter, GrammyError } from "grammy";
 
-import { User, UserLite } from "#root/backend/entities/user.js";
 import {
-  getUserByAdminGroupTopicOrFail,
+  User,
+  UserLite,
+  UserStatus,
+  getUserByAdminGroupTopic,
   getUserLiteByAdminGroupTopic,
   getUserOrFail,
   setUserAdminGroupTopicId,
 } from "#root/backend/user.js";
-import type { Context } from "#root/bot/context.js";
-import { adminGroupUserMenu } from "#root/bot/features/admin-group-menu.js";
+import type { Context, Conversation } from "#root/bot/context.js";
+import {
+  adminGroupUserMenu,
+  adminPostInterviewMenu,
+} from "#root/bot/features/admin-group-menu.js";
 import {
   copyMessageTo,
   handleMessageEdit,
 } from "#root/bot/features/edit-cache.js";
 import { isAdmin } from "#root/bot/filters/index.js";
+import { maybeExternal } from "#root/bot/helpers/conversations.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
-import { logger } from "#root/logger.js";
 
 export const composer = new Composer<Context>();
 
 /**
  * Make sure that there is a topic in the admin forum about the given user.
- *
- * @param ctx used to interact with the bot.
- * @param userLite user for whom the topic needs to be present.
- * @returns ID of the user topic.
  */
 export async function ensureHasAdminGroupTopic(
+  conversation: Conversation | null,
   ctx: Context,
   userLite: UserLite,
 ) {
@@ -37,14 +40,18 @@ export async function ensureHasAdminGroupTopic(
     return userLite.adminGroupTopic;
   }
 
-  const user = await getUserOrFail(userLite.id);
+  const user = await maybeExternal(conversation, async () =>
+    getUserOrFail(userLite.id),
+  );
 
   const topic = await ctx.api.createForumTopic(
     config.ADMIN_GROUP,
     formatTopicName(user),
   );
 
-  await setUserAdminGroupTopicId(user.id, topic.message_thread_id);
+  await maybeExternal(conversation, async () =>
+    setUserAdminGroupTopicId(user.id, topic.message_thread_id),
+  );
 
   await ctx.api.sendMessage(config.ADMIN_GROUP, formatAboutMe(user), {
     message_thread_id: topic.message_thread_id,
@@ -75,9 +82,9 @@ export async function updateAdminGroupTopicTitle(ctx: Context, user: UserLite) {
       error.description.includes("TOPIC_NOT_MODIFIED")
     ) {
       if (error.description.includes("TOPIC_NOT_MODIFIED")) {
-        logger.debug("ignored TOPIC_NOT_MODIFIED error");
+        ctx.logger.debug("ignored TOPIC_NOT_MODIFIED error");
       } else {
-        logger.warn(error);
+        ctx.logger.warn(error);
       }
     } else {
       throw error;
@@ -89,63 +96,82 @@ export async function updateAdminGroupTopicTitle(ctx: Context, user: UserLite) {
  * Send message from a user to the given topic.
  */
 export async function copyMessageToAdminGroupTopic(
+  conversation: Conversation | null,
   ctx: Filter<Context, "message">,
+  adminGroupTopic: number | null,
 ) {
-  if (ctx.user.adminGroupTopic === null) return;
-  await copyMessageTo(ctx, config.ADMIN_GROUP, {
-    message_thread_id: ctx.user.adminGroupTopic,
+  if (adminGroupTopic === null) return;
+  await copyMessageTo(conversation, ctx, config.ADMIN_GROUP, {
+    message_thread_id: adminGroupTopic,
   });
 }
 
 export async function sendInterviewQuestionToAdminGroupTopic(
   ctx: Context,
+  adminGroupTopic: number | null,
   question: string,
 ) {
   await sendMessageToAdminGroupTopic(
     ctx,
+    adminGroupTopic,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.message_question", {
       question,
     }),
   );
 }
-export async function sendInfoToAdminGroupTopic(ctx: Context, info: string) {
+export async function sendInterviewFinishNotificationToAdminGroupTopic(
+  ctx: Context,
+  adminGroupTopic: number | null,
+) {
   await sendMessageToAdminGroupTopic(
     ctx,
-    i18n.t(config.DEFAULT_LOCALE, "admin_group.message_info", {
-      info,
-    }),
+    adminGroupTopic,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.interview_finished"),
+    {
+      reply_markup: adminPostInterviewMenu,
+    },
   );
 }
 export async function sendMessageToAdminGroupTopic(
   ctx: Context,
+  adminGroupTopic: number | null,
   message: string,
+  other?: Other<"sendMessage", "chat_id" | "text" | "message_thread_id">,
 ) {
-  if (ctx.user.adminGroupTopic === null) return;
-
+  if (adminGroupTopic === null) return;
   await ctx.api.sendMessage(config.ADMIN_GROUP, message, {
-    message_thread_id: ctx.user.adminGroupTopic,
+    ...other,
+    message_thread_id: adminGroupTopic,
   });
 }
 
 export function formatAboutMe(user: User) {
   return [
     i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_header", {
-      id: user.id,
+      id: String(user.id),
       name: sanitizeHtmlOrEmpty(user.name),
     }),
-    i18n.t(config.DEFAULT_LOCALE, "menu.about", {
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.about", {
       name: sanitizeHtmlOrEmpty(user.name),
       pronouns: sanitizeHtmlOrEmpty(user.pronouns),
       gender: sanitizeHtmlOrEmpty(user.gender),
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
+      status: {
+        [UserStatus.New]: "New",
+        [UserStatus.InterviewInProgress]: "InterviewInProgress",
+        [UserStatus.PendingApproval]: "PendingApproval",
+        [UserStatus.Approved]: "Approved",
+        [UserStatus.Rejected]: "Rejected",
+        [UserStatus.Banned]: "Banned",
+      }[user.status],
     }),
   ].join("\n\n");
 }
 
 export function formatTopicName(user: UserLite) {
   return i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_name", {
-    name: sanitizeHtmlOrEmpty(user.name),
-    username: sanitizeHtmlOrEmpty(user.username),
+    name: user.name ?? "???",
+    username: user.username ?? "???",
   });
 }
 
@@ -159,7 +185,7 @@ export async function getUserForTopic(ctx: Context) {
     ctx.logger.warn("No message thread ID");
     return;
   }
-  return getUserByAdminGroupTopicOrFail(threadId);
+  return (await getUserByAdminGroupTopic(threadId)) ?? undefined;
 }
 
 const feature = composer
@@ -188,7 +214,7 @@ feature
     );
 
     if (user !== null) {
-      await copyMessageTo(ctx, user.id);
+      await copyMessageTo(null, ctx, user.id);
     }
   });
 

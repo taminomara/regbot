@@ -20,7 +20,13 @@ const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
     BOT_ADMINS: z.array(z.number()).default([]),
     DATABASE: z.string(),
     ADMIN_GROUP: z.number(),
+    MEMBERS_GROUP: z.number(),
+    CHANNEL: z.number(),
     DEFAULT_LOCALE: z.string().default("ru"),
+    TIMEZONE: z.string(),
+    PAYMENT_IBAN: z.string(),
+    PAYMENT_RECIPIENT: z.string(),
+    METRICS_PORT: z.number().default(8080),
   });
 
   return {

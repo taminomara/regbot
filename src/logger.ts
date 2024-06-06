@@ -6,7 +6,7 @@ export const logger = pino({
   level: config.LOG_LEVEL,
   transport: {
     targets: [
-      ...(config.isDev
+      ...(config.isDev || true
         ? [
             {
               target: "pino-pretty",

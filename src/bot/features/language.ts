@@ -1,14 +1,15 @@
 import { BotCommand } from "@grammyjs/types";
 import { createCallbackData } from "callback-data";
-import { Composer, GrammyError, InlineKeyboard } from "grammy";
+import { Composer, InlineKeyboard } from "grammy";
 import ISO6391 from "iso-639-1";
 
+import { updateUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import { registerCommandHelpProvider } from "#root/bot/features/help.js";
+import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { chunk } from "#root/bot/helpers/keyboard.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 import { i18n, isMultipleLocales } from "#root/bot/i18n.js";
-import { logger } from "#root/logger.js";
 
 export const composer = new Composer<Context>();
 
@@ -64,21 +65,12 @@ feature.callbackQuery(
 
     await ctx.i18n.setLocale(languageCode);
 
-    try {
-      await ctx.editMessageText(ctx.t("language.changed"), {
-        reply_markup: await createChangeLanguageKeyboard(ctx),
-      });
-    } catch (error) {
-      if (error instanceof GrammyError && error.error_code === 400) {
-        if (error.description.includes("message is not modified")) {
-          logger.debug("ignored MESSAGE_NOT_MODIFIED error");
-        } else {
-          logger.warn(error);
-        }
-      } else {
-        throw error;
-      }
-    }
+    const locale = await ctx.i18n.getLocale();
+    await updateUser(ctx.user.id, { locale });
+
+    await editMessageTextSafe(ctx, ctx.t("language.changed"), {
+      reply_markup: await createChangeLanguageKeyboard(ctx),
+    });
   },
 );
 

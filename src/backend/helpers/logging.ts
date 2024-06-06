@@ -16,8 +16,9 @@ export class MikroPicoLogger extends DefaultLogger {
     };
 
     switch (context?.level ?? "debug") {
+      case "debug":
       case "info": {
-        logger.info(data);
+        logger.debug(data);
         break;
       }
       case "warning": {

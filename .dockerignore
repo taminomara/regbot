@@ -1,0 +1,14 @@
+.github
+.husky
+.vscode
+node_modules
+src
+temp
+.dockerignore
+.env*
+.eslintrc.json
+.gitignore
+*.db
+prod.dockerfile
+README.md
+tsconfig.json
