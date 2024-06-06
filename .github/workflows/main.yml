@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Use Node.js 22.2
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 22.2
       - name: Generate .env file
@@ -30,10 +30,11 @@ jobs:
       - name: Build the code
         run: npm run build
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: build
           path: build
+          retention-days: 1
+          compression-level: 0
 
   auto-merge:
     if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
@@ -63,17 +64,12 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Download artifact
         if: ${{ needs.build_docs.result == 'success' }}
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: build
           path: build
       - name: Log in to the Container registry
         uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
