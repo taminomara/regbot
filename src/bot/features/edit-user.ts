@@ -1,8 +1,8 @@
-import { createConversation } from "@grammyjs/conversations";
 import { Composer, Keyboard } from "grammy";
 
-import { UserLite } from "#root/backend/entities/user.js";
 import {
+  getUser,
+  getUserByAdminGroupTopic,
   getUserOrFail,
   setUserGender,
   setUserName,
@@ -11,48 +11,65 @@ import {
 } from "#root/backend/user.js";
 import type { Context, Conversation } from "#root/bot/context.js";
 import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
-import { waitForSkipCommands } from "#root/bot/helpers/conversations.js";
+import {
+  createConversation,
+  waitForSkipCommands,
+} from "#root/bot/helpers/conversations.js";
+import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
 
 export async function editName(
   conversation: Conversation,
   ctx: Context,
-  user?: UserLite,
+  inInterview?: boolean,
 ) {
-  const userId = user?.id ?? ctx.interviewEditData?.userId;
-  if (userId === undefined) return;
+  const user = await conversation.external(async () => {
+    const threadId = ctx.msg?.message_thread_id;
+    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
+      return getUserByAdminGroupTopic(threadId);
+    }
+    return getUser(ctx.user.id);
+  });
+  if (user === null) return;
 
   await ctx.reply(
-    user === undefined ? ctx.t("interview.edit_name") : ctx.t("interview.name"),
+    inInterview ? ctx.t("interview.name") : ctx.t("interview.edit_name"),
     { message_thread_id: ctx.msg?.message_thread_id },
   );
-  const { message } = await waitForSkipCommands(conversation, "message:text");
+  const reply = await waitForSkipCommands(conversation, "message:text");
   await conversation.external(async () => {
-    await setUserName(userId, message.text);
+    await setUserName(user.id, reply.message.text);
   });
 
-  if (user === undefined) {
-    await sendEditConfirmation(ctx, conversation, userId);
+  if (!inInterview) {
+    await sendEditConfirmation(conversation, reply, user.id);
   }
 }
 
 export async function editPronouns(
   conversation: Conversation,
   ctx: Context,
-  user?: UserLite,
+  inInterview?: boolean,
 ) {
-  const userId = user?.id ?? ctx.interviewEditData?.userId;
-  if (userId === undefined) return;
+  const user = await conversation.external(async () => {
+    const threadId = ctx.msg?.message_thread_id;
+    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
+      return getUserByAdminGroupTopic(threadId);
+    }
+    return getUser(ctx.user.id);
+  });
+  if (user === null) return;
 
   await ctx.reply(
-    user === undefined
-      ? ctx.t("interview.edit_pronouns")
-      : ctx.t("interview.pronouns"),
+    inInterview
+      ? ctx.t("interview.pronouns")
+      : ctx.t("interview.edit_pronouns"),
     {
       reply_markup: new Keyboard()
         .text(ctx.t("interview.pronouns_they_them"))
         .text(ctx.t("interview.pronouns_she_her"))
+        .row()
         .text(ctx.t("interview.pronouns_he_him"))
         .text(ctx.t("interview.pronouns_it_its"))
         .placeholder(ctx.t("interview.can_use_custom_pronouns"))
@@ -61,28 +78,32 @@ export async function editPronouns(
       message_thread_id: ctx.msg?.message_thread_id,
     },
   );
-  const { message } = await waitForSkipCommands(conversation, "message:text");
+  const reply = await waitForSkipCommands(conversation, "message:text");
   await conversation.external(async () => {
-    await setUserPronouns(userId, message.text);
+    await setUserPronouns(user.id, reply.message.text);
   });
 
-  if (user === undefined) {
-    await sendEditConfirmation(ctx, conversation, userId);
+  if (!inInterview) {
+    await sendEditConfirmation(conversation, reply, user.id);
   }
 }
 
 export async function editGender(
   conversation: Conversation,
   ctx: Context,
-  user?: UserLite,
+  inInterview?: boolean,
 ) {
-  const userId = user?.id ?? ctx.interviewEditData?.userId;
-  if (userId === undefined) return;
+  const user = await conversation.external(async () => {
+    const threadId = ctx.msg?.message_thread_id;
+    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
+      return getUserByAdminGroupTopic(threadId);
+    }
+    return getUser(ctx.user.id);
+  });
+  if (user === null) return;
 
   await ctx.reply(
-    user === undefined
-      ? ctx.t("interview.edit_gender")
-      : ctx.t("interview.gender"),
+    inInterview ? ctx.t("interview.gender") : ctx.t("interview.edit_gender"),
     {
       reply_markup: new Keyboard()
         .text(ctx.t("interview.gender_nonbinary"))
@@ -94,31 +115,39 @@ export async function editGender(
       message_thread_id: ctx.msg?.message_thread_id,
     },
   );
-  const { message } = await waitForSkipCommands(conversation, "message:text");
+  const reply = await waitForSkipCommands(conversation, "message:text");
   await conversation.external(async () => {
-    await setUserGender(userId, message.text);
+    await setUserGender(user.id, reply.message.text);
   });
 
-  if (user === undefined) {
-    await sendEditConfirmation(ctx, conversation, userId);
+  if (!inInterview) {
+    await sendEditConfirmation(conversation, reply, user.id);
   }
 }
 
 export async function editSexuality(
   conversation: Conversation,
   ctx: Context,
-  user?: UserLite,
+  inInterview?: boolean,
 ) {
-  const userId = user?.id ?? ctx.interviewEditData?.userId;
-  if (userId === undefined) return;
+  const user = await conversation.external(async () => {
+    const threadId = ctx.msg?.message_thread_id;
+    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
+      return getUserByAdminGroupTopic(threadId);
+    }
+    return getUser(ctx.user.id);
+  });
+  if (user === null) return;
 
   await ctx.reply(
-    user === undefined
-      ? ctx.t("interview.edit_sexuality")
-      : ctx.t("interview.sexuality"),
+    inInterview
+      ? ctx.t("interview.sexuality")
+      : ctx.t("interview.edit_sexuality"),
     {
       reply_markup: new Keyboard()
+        .text(ctx.t("interview.sexuality_pansexual"))
         .text(ctx.t("interview.sexuality_bisexual"))
+        .row()
         .text(ctx.t("interview.sexuality_homosexual"))
         .text(ctx.t("interview.sexuality_heterosexual"))
         .placeholder(ctx.t("interview.can_use_custom_sexuality"))
@@ -127,24 +156,25 @@ export async function editSexuality(
       message_thread_id: ctx.msg?.message_thread_id,
     },
   );
-  const { message } = await waitForSkipCommands(conversation, "message:text");
+  const reply = await waitForSkipCommands(conversation, "message:text");
   await conversation.external(async () => {
-    await setUserSexuality(userId, message.text);
+    await setUserSexuality(user.id, reply.message.text);
   });
 
-  if (user === undefined) {
-    await sendEditConfirmation(ctx, conversation, userId);
+  if (!inInterview) {
+    await sendEditConfirmation(conversation, reply, user.id);
   }
 }
 
 async function sendEditConfirmation(
-  ctx: Context,
   conversation: Conversation,
+  ctx: Context,
   userId: number,
 ) {
   await ctx.reply(ctx.t("interview.edit_success"), {
     reply_markup: { remove_keyboard: true },
     message_thread_id: ctx.msg?.message_thread_id,
+    reply_to_message_id: ctx.msgId,
   });
   const user = await conversation.external(async () => getUserOrFail(userId));
   await updateAdminGroupTopicTitle(ctx, user);
@@ -155,35 +185,28 @@ composer.use(createConversation(editPronouns));
 composer.use(createConversation(editGender));
 composer.use(createConversation(editSexuality));
 
-async function enterEditMe(
-  conversationIdent: string,
-  ctx: Context,
-  userId?: number,
-) {
+async function enterEditMe(conversationIdent: string, ctx: Context) {
   if (!(await checkNoConversations(ctx))) {
     return;
   }
 
-  ctx.interviewEditData = {
-    userId: userId ?? ctx.user.id,
-  };
   await ctx.conversation.enter(conversationIdent, { overwrite: true });
 }
 
-export async function enterEditName(ctx: Context, userId?: number) {
-  await enterEditMe("editName", ctx, userId);
+export async function enterEditName(ctx: Context) {
+  await enterEditMe("editName", ctx);
 }
 
-export async function enterEditPronouns(ctx: Context, userId?: number) {
-  await enterEditMe("editPronouns", ctx, userId);
+export async function enterEditPronouns(ctx: Context) {
+  await enterEditMe("editPronouns", ctx);
 }
 
-export async function enterEditGender(ctx: Context, userId?: number) {
-  await enterEditMe("editGender", ctx, userId);
+export async function enterEditGender(ctx: Context) {
+  await enterEditMe("editGender", ctx);
 }
 
-export async function enterEditSexuality(ctx: Context, userId?: number) {
-  await enterEditMe("editSexuality", ctx, userId);
+export async function enterEditSexuality(ctx: Context) {
+  await enterEditMe("editSexuality", ctx);
 }
 
 async function checkNoConversations(ctx: Context) {

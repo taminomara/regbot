@@ -1,27 +1,53 @@
+import { Other } from "@grammyjs/hydrate";
 import { MessageEntity } from "@grammyjs/types";
 import { Filter } from "grammy";
 
 import {
   findCopiedMessagesByOriginId,
+  findCopiedMessagesByOriginIdAndDestinationChatId,
   saveCopiedMessageId,
 } from "#root/backend/edit-cache.js";
-import type { Context } from "#root/bot/context.js";
+import type { Context, Conversation } from "#root/bot/context.js";
+import { maybeExternal } from "#root/bot/helpers/conversations.js";
+import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
 export async function copyMessageTo(
+  conversation: Conversation | null,
   ctx: Filter<Context, "message">,
   destinationChatId: number,
-  options?: {
-    message_thread_id?: number;
-  },
+  other?: Other<
+    "copyMessage",
+    "chat_id" | "from_chat_id" | "message_id" | "reply_to_message_id"
+  >,
 ) {
-  const forwardedCtx = await ctx.copyMessage(destinationChatId, options);
-  await saveCopiedMessageId(
-    ctx.message.message_id,
-    ctx.message.chat.id,
-    forwardedCtx.message_id,
-    destinationChatId,
+  const replyToMessageId = await maybeExternal(conversation, async () => {
+    if (ctx.message.reply_to_message !== undefined) {
+      const originalReplies =
+        await findCopiedMessagesByOriginIdAndDestinationChatId(
+          ctx.message.reply_to_message.message_id,
+          ctx.message.reply_to_message.chat.id,
+          destinationChatId,
+        );
+      if (originalReplies.length > 0) {
+        return originalReplies[0].destinationId;
+      }
+    }
+  });
+
+  const forwardedCtx = await ctx.copyMessage(destinationChatId, {
+    ...other,
+    reply_to_message_id: replyToMessageId,
+  });
+
+  await maybeExternal(conversation, async () =>
+    saveCopiedMessageId(
+      ctx.message.message_id,
+      ctx.message.chat.id,
+      forwardedCtx.message_id,
+      destinationChatId,
+    ),
   );
 }
 
@@ -98,7 +124,7 @@ function addEditedLabel(
   entities?: MessageEntity[],
 ): { text: string; entities: MessageEntity[] } {
   const label = i18n.t(config.DEFAULT_LOCALE, "edit_cache.edited", {
-    date: new Date(),
+    date: toFluentDateTime(new Date()),
   });
   const newText = text ? [text, label].join("\n\n") : label;
 

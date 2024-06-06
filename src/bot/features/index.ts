@@ -7,9 +7,10 @@ import { composer as adminGroupComposer } from "./admin-group.js";
 import { composer as editUserComposer } from "./edit-user.js";
 import { composer as interviewComposer } from "./interview.js";
 import { composer as languageComposer } from "./language.js";
+import { composer as manageEventsComposer } from "./manage-events.js";
 import { composer as menuComposer } from "./menu.js";
+import { composer as startComposer } from "./start.js";
 import { composer as unhandledComposer } from "./unhandled.js";
-import { composer as welcomeComposer } from "./welcome.js";
 
 export const composer = new Composer<Context>();
 
@@ -19,6 +20,7 @@ composer.use(interviewComposer);
 composer.use(adminGroupComposer);
 composer.use(languageComposer);
 composer.use(menuComposer);
-composer.use(welcomeComposer);
+composer.use(startComposer);
+composer.use(manageEventsComposer);
 
 composer.use(unhandledComposer); // Must be the last composer.

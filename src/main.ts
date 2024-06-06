@@ -1,13 +1,12 @@
 #!/usr/bin/env tsx
 import {
-  needsMigrations,
   runMigrations,
   shutDownConnection,
 } from "#root/backend/data-source.js";
-import { setCommands } from "#root/bot/features/help.js";
-import { createBot } from "#root/bot/index.js";
+import { createBot, onStart } from "#root/bot/index.js";
 import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
+import { metricsServer } from "#root/metrics.js";
 
 function onShutdown(cleanUp: () => Promise<void>) {
   let isShuttingDown = false;
@@ -23,34 +22,23 @@ function onShutdown(cleanUp: () => Promise<void>) {
 
 async function startPolling() {
   const bot = createBot(config.BOT_TOKEN);
+  const server = metricsServer.listen(config.METRICS_PORT);
 
   // graceful shutdown
   onShutdown(async () => {
     await bot.stop();
     await shutDownConnection();
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
   });
 
   // start bot
-  await bot.start({
-    onStart: async ({ username }) => {
-      await setCommands(bot);
-
-      logger.info({
-        msg: "Bot running...",
-        username,
-      });
-    },
-  });
+  await bot.start({ onStart: async () => onStart(bot) });
 }
 
 try {
-  if (config.isDev) {
-    await runMigrations();
-  } else if (await needsMigrations()) {
-    logger.error({ msg: "Found unapplied migrations" });
-    process.exit(1);
-  }
-
+  await runMigrations(); // TODO: backup db in prod?
   await startPolling();
 } catch (error) {
   logger.error(error);

@@ -1,47 +1,93 @@
+import { EntityDTO, wrap } from "@mikro-orm/core";
+
 import { orm } from "#root/backend/data-source.js";
-import { User, UserLite } from "#root/backend/entities/user.js";
+import {
+  UserLite as UserLiteObject,
+  User as UserObject,
+  UserStatus,
+} from "#root/backend/entities/user.js";
 
-export { User, UserLite, UserStatus } from "#root/backend/entities/user.js";
+export { UserStatus } from "#root/backend/entities/user.js";
+export type UserLite = EntityDTO<UserLiteObject>;
+export type User = EntityDTO<UserObject>;
 
-export async function getUserLite(id: number): Promise<UserLite> {
-  const result = await orm.em.findOne(UserLite, { id });
+export async function getUserLite(
+  id: number,
+  defaultName?: string,
+): Promise<UserLite> {
+  const result = await orm.em.findOne(UserLiteObject, { id });
+  return result === null ? createUser(id, defaultName) : result;
+}
 
-  if (result === null) {
-    await orm.em.persistAndFlush(new User(id));
-    return orm.em.findOneOrFail(UserLite, { id });
-  }
+export async function createUser(id: number, name?: string): Promise<UserLite> {
+  const user = await orm.em.upsert(
+    UserObject,
+    { id, name },
+    { onConflictAction: "ignore" },
+  );
+  return wrap(orm.em.create(UserLiteObject, user)).toObject();
+}
 
-  return result;
+export async function getUser(id: number): Promise<User | null> {
+  const user = await orm.em.findOne(UserObject, { id });
+  return user === null ? null : wrap(user).toObject();
 }
 
 export async function getUserOrFail(id: number): Promise<User> {
-  return orm.em.findOneOrFail(User, { id });
+  return wrap(await orm.em.findOneOrFail(UserObject, { id })).toObject();
 }
 
-export async function updateUser(id: number, data: Partial<Omit<User, "id">>) {
-  const user = await orm.em.findOneOrFail(User, { id });
-  Object.assign(user, data);
-  await orm.em.flush();
+export async function updateUser(
+  id: number,
+  data: Partial<Omit<User, "id">>,
+): Promise<User> {
+  const user = await orm.em.findOneOrFail(UserObject, { id });
+  return wrap(user).assign(data);
 }
 
-export async function setUserAdminGroupTopicId(id: number, topicId: number) {
-  await updateUser(id, { adminGroupTopic: topicId });
+export async function setUserAdminGroupTopicId(
+  id: number,
+  topicId: number,
+): Promise<User> {
+  return updateUser(id, { adminGroupTopic: topicId });
 }
 
-export async function setUserName(id: number, name: string) {
-  await updateUser(id, { name: name.trim() });
+export async function approveUser(id: number, adminId: number): Promise<User> {
+  return updateUser(id, {
+    status: UserStatus.Approved,
+    verifiedBy: adminId,
+    verifiedAt: new Date(),
+  });
 }
 
-export async function setUserPronouns(id: number, pronouns: string) {
-  await updateUser(id, { pronouns: normalizeIdentity(pronouns) });
+export async function rejectUser(id: number, adminId: number): Promise<User> {
+  return updateUser(id, {
+    status: UserStatus.Rejected,
+    verifiedBy: adminId,
+    verifiedAt: new Date(),
+  });
 }
 
-export async function setUserGender(id: number, gender: string) {
-  await updateUser(id, { gender: normalizeIdentity(gender) });
+export async function setUserName(id: number, name: string): Promise<User> {
+  return updateUser(id, { name: name.trim() });
 }
 
-export async function setUserSexuality(id: number, sexuality: string) {
-  await updateUser(id, { sexuality: normalizeIdentity(sexuality) });
+export async function setUserPronouns(
+  id: number,
+  pronouns: string,
+): Promise<User> {
+  return updateUser(id, { pronouns: normalizeIdentity(pronouns) });
+}
+
+export async function setUserGender(id: number, gender: string): Promise<User> {
+  return updateUser(id, { gender: normalizeIdentity(gender) });
+}
+
+export async function setUserSexuality(
+  id: number,
+  sexuality: string,
+): Promise<User> {
+  return updateUser(id, { sexuality: normalizeIdentity(sexuality) });
 }
 
 const normalizeIdentity = (s: string) => {
@@ -56,11 +102,13 @@ const normalizeIdentity = (s: string) => {
 export async function getUserLiteByAdminGroupTopic(
   adminGroupTopic: number,
 ): Promise<UserLite | null> {
-  return orm.em.findOne(UserLite, { adminGroupTopic });
+  const userLite = await orm.em.findOne(UserLiteObject, { adminGroupTopic });
+  return userLite === null ? null : wrap(userLite).toObject();
 }
 
-export async function getUserByAdminGroupTopicOrFail(
+export async function getUserByAdminGroupTopic(
   adminGroupTopic: number,
-): Promise<User> {
-  return orm.em.findOneOrFail(User, { adminGroupTopic });
+): Promise<User | null> {
+  const userLite = await orm.em.findOne(UserObject, { adminGroupTopic });
+  return userLite === null ? null : wrap(userLite).toObject();
 }

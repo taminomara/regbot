@@ -1,17 +1,20 @@
 import { StorageAdapter } from "grammy";
 
 import { del, read, write } from "#root/backend/session.js";
+import { SessionData } from "#root/bot/context.js";
 
-export class SessionStorage implements StorageAdapter<unknown> {
+type SessionDataExtended = SessionData & { [key: string]: unknown };
+
+export class SessionStorage implements StorageAdapter<SessionDataExtended> {
   async delete(key: string): Promise<void> {
     return del(key);
   }
 
-  async read(key: string): Promise<unknown | undefined> {
-    return read(key);
+  async read(key: string): Promise<SessionDataExtended | undefined> {
+    return (await read(key)) as SessionDataExtended;
   }
 
-  async write(key: string, value: unknown): Promise<void> {
+  async write(key: string, value: SessionDataExtended): Promise<void> {
     return write(key, value);
   }
 }

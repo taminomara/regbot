@@ -23,10 +23,8 @@ feature.on(
   logHandle("unhandled-edited-message"),
   handleMessageEdit,
 );
-feature.on(
-  "message",
-  logHandle("unhandled-message"),
-  copyMessageToAdminGroupTopic,
+feature.on("message", logHandle("unhandled-message"), async (ctx) =>
+  copyMessageToAdminGroupTopic(null, ctx, ctx.user.adminGroupTopic),
 );
 
 feature.on("callback_query", logHandle("unhandled-callback-query"), (ctx) => {

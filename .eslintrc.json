@@ -6,7 +6,6 @@
   "extends": [
     "airbnb-base",
     "plugin:@typescript-eslint/recommended",
-    "plugin:unicorn/recommended",
     "plugin:prettier/recommended"
   ],
   "parser": "@typescript-eslint/parser",
@@ -18,7 +17,6 @@
   "plugins": [
     "@typescript-eslint",
     "prettier",
-    "unicorn",
     "import"
   ],
   "rules": {
@@ -32,7 +30,9 @@
     "arrow-body-style": "off",
     "max-classes-per-file": "off",
     "no-use-before-define": "off",
+    "no-continue": "off",
     "no-shadow": "off",
+    "no-else-return": "off",
     "prefer-arrow-callback": "off",
     "consistent-return": "off",
     "default-case": "off",
@@ -43,34 +43,12 @@
     "class-methods-use-this": "off",
     "no-await-in-loop": "off",
     "no-constant-condition": "off",
+    "no-param-reassign": "off",
     "no-restricted-syntax": [
       "off",
       "ForOfStatement"
     ],
-    "prettier/prettier": [
-      "error",
-      {
-        "trailingComma": "all",
-        "importOrder": ["^#root/(.*)$", "^[./]"],
-        "importOrderSeparation": true,
-        "importOrderSortSpecifiers": true,
-        "plugins": ["@trivago/prettier-plugin-sort-imports"],
-        "importOrderParserPlugins": ["typescript", "decorators"]
-      }
-    ],
-    "unicorn/no-array-method-this-argument": "off",
-    "unicorn/no-array-callback-reference": "off",
-    "unicorn/no-negated-condition": "off",
-    "unicorn/prevent-abbreviations": [
-      "error",
-      {
-        "replacements": {
-          "ctx": false,
-          "db": false
-        }
-      }
-    ],
-    "unicorn/prefer-ternary": "off"
+    "prettier/prettier": "warn"
   },
   "settings": {
     "import/parsers": {
