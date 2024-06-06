@@ -1,13 +1,12 @@
 {
   "name": "regbot",
-  "version": "0.1.0",
+  "version": "0.0.0.dev0",
   "type": "module",
   "imports": {
     "#root/*": "./build/src/*"
   },
   "scripts": {
     "build": "tsc && NODE_ENV=development npx mikro-orm cache:generate --combined && cp temp/metadata.json build/metadata.json",
-    "build:prod": "npm run clean && npm ci && npm run build && docker build -f prod.dockerfile -t regbot .",
     "clean": "rm -rf build node_modules temp",
     "dev": "tsc-watch --onSuccess \"tsx ./src/main.ts\"",
     "format": "eslint . --fix",
