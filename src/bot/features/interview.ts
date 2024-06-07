@@ -22,6 +22,7 @@ import {
   editPronouns,
   editSexuality,
 } from "#root/bot/features/edit-user.js";
+import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import {
   createConversation,
   waitForSkipCommands,
@@ -210,6 +211,8 @@ async function interview(conversation: Conversation, ctx: Context) {
   } else {
     await sendApproveMessage(ctx, ctx.user);
   }
+
+  await postInterviewSignup(conversation, ctx, conversation.session);
 }
 
 composer.use(createConversation(interview));

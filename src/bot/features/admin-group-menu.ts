@@ -136,7 +136,7 @@ feature.callbackQuery(approveSignupData.filter(), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user === undefined) return;
 
-  await confirmSignup(ctx, eventId, user.id);
+  await confirmSignup(null, ctx, eventId, user.id);
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });
@@ -148,7 +148,7 @@ feature.callbackQuery(rejectSignupData.filter(), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user === undefined) return;
 
-  await rejectSignup(ctx, eventId, user.id);
+  await rejectSignup(null, ctx, eventId, user.id);
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });
