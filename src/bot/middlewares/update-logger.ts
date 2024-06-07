@@ -4,6 +4,7 @@ import { Counter, Gauge, Histogram, exponentialBuckets } from "prom-client";
 
 import type { Context } from "#root/bot/context.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
+import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
 
 const metrics = {
@@ -38,7 +39,7 @@ export function updateLogger(): Middleware<Context> {
 
     ctx.logger.info({
       msg: "Update received",
-      update: getUpdateInfo(ctx),
+      ...(config.isDev ? { update: getUpdateInfo(ctx) } : {}),
     });
 
     const startTime = performance.now();
