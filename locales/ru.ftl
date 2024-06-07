@@ -311,3 +311,10 @@ event_signup =
         ℹ️ Пользователь отменил регистрацию на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
 
         ⚠️ Возможно, нужен возврат денег.
+
+    .prompt_signup = Хотите записаться на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}?
+    .prompt_signup_no = ❌ Нет
+    .prompt_signup_yes = ✅ Да
+    .prompt_signup_reject_ok = Хорошо 😌👌
+
+    .already_registered = Вы уже зарегистрированы на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.

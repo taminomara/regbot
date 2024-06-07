@@ -4,7 +4,7 @@ import { Composer } from "grammy";
 import { UserStatus, updateUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import { ensureHasAdminGroupTopic } from "#root/bot/features/admin-group.js";
-import { signupForEvent } from "#root/bot/features/event-signup.js";
+import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { enterInterview } from "#root/bot/features/interview.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
@@ -23,7 +23,9 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
     if (ctx.session.postInterviewSignupEventId === undefined) {
       ctx.session.postInterviewSignupEventId = [];
     }
-    ctx.session.postInterviewSignupEventId.push(eventId);
+    if (!ctx.session.postInterviewSignupEventId.includes(eventId)) {
+      ctx.session.postInterviewSignupEventId.push(eventId);
+    }
   }
 
   if (
@@ -54,10 +56,7 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
     } else if (!ctx.session.postInterviewSignupEventId?.length) {
       await ctx.reply(ctx.t("welcome.all_set"));
     } else {
-      for (const eventId of new Set(ctx.session.postInterviewSignupEventId)) {
-        await signupForEvent(ctx, eventId);
-      }
-      ctx.session.postInterviewSignupEventId = undefined;
+      await postInterviewSignup(null, ctx, ctx.session);
     }
   }
 });
