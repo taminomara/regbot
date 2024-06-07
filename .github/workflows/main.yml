@@ -7,10 +7,6 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -31,7 +27,7 @@ jobs:
         run: npm run build
       - name: Upload artifact
         uses: actions/upload-artifact@v4
-        #if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
+        if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
         with:
           name: build
           path: build
@@ -42,22 +38,19 @@ jobs:
     if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     needs: build-and-test
-    env:
-      token: ${{ secrets.DEPENDABOT_TOKEN }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - name: Check if secrets.DEPENDABOT_TOKEN is set
-        if: ${{ env.token == '' }}
-        run: exit 1
       - uses: ahmadnassri/action-dependabot-auto-merge@v2
         with:
           target: minor
           command: squash and merge
-          # https://github.com/ahmadnassri/action-dependabot-auto-merge#token-scope
-          github-token: ${{ env.token }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-push-image:
-    #if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
+    if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
     runs-on: ubuntu-latest
     needs: build-and-test
     permissions:
@@ -65,41 +58,41 @@ jobs:
       packages: write
       attestations: write
       id-token: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Download artifact
         uses: actions/download-artifact@v4
-      - run: ls
-      - run: ls build
-      - run: ls build/src
-#      - name: Log in to the Container registry
-#        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
-#        with:
-#          registry: ${{ env.REGISTRY }}
-#          username: ${{ github.actor }}
-#          password: ${{ secrets.GITHUB_TOKEN }}
-#      - name: Extract metadata (tags, labels) for Docker
-#        id: meta
-#        uses: docker/metadata-action@v5
-#        with:
-#          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-#          tags: |
-#            type=semver,pattern={{version}}
-#            type=semver,pattern={{major}}.{{minor}}
-#            type=semver,pattern={{major}}
-#      - name: Build and push Docker image
-#        id: push
-#        uses: docker/build-push-action@v5
-#        with:
-#          context: .
-#          file: prod.dockerfile
-#          push: true
-#          tags: ${{ steps.meta.outputs.tags }}
-#          labels: ${{ steps.meta.outputs.labels }}
-#      - name: Generate artifact attestation
-#        uses: actions/attest-build-provenance@v1
-#        with:
-#          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-#          subject-digest: ${{ steps.push.outputs.digest }}
-#          push-to-registry: true
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: prod.dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
