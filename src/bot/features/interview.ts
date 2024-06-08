@@ -1,4 +1,4 @@
-import { Composer, Filter, Keyboard } from "grammy";
+import { Composer, Keyboard } from "grammy";
 
 import {
   UserLite,
@@ -55,6 +55,8 @@ async function interview(conversation: Conversation, ctx: Context) {
     await editGender(conversation, ctx, true);
     await editSexuality(conversation, ctx, true);
 
+    await ctx.replyWithChatAction("typing");
+
     await conversation.external(async () => {
       await updateUser(ctx.user.id, { finishedInitialSurvey: true });
     });
@@ -108,34 +110,20 @@ async function interview(conversation: Conversation, ctx: Context) {
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
 
-    await ctx.reply(ctx.t("interview.multiline_questions"), {
-      reply_markup: new Keyboard().text("/next").resized().persistent(),
-    });
-
-    await ctx.api.setMyCommands(
-      [
-        {
-          command: "/next",
-          description: ctx.t("interview.next"),
-        },
-      ],
-      {
-        scope: {
-          type: "chat",
-          chat_id: ctx.user.id,
-        },
-      },
-    );
+    // await ctx.reply(ctx.t("interview.multiline_questions"), {
+    //   reply_markup: new Keyboard().text("/next").resized().persistent(),
+    // });
 
     {
       const question = ctx.t("interview.experience");
-      await ctx.reply(question);
+      await ctx.reply(question, { reply_markup: { remove_keyboard: true } });
       await sendInterviewQuestionToAdminGroupTopic(
         ctx,
         adminGroupTopic,
         question,
       );
-      await waitForNext(conversation, ctx, adminGroupTopic);
+      const reply = await waitForSkipCommands(conversation, "message:text");
+      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
       const question = ctx.t("interview.how_do_you_know_us");
@@ -145,7 +133,8 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      await waitForNext(conversation, ctx, adminGroupTopic);
+      const reply = await waitForSkipCommands(conversation, "message:text");
+      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
       const question = ctx.t("interview.active_consent");
@@ -155,7 +144,8 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      await waitForNext(conversation, ctx, adminGroupTopic);
+      const reply = await waitForSkipCommands(conversation, "message:text");
+      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
       const question = ctx.t("interview.lgbt_check");
@@ -165,7 +155,8 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      await waitForNext(conversation, ctx, adminGroupTopic);
+      const reply = await waitForSkipCommands(conversation, "message:text");
+      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
       const question = ctx.t("interview.transgender_check");
@@ -175,7 +166,8 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      await waitForNext(conversation, ctx, adminGroupTopic);
+      const reply = await waitForSkipCommands(conversation, "message:text");
+      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
       const question = ctx.t("interview.personal_borders");
@@ -185,17 +177,11 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      await waitForNext(conversation, ctx, adminGroupTopic);
+      const reply = await waitForSkipCommands(conversation, "message:text");
+      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
 
-    ctx.chatAction = "typing";
-
-    await ctx.api.deleteMyCommands({
-      scope: {
-        type: "chat",
-        chat_id: ctx.user.id,
-      },
-    });
+    await ctx.replyWithChatAction("typing");
 
     await conversation.external(async () => {
       await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
@@ -205,9 +191,7 @@ async function interview(conversation: Conversation, ctx: Context) {
       adminGroupTopic,
     );
 
-    await ctx.reply(ctx.t("interview.interview_replies_saved"), {
-      reply_markup: { remove_keyboard: true },
-    });
+    await ctx.reply(ctx.t("interview.interview_replies_saved"));
   } else {
     await sendApproveMessage(ctx, ctx.user);
     await postInterviewSignup(conversation, ctx);
@@ -215,31 +199,6 @@ async function interview(conversation: Conversation, ctx: Context) {
 }
 
 composer.use(createConversation(interview));
-
-async function waitForNext(
-  conversation: Conversation,
-  ctx: Context,
-  adminGroupTopic: number,
-) {
-  let hasResponses = false;
-  while (true) {
-    const reply = await conversation.waitUntil(
-      (ctx): ctx is Filter<Context, "message:text"> =>
-        ctx.has("message:text") &&
-        (ctx.entities("bot_command").length === 0 || ctx.hasCommand("next")),
-    );
-    if (reply.hasCommand("next")) {
-      if (hasResponses) {
-        return;
-      }
-
-      await ctx.reply(ctx.t("interview.send_more_replies"));
-    } else {
-      hasResponses = true;
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
-    }
-  }
-}
 
 export async function approve(ctx: Context) {
   const user = await getUserForTopic(ctx);
