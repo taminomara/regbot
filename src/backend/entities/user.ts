@@ -56,6 +56,9 @@ export class User {
 
   @Property()
   sexuality: string | null = null;
+
+  @Property()
+  pendingSignup: number | null = null;
 }
 
 @Entity({

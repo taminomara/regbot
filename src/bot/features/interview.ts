@@ -210,9 +210,8 @@ async function interview(conversation: Conversation, ctx: Context) {
     });
   } else {
     await sendApproveMessage(ctx, ctx.user);
+    await postInterviewSignup(conversation, ctx);
   }
-
-  await postInterviewSignup(conversation, ctx, conversation.session);
 }
 
 composer.use(createConversation(interview));
@@ -259,6 +258,7 @@ export async function approve(ctx: Context) {
   );
 
   await sendApproveMessage(ctx, approvedUser);
+  await postInterviewSignup(null, ctx, approvedUser);
 }
 
 async function sendApproveMessage(ctx: Context, approvedUser: UserLite) {

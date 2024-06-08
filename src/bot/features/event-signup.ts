@@ -12,8 +12,14 @@ import {
   signupForEvent as signupForEventDb,
   withdrawSignup as withdrawSignupDb,
 } from "#root/backend/event.js";
-import { UserLite, getUserLite } from "#root/backend/user.js";
-import { Context, Conversation, SessionData } from "#root/bot/context.js";
+import {
+  User,
+  UserLite,
+  getUser,
+  getUserLite,
+  updateUser,
+} from "#root/backend/user.js";
+import { Context, Conversation } from "#root/bot/context.js";
 import { createApproveSignupKeyboard } from "#root/bot/features/admin-group-menu.js";
 import { sendMessageToAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
@@ -31,128 +37,135 @@ const feature = composer.chatType("private");
 export async function postInterviewSignup(
   conversation: Conversation | null,
   ctx: Context,
-  session: SessionData,
+  user?: User,
 ) {
-  const { postInterviewSignupEventId } = session;
-  session.postInterviewSignupEventId = undefined;
-
-  if (
-    postInterviewSignupEventId === undefined ||
-    postInterviewSignupEventId.length === 0
-  ) {
-    return;
+  if (user === undefined) {
+    user =
+      (await maybeExternal(conversation, async () => getUser(ctx.user.id))) ??
+      undefined;
   }
 
-  for (const eventId of postInterviewSignupEventId) {
-    const event = await getEventForSignup(conversation, ctx, eventId);
-    if (event === undefined) continue;
-    if (event.signup !== undefined) {
-      await ctx.reply(
-        ctx.t("event_signup.already_registered", {
+  if (user === undefined || user.pendingSignup === null) return;
+
+  const event = await getEventForSignup(
+    conversation,
+    ctx,
+    user.pendingSignup,
+    user,
+  );
+  if (event === undefined) return;
+
+  if (event.signup === undefined) {
+    await ctx.api.sendMessage(
+      user.id,
+      i18n.t(
+        user.locale ?? config.DEFAULT_LOCALE,
+        "event_signup.prompt_signup",
+        {
           name: sanitizeHtmlOrEmpty(event.name),
           date: toFluentDateTime(event.date),
-        }),
-        {
-          reply_markup: createUserSignupKeyboard(ctx, eventId),
         },
-      );
-      continue;
-    }
-
-    await ctx.reply(
-      ctx.t("event_signup.prompt_signup", {
-        name: sanitizeHtmlOrEmpty(event.name),
-        date: toFluentDateTime(event.date),
-      }),
+      ),
       {
-        reply_markup: createUserSignupKeyboard(ctx, eventId),
+        reply_markup: createUserSignupKeyboard(user.pendingSignup, user),
       },
     );
+  } else {
+    await ctx.api.sendMessage(
+      user.id,
+      i18n.t(
+        user.locale ?? config.DEFAULT_LOCALE,
+        "event_signup.already_registered",
+        {
+          name: sanitizeHtmlOrEmpty(event.name),
+          date: toFluentDateTime(event.date),
+        },
+      ),
+    );
   }
+
+  await maybeExternal(conversation, async () =>
+    updateUser(user.id, { pendingSignup: null }),
+  );
 }
 
 export async function signupForEvent(
   conversation: Conversation | null,
   ctx: Context,
   eventId: number,
+  user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId);
+  const event = await getEventForSignup(conversation, ctx, eventId, user);
   if (event === undefined) return;
 
   const { signup, signupPerformed } = await maybeExternal(
     conversation,
-    async () => signupForEventDb(event, ctx.user.id, ctx.me.id),
+    async () => signupForEventDb(event, user.id, ctx.me.id),
   );
 
   if (!signupPerformed) return;
 
-  await sendConfirmation(conversation, ctx, event, signup, ctx.user);
+  await sendConfirmation(conversation, ctx, event, signup, user);
 }
 
 export async function confirmSignup(
   conversation: Conversation | null,
   ctx: Context,
   eventId: number,
-  userId: number,
+  user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId);
+  const event = await getEventForSignup(conversation, ctx, eventId, user);
   if (event === undefined) return;
 
   const { signup, confirmPerformed } = await maybeExternal(
     conversation,
-    async () => confirmSignupDb(event, userId, ctx.user.id),
+    async () => confirmSignupDb(event, user.id, ctx.user.id),
   );
 
   if (!confirmPerformed) return;
 
-  await sendConfirmation(conversation, ctx, event, signup, ctx.user);
+  await sendConfirmation(conversation, ctx, event, signup, user);
 }
 
 export async function rejectSignup(
   conversation: Conversation | null,
   ctx: Context,
   eventId: number,
-  userId: number,
+  user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId);
+  const event = await getEventForSignup(conversation, ctx, eventId, user);
   if (event === undefined) return;
 
   const { signup, rejectPerformed, requireRefund } = await maybeExternal(
     conversation,
-    async () => rejectSignupDb(event, userId, ctx.user.id),
+    async () => rejectSignupDb(event, user.id, ctx.user.id),
   );
 
   if (!rejectPerformed) return;
 
-  await sendConfirmation(
-    conversation,
-    ctx,
-    event,
-    signup,
-    ctx.user,
-    requireRefund,
-  );
+  await sendConfirmation(conversation, ctx, event, signup, user, requireRefund);
 }
 
 export async function withdrawSignup(
   conversation: Conversation | null,
   ctx: Context,
   eventId: number,
-  userId: number,
+  user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId);
+  const event = await getEventForSignup(conversation, ctx, eventId, user);
   if (event === undefined) return;
 
   const { requireRefund, withdrawPerformed } = await maybeExternal(
     conversation,
-    async () => withdrawSignupDb(event, userId),
+    async () => withdrawSignupDb(event, user.id),
   );
 
   if (!withdrawPerformed) return;
 
   await ctx.api.sendMessage(
-    userId,
-    ctx.t(
+    user.id,
+    i18n.t(
+      user.locale ?? config.DEFAULT_LOCALE,
       requireRefund
         ? "event_signup.withdrawn_with_refund"
         : "event_signup.withdrawn",
@@ -164,7 +177,7 @@ export async function withdrawSignup(
   );
   await sendMessageToAdminGroupTopic(
     ctx,
-    ctx.user.adminGroupTopic,
+    user.adminGroupTopic,
     i18n.t(
       config.DEFAULT_LOCALE,
       requireRefund
@@ -182,19 +195,32 @@ async function getEventForSignup(
   conversation: Conversation | null,
   ctx: Context,
   eventId: number,
+  user: UserLite,
 ) {
   if (!(await isApproved(ctx))) return;
 
   const event = await maybeExternal(conversation, async () =>
-    getEventWithUserSignup(eventId, ctx.user.id),
+    getEventWithUserSignup(eventId, user.id),
   );
   if (event === null) {
     ctx.logger.warn({ msg: "Unknown event", eventId });
-    await ctx.reply(ctx.t("event_signup.unknown_event"));
+    await ctx.api.sendMessage(
+      user.id,
+      i18n.t(
+        user.locale ?? config.DEFAULT_LOCALE,
+        "event_signup.unknown_event",
+      ),
+    );
     return;
   }
   if (moment.utc(event.date).isBefore(moment.now())) {
-    await ctx.reply(ctx.t("event_signup.event_in_past"));
+    await ctx.api.sendMessage(
+      user.id,
+      i18n.t(
+        user.locale ?? config.DEFAULT_LOCALE,
+        "event_signup.event_in_past",
+      ),
+    );
     return;
   }
 
@@ -217,10 +243,14 @@ async function sendConfirmation(
     case SignupStatus.PendingApproval: {
       await ctx.api.sendMessage(
         user.id,
-        ctx.t("event_signup.pending_approval", {
-          name: sanitizeHtmlOrEmpty(event.name),
-          date: toFluentDateTime(event.date),
-        }),
+        i18n.t(
+          user.locale ?? config.DEFAULT_LOCALE,
+          "event_signup.pending_approval",
+          {
+            name: sanitizeHtmlOrEmpty(event.name),
+            date: toFluentDateTime(event.date),
+          },
+        ),
       );
       await sendMessageToAdminGroupTopic(
         ctx,
@@ -242,13 +272,17 @@ async function sendConfirmation(
     case SignupStatus.PendingPayment: {
       await ctx.api.sendMessage(
         user.id,
-        ctx.t("event_signup.pending_payment", {
-          name: sanitizeHtmlOrEmpty(event.name),
-          date: toFluentDateTime(event.date),
-          price: sanitizeHtmlOrEmpty(event.price),
-          iban: sanitizeHtmlOrEmpty(config.PAYMENT_IBAN),
-          recipient: sanitizeHtmlOrEmpty(config.PAYMENT_RECIPIENT),
-        }),
+        i18n.t(
+          user.locale ?? config.DEFAULT_LOCALE,
+          "event_signup.pending_payment",
+          {
+            name: sanitizeHtmlOrEmpty(event.name),
+            date: toFluentDateTime(event.date),
+            price: sanitizeHtmlOrEmpty(event.price),
+            iban: sanitizeHtmlOrEmpty(config.PAYMENT_IBAN),
+            recipient: sanitizeHtmlOrEmpty(config.PAYMENT_RECIPIENT),
+          },
+        ),
       );
       await sendMessageToAdminGroupTopic(
         ctx,
@@ -270,10 +304,14 @@ async function sendConfirmation(
     case SignupStatus.Approved: {
       await ctx.api.sendMessage(
         user.id,
-        ctx.t("event_signup.registered", {
-          name: sanitizeHtmlOrEmpty(event.name),
-          date: toFluentDateTime(event.date),
-        }),
+        i18n.t(
+          user.locale ?? config.DEFAULT_LOCALE,
+          "event_signup.registered",
+          {
+            name: sanitizeHtmlOrEmpty(event.name),
+            date: toFluentDateTime(event.date),
+          },
+        ),
       );
       await sendMessageToAdminGroupTopic(
         ctx,
@@ -291,7 +329,8 @@ async function sendConfirmation(
     case SignupStatus.Rejected: {
       await ctx.api.sendMessage(
         user.id,
-        ctx.t(
+        i18n.t(
+          user.locale ?? config.DEFAULT_LOCALE,
           requireRefund
             ? "event_signup.rejected_with_refund"
             : "event_signup.rejected",
@@ -328,11 +367,20 @@ const userConfirmSignupData = createCallbackData("userConfirmSignupData", {
 });
 const userRejectSignupData = createCallbackData("userRejectSignupData", {});
 
-export function createUserSignupKeyboard(ctx: Context, eventId: number) {
+export function createUserSignupKeyboard(eventId: number, user: UserLite) {
   return new InlineKeyboard()
-    .text(ctx.t("event_signup.prompt_signup_no"), userRejectSignupData.pack({}))
     .text(
-      ctx.t("event_signup.prompt_signup_yes"),
+      i18n.t(
+        user.locale ?? config.DEFAULT_LOCALE,
+        "event_signup.prompt_signup_no",
+      ),
+      userRejectSignupData.pack({}),
+    )
+    .text(
+      i18n.t(
+        user.locale ?? config.DEFAULT_LOCALE,
+        "event_signup.prompt_signup_yes",
+      ),
       userConfirmSignupData.pack({ eventId }),
     );
 }
@@ -342,7 +390,7 @@ feature.callbackQuery(userConfirmSignupData.filter(), async (ctx) => {
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });
-  await signupForEvent(null, ctx, eventId);
+  await signupForEvent(null, ctx, eventId, ctx.user);
 });
 
 feature.callbackQuery(userRejectSignupData.filter(), async (ctx) => {
