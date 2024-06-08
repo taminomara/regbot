@@ -20,12 +20,7 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
   const eventId = command ? Number(command.groups!.eventId) : undefined;
 
   if (eventId !== undefined) {
-    if (ctx.session.postInterviewSignupEventId === undefined) {
-      ctx.session.postInterviewSignupEventId = [];
-    }
-    if (!ctx.session.postInterviewSignupEventId.includes(eventId)) {
-      ctx.session.postInterviewSignupEventId.push(eventId);
-    }
+    await updateUser(ctx.user.id, { pendingSignup: eventId });
   }
 
   if (
@@ -53,10 +48,10 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
 
     if ("interview" in (await ctx.conversation.active())) {
       await ctx.reply(ctx.t("welcome.in_progress"));
-    } else if (!ctx.session.postInterviewSignupEventId?.length) {
-      await ctx.reply(ctx.t("welcome.all_set"));
+    } else if (eventId !== undefined) {
+      await postInterviewSignup(null, ctx);
     } else {
-      await postInterviewSignup(null, ctx, ctx.session);
+      await ctx.reply(ctx.t("welcome.all_set"));
     }
   }
 });

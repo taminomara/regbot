@@ -129,7 +129,7 @@ const eventMenu = new Menu<Context>("eventMenu")
         }),
       ),
       async (ctx) => {
-        await signupForEvent(null, ctx, event.id);
+        await signupForEvent(null, ctx, event.id, ctx.user);
         await updateEventMenu(ctx);
       },
     );
@@ -224,7 +224,7 @@ export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu")
       const event = await getEventFromMatch(ctx);
       if (event === undefined) return;
 
-      await withdrawSignup(null, ctx, event.id, ctx.user.id);
+      await withdrawSignup(null, ctx, event.id, ctx.user);
     },
     updateEventMenu,
   );
