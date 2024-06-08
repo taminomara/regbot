@@ -1,4 +1,5 @@
 import { autoChatAction } from "@grammyjs/auto-chat-action";
+import { autoRetry } from "@grammyjs/auto-retry";
 import { conversations } from "@grammyjs/conversations";
 import { hydrate } from "@grammyjs/hydrate";
 import { hydrateReply, parseMode } from "@grammyjs/parse-mode";
@@ -52,6 +53,7 @@ export function createBot(token: string) {
   bot.use(loggerMw());
   bot.use(updateLoggerMw());
   bot.api.config.use(apiLoggerMw());
+  bot.api.config.use(autoRetry());
   bot.api.config.use(parseMode("HTML"));
 
   const protectedBot = bot.errorBoundary(errorHandler);
