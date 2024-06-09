@@ -16,6 +16,7 @@ import {
   enterEditSexuality,
 } from "#root/bot/features/edit-user.js";
 import {
+  confirmPayment,
   confirmSignup,
   rejectSignup,
 } from "#root/bot/features/event-signup.js";
@@ -111,14 +112,17 @@ const adminPostInterviewDecisionMadeMenu = new Menu<Context>(
 );
 adminPostInterviewMenu.register(adminPostInterviewDecisionMadeMenu);
 
-const approveSignupData = createCallbackData("approveSignup", {
+const confirmSignupData = createCallbackData("confirmSignup", {
+  eventId: Number,
+});
+const confirmPaymentData = createCallbackData("confirmPayment", {
   eventId: Number,
 });
 const rejectSignupData = createCallbackData("rejectSignup", {
   eventId: Number,
 });
 
-export function createApproveSignupKeyboard(eventId: number) {
+export function createConfirmSignupKeyboard(eventId: number) {
   return new InlineKeyboard()
     .text(
       i18n.t(config.DEFAULT_LOCALE, "admin_group.reject"),
@@ -126,17 +130,41 @@ export function createApproveSignupKeyboard(eventId: number) {
     )
     .text(
       i18n.t(config.DEFAULT_LOCALE, "admin_group.approve"),
-      approveSignupData.pack({ eventId }),
+      confirmSignupData.pack({ eventId }),
     );
 }
 
-feature.callbackQuery(approveSignupData.filter(), async (ctx) => {
-  const { eventId } = approveSignupData.unpack(ctx.callbackQuery.data);
+export function createConfirmPaymentKeyboard(eventId: number) {
+  return new InlineKeyboard()
+    .text(
+      i18n.t(config.DEFAULT_LOCALE, "admin_group.reject"),
+      rejectSignupData.pack({ eventId }),
+    )
+    .text(
+      i18n.t(config.DEFAULT_LOCALE, "admin_group.approve"),
+      confirmPaymentData.pack({ eventId }),
+    );
+}
+
+feature.callbackQuery(confirmSignupData.filter(), async (ctx) => {
+  const { eventId } = confirmSignupData.unpack(ctx.callbackQuery.data);
 
   const user = await getUserForTopic(ctx);
   if (user === undefined) return;
 
   await confirmSignup(null, ctx, eventId, user);
+  await ctx.editMessageReplyMarkup({
+    reply_markup: new InlineKeyboard(),
+  });
+});
+
+feature.callbackQuery(confirmPaymentData.filter(), async (ctx) => {
+  const { eventId } = confirmPaymentData.unpack(ctx.callbackQuery.data);
+
+  const user = await getUserForTopic(ctx);
+  if (user === undefined) return;
+
+  await confirmPayment(null, ctx, eventId, user);
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });

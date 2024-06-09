@@ -29,8 +29,8 @@ export class Event {
   @Property()
   date: Date;
 
-  @Property()
-  announceTextHtml: string | null = null;
+  @Property() // TODO: make lazy
+  announceTextHtml: Ref<string> | null = null;
 
   @Property()
   announcePhotoId: string | null = null;
@@ -45,7 +45,7 @@ export class Event {
   chatPostId: number | null = null;
 
   @Property()
-  registrationOpen: boolean = true;
+  registrationOpen: boolean = true; // TODO!
 
   @Property()
   requireApproval: boolean = false;
@@ -54,10 +54,10 @@ export class Event {
   requirePayment: boolean = false;
 
   @Property()
-  firstReminderSent: boolean = false;
+  firstReminderSent: boolean = false; // TODO!
 
   @Property()
-  secondReminderSent: boolean = false;
+  secondReminderSent: boolean = false; // TODO!
 
   @Property()
   price: string | null = null;

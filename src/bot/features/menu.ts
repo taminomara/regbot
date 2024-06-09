@@ -3,7 +3,7 @@ import { Composer } from "grammy";
 
 import {
   SignupStatus,
-  getEventSignups,
+  getApprovedEventSignups,
   getEventWithUserSignup,
   upcomingEventsWithUserSignup,
 } from "#root/backend/event.js";
@@ -183,7 +183,7 @@ async function updateEventParticipantsMenu(ctx: Context) {
   const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
 
-  const participants = (await getEventSignups(event.id))
+  const participants = (await getApprovedEventSignups(event.id))
     .filter((signup) => signup.status === SignupStatus.Approved)
     .map((signup) =>
       signup.user.username

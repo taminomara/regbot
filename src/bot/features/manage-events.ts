@@ -6,8 +6,8 @@ import {
   Event,
   createEvent as createDbEvent,
   deleteEvent as deleteDbEvent,
-  getEvent,
-  upcomingEvents,
+  getEventWithSignupStats,
+  upcomingEventsWithSignupStats,
   updateEvent,
 } from "#root/backend/event.js";
 import { Context, Conversation } from "#root/bot/context.js";
@@ -244,15 +244,34 @@ export const manageEventsMenu = new Menu<Context>("manageEventsMenu")
   )
   .row()
   .dynamic(async (_ctx, range) => {
-    const events = await upcomingEvents();
+    const events = await upcomingEventsWithSignupStats();
     for (const event of events) {
+      const prefix = i18n.t(
+        config.DEFAULT_LOCALE,
+        "manage_events.event_title_prefix",
+        {
+          published: event.published ? "yes" : "no",
+        },
+      );
+      const suffix = i18n.t(
+        config.DEFAULT_LOCALE,
+        event.pendingSignups === 0
+          ? "manage_events.event_title_suffix"
+          : "manage_events.event_title_suffix_with_pending",
+        {
+          participants: event.approvedSignups,
+          pending: event.pendingSignups,
+        },
+      );
+
       range
         .submenu(
           {
             text: i18n.t(config.DEFAULT_LOCALE, "manage_events.event_title", {
               name: event.name,
               date: toFluentDateTime(event.date),
-              published: event.published ? "yes" : "no",
+              prefix,
+              suffix,
             }),
             payload: String(event.id),
           },
@@ -343,6 +362,24 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
     range.row();
 
     range.submenu(
+      withPayload(
+        i18n.t(
+          config.DEFAULT_LOCALE,
+          event.pendingSignups === 0
+            ? "manage_events.manage_participants"
+            : "manage_events.manage_participants_with_pending",
+          {
+            participants: event.approvedSignups,
+            pending: event.pendingSignups,
+          },
+        ),
+      ),
+      "manageEventParticipantsMenu",
+      updateManageEventParticipantsMenu,
+    );
+    range.row();
+
+    range.submenu(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.delete")),
       "deleteEventMenu",
       updateDeleteEventMenu,
@@ -408,6 +445,20 @@ async function updateDeleteEventMenu(ctx: Context) {
   );
 }
 
+export const manageEventParticipantsMenu = new Menu<Context>(
+  "manageEventParticipantsMenu",
+).back(
+  withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
+  updateManageEventMenu,
+);
+manageEventMenu.register(manageEventParticipantsMenu);
+async function updateManageEventParticipantsMenu(_ctx: Context) {
+  // await editMessageTextSafe(
+  //   ctx,
+  //   i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_confirm"),
+  // );
+}
+
 async function getEventFromMatch(
   conversation: Conversation | null,
   ctx: Context,
@@ -418,7 +469,7 @@ async function getEventFromMatch(
     return;
   }
   const event = await maybeExternal(conversation, async () =>
-    getEvent(eventId),
+    getEventWithSignupStats(eventId),
   );
   if (event === null) {
     ctx.logger.error("Can't get event id form match", { match: ctx.match });
