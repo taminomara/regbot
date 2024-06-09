@@ -28,9 +28,7 @@ async function startPolling() {
   onShutdown(async () => {
     await bot.stop();
     await shutDownConnection();
-    await new Promise<void>((resolve, reject) => {
-      server.close((err) => (err ? reject(err) : resolve()));
-    });
+    server.close();
   });
 
   // start bot

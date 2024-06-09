@@ -62,6 +62,9 @@ export class Event {
   @Property()
   price: string | null = null;
 
+  @Property() // TODO: make lazy
+  participationOptions: Ref<string[]> | null = null;
+
   @OneToMany("EventSignup", "event", { orphanRemoval: true })
   signups = new Collection<EventSignup>(this);
 }

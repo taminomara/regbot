@@ -4,7 +4,6 @@ import { Composer, Filter, GrammyError } from "grammy";
 import {
   User,
   UserLite,
-  UserStatus,
   getUserByAdminGroupTopic,
   getUserLiteByAdminGroupTopic,
   getUserOrFail,
@@ -156,14 +155,7 @@ export function formatAboutMe(user: User) {
       pronouns: sanitizeHtmlOrEmpty(user.pronouns),
       gender: sanitizeHtmlOrEmpty(user.gender),
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
-      status: {
-        [UserStatus.New]: "New",
-        [UserStatus.InterviewInProgress]: "InterviewInProgress",
-        [UserStatus.PendingApproval]: "PendingApproval",
-        [UserStatus.Approved]: "Approved",
-        [UserStatus.Rejected]: "Rejected",
-        [UserStatus.Banned]: "Banned",
-      }[user.status],
+      status: user.status,
     }),
   ].join("\n\n");
 }
