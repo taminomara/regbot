@@ -6,6 +6,7 @@ import {
   Event,
   createEvent as createDbEvent,
   deleteEvent as deleteDbEvent,
+  getEventSignups,
   getEventWithSignupStats,
   upcomingEventsWithSignupStats,
   updateEvent,
@@ -23,7 +24,10 @@ import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 import { parseTelegramEntities } from "#root/bot/helpers/parse-telegram-entities.js";
-import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
+import {
+  sanitizeHtml,
+  sanitizeHtmlOrEmpty,
+} from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
@@ -452,11 +456,43 @@ export const manageEventParticipantsMenu = new Menu<Context>(
   updateManageEventMenu,
 );
 manageEventMenu.register(manageEventParticipantsMenu);
-async function updateManageEventParticipantsMenu(_ctx: Context) {
-  // await editMessageTextSafe(
-  //   ctx,
-  //   i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_confirm"),
-  // );
+async function updateManageEventParticipantsMenu(ctx: Context) {
+  const event = await getEventFromMatch(null, ctx);
+  if (event === undefined) return;
+
+  const participants = (await getEventSignups(event.id))
+    .map((signup) =>
+      ctx.t("manage_events.event_participant_with_status", {
+        status: signup.status,
+        event_participant: signup.user.username
+          ? ctx.t("manage_events.event_participant", {
+              id: String(signup.user.id),
+              name: sanitizeHtmlOrEmpty(signup.user.name),
+              pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
+              username: sanitizeHtml(signup.user.username),
+            })
+          : ctx.t("manage_events.event_participant_no_username", {
+              id: String(signup.user.id),
+              name: sanitizeHtmlOrEmpty(signup.user.name),
+              pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
+            }),
+      }),
+    )
+    .join("\n");
+
+  await editMessageTextSafe(
+    ctx,
+    ctx.t(
+      participants.length > 0
+        ? "manage_events.event_participants"
+        : "manage_events.event_participants_empty",
+      {
+        name: sanitizeHtmlOrEmpty(event.name),
+        date: toFluentDateTime(event.date),
+        participants,
+      },
+    ),
+  );
 }
 
 async function getEventFromMatch(

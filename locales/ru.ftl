@@ -192,6 +192,7 @@ menu =
         <b>Ещё записались:</b>
 
         {$participants}
+    .event_participants_empty = Пока что никто не записался.
     .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}
     .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}
 
@@ -265,6 +266,20 @@ manage_events =
 
     .event_created = Событие успешно создано.
     .signup_link = Ссылка для регистрации: <code>https://t.me/{$username}?start={$eventId}</code>.
+
+    .event_participants =
+        Участники <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}:
+
+        {$participants}
+    .event_participants_empty = Пока что никто не записался.
+    .event_participant_with_status = {$status ->
+        [PendingApproval] {$event_participant}, ⏳ Ожидаем подтверждения
+        [PendingPayment] {$event_participant}, ⏳ Ожидаем оплаты
+        [Approved] {$event_participant}
+        *[Rejected] {$event_participant}, ❌ Заявка отклонена
+    }
+    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}
+    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}
 
 event_signup =
     .event_in_past = Событие уже прошло.

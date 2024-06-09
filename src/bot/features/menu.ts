@@ -184,7 +184,6 @@ async function updateEventParticipantsMenu(ctx: Context) {
   if (event === undefined) return;
 
   const participants = (await getApprovedEventSignups(event.id))
-    .filter((signup) => signup.status === SignupStatus.Approved)
     .map((signup) =>
       signup.user.username
         ? ctx.t("menu.event_participant", {
@@ -203,9 +202,16 @@ async function updateEventParticipantsMenu(ctx: Context) {
 
   await editMessageTextSafe(
     ctx,
-    ctx.t("menu.event_participants", {
-      participants,
-    }),
+    ctx.t(
+      participants.length > 0
+        ? "menu.event_participants"
+        : "menu.event_participants_empty",
+      {
+        participants,
+        name: sanitizeHtmlOrEmpty(event.name),
+        date: toFluentDateTime(event.date),
+      },
+    ),
   );
 }
 
