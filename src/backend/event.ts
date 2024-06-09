@@ -16,9 +16,23 @@ export type Event = Omit<EntityDTO<EventObject>, "signups">;
 export type EventWithSignup = Event & { signup?: EventSignup };
 export type EventWithSignups = Event & { signups: EventSignup[] };
 
-export async function getEvent(id: number): Promise<Event | null> {
-  const event = await orm.em.findOne(EventObject, { id });
-  return event === null ? null : wrap(event).toObject();
+export type SignupStats = {
+  totalSignups: number;
+  pendingSignups: number;
+  approvedSignups: number;
+};
+
+export async function getEventWithSignupStats(
+  id: number,
+): Promise<(EventWithSignups & SignupStats) | null> {
+  const event = await orm.em.findOne(
+    EventObject,
+    { id },
+    { populate: ["signups"] },
+  );
+  return event === null
+    ? null
+    : { ...wrap(event).toObject(), ...signupStats(event.signups.getItems()) };
 }
 
 export async function signupForEvent(
@@ -104,6 +118,41 @@ export async function confirmSignup(
       confirmPerformed: true;
     }
 > {
+  return doConfirmSignup(event, userId, adminId, SignupStatus.PendingApproval);
+}
+
+export async function confirmPayment(
+  event: Event,
+  userId: number,
+  adminId: number,
+): Promise<
+  | {
+      signup?: EventSignup;
+      confirmPerformed: false;
+    }
+  | {
+      signup: EventSignup;
+      confirmPerformed: true;
+    }
+> {
+  return doConfirmSignup(event, userId, adminId, SignupStatus.PendingPayment);
+}
+
+async function doConfirmSignup(
+  event: Event,
+  userId: number,
+  adminId: number,
+  expectedStatus: SignupStatus,
+): Promise<
+  | {
+      signup?: EventSignup;
+      confirmPerformed: false;
+    }
+  | {
+      signup: EventSignup;
+      confirmPerformed: true;
+    }
+> {
   return orm.em.transactional(async () => {
     const signup = await orm.em.findOne(
       EventSignupObject,
@@ -114,10 +163,7 @@ export async function confirmSignup(
       { lockMode: LockMode.PESSIMISTIC_WRITE },
     );
 
-    if (
-      signup === null ||
-      [SignupStatus.Rejected, SignupStatus.Approved].includes(signup.status)
-    ) {
+    if (signup === null || signup.status !== expectedStatus) {
       return {
         signup: signup === null ? undefined : wrap(signup).toObject(),
         confirmPerformed: false,
@@ -210,6 +256,18 @@ export async function getEventWithUserSignup(
   };
 }
 
+export async function getApprovedEventSignups(
+  eventId: number,
+): Promise<PopulatedEventSignup[]> {
+  return (
+    await orm.em.find(
+      EventSignupObject,
+      { event: eventId, status: SignupStatus.Approved },
+      { populate: ["event", "user"] },
+    )
+  ).map((signup) => wrap(signup).toObject());
+}
+
 export async function getEventSignups(
   eventId: number,
 ): Promise<PopulatedEventSignup[]> {
@@ -222,31 +280,42 @@ export async function getEventSignups(
   ).map((signup) => wrap(signup).toObject());
 }
 
-export async function upcomingEvents(): Promise<Event[]> {
-  const events = await orm.em.find(
-    EventObject,
-    { date: { $gte: new Date() } },
-    { orderBy: { date: "ASC" } },
-  );
-  return events.map((event) => wrap(event).toObject());
-}
 export async function createEvent(name: string, date: Date) {
   const event = new EventObject(name, date);
   await orm.em.persistAndFlush(event);
   return wrap(event).toObject();
 }
 
-export async function upcomingEventsWithSignups(): Promise<EventWithSignups[]> {
+export async function upcomingEventsWithSignupStats(): Promise<
+  (EventWithSignups & SignupStats)[]
+> {
   const events = await orm.em.find(
     EventObject,
     { date: { $gte: new Date() } },
     {
       orderBy: { date: "ASC" },
       populate: ["signups"],
-      populateOrderBy: { signups: { user: { name: "ASC" } } },
     },
   );
-  return events.map((event) => wrap(event).toObject());
+  return events.map((event) => {
+    return {
+      ...wrap(event).toObject(),
+      ...signupStats(event.signups.getItems()),
+    };
+  });
+}
+
+function signupStats(signups: EventSignupObject[]): SignupStats {
+  return {
+    totalSignups: signups.length,
+    pendingSignups: signups.filter((s) =>
+      [SignupStatus.PendingPayment, SignupStatus.PendingApproval].includes(
+        s.status,
+      ),
+    ).length,
+    approvedSignups: signups.filter((s) => s.status === SignupStatus.Approved)
+      .length,
+  };
 }
 
 export async function upcomingEventsWithUserSignup(

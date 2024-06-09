@@ -209,10 +209,14 @@ manage_events =
     .update = 🔃 Обновить
     .back = ⬅️ Назад
     .create = ➕ Создать событие
-    .event_title = {$published ->
-         [yes] 🚀 {$name}
-        *[no]  📝 {$name}
-    } | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}
+    .event_title = {$prefix} {$name} | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} | {$suffix}
+    .event_title_prefix = {$published ->
+        [yes] 🚀
+        [no] ▶️
+        *[hidden] 📝
+    }
+    .event_title_suffix = {$participants}
+    .event_title_suffix_with_pending = {$participants}+{$pending}⏳
 
     .confirmation = {$required ->
          [yes] ✅ Требуется подтверждение
@@ -239,6 +243,9 @@ manage_events =
     .edit_post = ✏️ Редактировать пост
     .edit_name = ✏️ Редактировать название
     .edit_date = ✏️ Редактировать дату
+
+    .manage_participants = 👯‍♀️ Участники ({$participants})
+    .manage_participants_with_pending = 👯‍♀️ Участники ({$participants}+{$pending}⏳)
 
     .delete = 🗑️ Удалить событие
     .delete_confirm =

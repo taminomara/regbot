@@ -6,6 +6,7 @@ import {
   Event,
   EventSignup,
   SignupStatus,
+  confirmPayment as confirmPaymentDb,
   confirmSignup as confirmSignupDb,
   getEventWithUserSignup,
   rejectSignup as rejectSignupDb,
@@ -20,7 +21,10 @@ import {
   updateUser,
 } from "#root/backend/user.js";
 import { Context, Conversation } from "#root/bot/context.js";
-import { createApproveSignupKeyboard } from "#root/bot/features/admin-group-menu.js";
+import {
+  createConfirmPaymentKeyboard,
+  createConfirmSignupKeyboard,
+} from "#root/bot/features/admin-group-menu.js";
 import { sendMessageToAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
 import { maybeExternal } from "#root/bot/helpers/conversations.js";
@@ -120,6 +124,25 @@ export async function confirmSignup(
   const { signup, confirmPerformed } = await maybeExternal(
     conversation,
     async () => confirmSignupDb(event, user.id, ctx.user.id),
+  );
+
+  if (!confirmPerformed) return;
+
+  await sendConfirmation(conversation, ctx, event, signup, user);
+}
+
+export async function confirmPayment(
+  conversation: Conversation | null,
+  ctx: Context,
+  eventId: number,
+  user: UserLite,
+) {
+  const event = await getEventForSignup(conversation, ctx, eventId, user);
+  if (event === undefined) return;
+
+  const { signup, confirmPerformed } = await maybeExternal(
+    conversation,
+    async () => confirmPaymentDb(event, user.id, ctx.user.id),
   );
 
   if (!confirmPerformed) return;
@@ -264,7 +287,7 @@ async function sendConfirmation(
           },
         ),
         {
-          reply_markup: createApproveSignupKeyboard(event.id),
+          reply_markup: createConfirmSignupKeyboard(event.id),
         },
       );
       break;
@@ -296,7 +319,7 @@ async function sendConfirmation(
           },
         ),
         {
-          reply_markup: createApproveSignupKeyboard(event.id),
+          reply_markup: createConfirmPaymentKeyboard(event.id),
         },
       );
       break;
