@@ -29,6 +29,7 @@ export function user(): Middleware<Context> {
 
     const locale = await ctx.i18n.getLocale();
     if (locale !== ctx.user.locale) {
+      ctx.user.locale = locale;
       await updateUser(ctx.user.id, { locale });
     }
 
