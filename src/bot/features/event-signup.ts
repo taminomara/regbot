@@ -65,8 +65,8 @@ export async function postInterviewSignup(
       i18n.t(
         user.locale ?? config.DEFAULT_LOCALE,
         event.participationOptions
-          ? "event_signup.prompt_signup"
-          : "event_signup.prompt_signup_with_options",
+          ? "event_signup.prompt_signup_with_options"
+          : "event_signup.prompt_signup",
         {
           name: sanitizeHtmlOrEmpty(event.name),
           date: toFluentDateTime(event.date),
