@@ -149,6 +149,7 @@ export function formatAboutMe(user: User) {
     i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_header", {
       id: String(user.id),
       name: sanitizeHtmlOrEmpty(user.name),
+      username: sanitizeHtmlOrEmpty(user.username),
     }),
     i18n.t(config.DEFAULT_LOCALE, "admin_group.about", {
       name: sanitizeHtmlOrEmpty(user.name),
@@ -156,6 +157,7 @@ export function formatAboutMe(user: User) {
       gender: sanitizeHtmlOrEmpty(user.gender),
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
       status: user.status,
+      username: sanitizeHtmlOrEmpty(user.username),
     }),
   ].join("\n\n");
 }
