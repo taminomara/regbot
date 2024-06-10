@@ -89,7 +89,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
@@ -106,7 +106,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
 
@@ -122,7 +122,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
@@ -133,7 +133,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
@@ -144,7 +144,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
@@ -155,7 +155,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
@@ -166,7 +166,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
     {
@@ -177,7 +177,7 @@ async function interview(conversation: Conversation, ctx: Context) {
         adminGroupTopic,
         question,
       );
-      const reply = await waitForSkipCommands(conversation, "message:text");
+      const { reply } = await waitForSkipCommands(conversation, "message:text");
       await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
     }
 

@@ -44,7 +44,15 @@ async function editEventName(conversation: Conversation, ctx: Context) {
   if (event === undefined) return;
 
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_name"));
-  const reply = await waitForSkipCommands(conversation, "message:text");
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    ["cancel"],
+  );
+  if (command === "cancel") {
+    await reply.react("👌");
+    return;
+  }
 
   await conversation.external(async () => {
     await updateEvent(event.id, { name: reply.message.text });
@@ -64,19 +72,24 @@ async function editEventDate(conversation: Conversation, ctx: Context) {
   if (event === undefined) return;
 
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_date"));
-  const { date, replyMessageId } = await waitForDate(
+  const { date, reply, command } = await waitForDate(
     conversation,
     ctx,
     i18n.t(config.DEFAULT_LOCALE, "manage_events.date_invalid"),
     i18n.t(config.DEFAULT_LOCALE, "manage_events.date_in_past"),
+    ["cancel"],
   );
+  if (command === "cancel") {
+    await reply.react("👌");
+    return;
+  }
 
   await conversation.external(async () => {
     await updateEvent(event.id, { date });
   });
 
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
-    reply_to_message_id: replyMessageId,
+    reply_to_message_id: reply.message.message_id,
   });
 }
 feature.use(createConversation(editEventDate));
@@ -94,18 +107,25 @@ async function editEventPost(
 
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_post"));
 
-  const postMessage = await waitForSkipCommands(conversation, "message");
-  const announceText =
-    postMessage.message.text ?? postMessage.message.caption ?? "";
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message",
+    ["cancel"],
+  );
+  if (command === "cancel") {
+    await reply.react("👌");
+    return;
+  }
+  const announceText = reply.message.text ?? reply.message.caption ?? "";
   const announceEntities =
-    postMessage.message.entities ?? postMessage.message.caption_entities ?? [];
+    reply.message.entities ?? reply.message.caption_entities ?? [];
   event.announceTextHtml = parseTelegramEntities(
     announceText,
     announceEntities,
   );
   if (event.announcePhotoId !== null) {
     event.announcePhotoId =
-      postMessage.message?.photo?.reduce((a, b) => (a.width > b.width ? a : b))
+      reply.message?.photo?.reduce((a, b) => (a.width > b.width ? a : b))
         ?.file_id ?? event.announcePhotoId;
   }
 
@@ -130,10 +150,42 @@ async function editEventPost(
   }
 
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
-    reply_to_message_id: postMessage.message.message_id,
+    reply_to_message_id: reply.message.message_id,
   });
 }
 feature.use(createConversation(editEventPost));
+
+export const enterEditEventPrice = async (ctx: Context) => {
+  await ctx.conversation.enter("editEventPrice");
+};
+async function editEventPrice(
+  conversation: Conversation,
+  ctx: Context,
+  event?: Event,
+) {
+  event = event ?? (await getEventForEditFromMatch(conversation, ctx));
+  if (event === undefined) return;
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_price"));
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    ["cancel", "empty"],
+  );
+  if (command === "cancel") {
+    await reply.react("👌");
+    return;
+  }
+  const price = command === "empty" ? null : reply.message.text;
+  await conversation.external(async () => {
+    await updateEvent(event.id, { price });
+  });
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
+    reply_to_message_id: reply.message.message_id,
+  });
+}
+feature.use(createConversation(editEventPrice));
 
 async function switchConfirmation(ctx: Context) {
   const event = await getEventForEditFromMatch(null, ctx);
@@ -148,8 +200,50 @@ async function switchPayment(ctx: Context) {
   if (event !== undefined) {
     await updateEvent(event.id, { requirePayment: !event.requirePayment });
     ctx.menu.update();
+    if (event.price === null) {
+      await enterEditEventPrice(ctx);
+    }
   }
 }
+
+export const enterEditEventOptions = async (ctx: Context) => {
+  await ctx.conversation.enter("editEventOptions");
+};
+async function editEventOptions(
+  conversation: Conversation,
+  ctx: Context,
+  event?: Event,
+) {
+  event = event ?? (await getEventForEditFromMatch(conversation, ctx));
+  if (event === undefined) return;
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_options"));
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    ["cancel", "empty"],
+  );
+  if (command === "cancel") {
+    await reply.react("👌");
+    return;
+  }
+
+  let participationOptions: string[] | null = reply.message.text
+    .split("\n")
+    .filter((x) => x);
+  if (command === "empty" || participationOptions.length === 0) {
+    participationOptions = null;
+  }
+
+  await conversation.external(async () => {
+    await updateEvent(event.id, { participationOptions });
+  });
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
+    reply_to_message_id: reply.message.message_id,
+  });
+}
+feature.use(createConversation(editEventOptions));
 
 async function publishEvent(ctx: Context) {
   const event = await getEventForEditFromMatch(null, ctx);
@@ -211,18 +305,35 @@ export const enterCreateEvent = async (ctx: Context) => {
 };
 async function createEvent(conversation: Conversation, ctx: Context) {
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_name"));
-  const nameMessage = await waitForSkipCommands(conversation, "message:text");
+  const { reply: nameReply, command: nameCommand } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    ["cancel"],
+  );
+  if (nameCommand === "cancel") {
+    await nameReply.react("👌");
+    return;
+  }
 
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_date"));
-  const { date } = await waitForDate(
+  const {
+    date,
+    reply: dateReply,
+    command: dateCommand,
+  } = await waitForDate(
     conversation,
     ctx,
     i18n.t(config.DEFAULT_LOCALE, "manage_events.date_invalid"),
     i18n.t(config.DEFAULT_LOCALE, "manage_events.date_in_past"),
+    ["cancel"],
   );
+  if (dateCommand === "cancel") {
+    await dateReply.react("👌");
+    return;
+  }
 
   const event = await conversation.external(async () => {
-    return createDbEvent(nameMessage.message.text, date);
+    return createDbEvent(nameReply.message.text, date);
   });
 
   await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.event_created"));
@@ -233,7 +344,9 @@ async function createEvent(conversation: Conversation, ctx: Context) {
     }),
   );
 
+  await editEventPrice(conversation, ctx, event);
   await editEventPost(conversation, ctx, event);
+  await editEventOptions(conversation, ctx, event);
 }
 feature.use(createConversation(createEvent));
 
@@ -272,7 +385,7 @@ export const manageEventsMenu = new Menu<Context>("manageEventsMenu")
         .submenu(
           {
             text: i18n.t(config.DEFAULT_LOCALE, "manage_events.event_title", {
-              name: event.name,
+              name: sanitizeHtmlOrEmpty(event.name),
               date: toFluentDateTime(event.date),
               prefix,
               suffix,
@@ -325,7 +438,6 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_name")),
       enterEditEventName,
     );
-    range.row();
     range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_date")),
       enterEditEventDate,
@@ -342,7 +454,15 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
         enterEditEventPost,
       );
     }
+    range.text(
+      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_price")),
+      enterEditEventPrice,
+    );
     range.row();
+    range.text(
+      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_options")),
+      enterEditEventOptions,
+    );
 
     if (event.published) {
       range.text(
@@ -404,6 +524,10 @@ async function updateManageEventMenu(ctx: Context) {
     i18n.t(config.DEFAULT_LOCALE, "manage_events.event", {
       name: sanitizeHtmlOrEmpty(event.name),
       date: toFluentDateTime(event.date),
+      price: sanitizeHtmlOrEmpty(event.price),
+      options: (event.participationOptions ?? [])
+        .map(sanitizeHtmlOrEmpty)
+        .join("; "),
       text: event.announceTextHtml ?? "&lt;empty&gt;",
     }),
   );
@@ -461,8 +585,18 @@ async function updateManageEventParticipantsMenu(ctx: Context) {
   if (event === undefined) return;
 
   const participants = (await getEventSignups(event.id))
-    .map((signup) =>
-      ctx.t("manage_events.event_participant_with_status", {
+    .map((signup) => {
+      let options = (signup.participationOptions ?? [])
+        .map(
+          (option) =>
+            /^(?<emoji>\p{Emoji})/gu.exec(option)?.groups?.emoji ?? option,
+        )
+        .join("/");
+      if (options.length > 0) {
+        options = `(${options})`;
+      }
+
+      return ctx.t("manage_events.event_participant_with_status", {
         status: signup.status,
         event_participant: signup.user.username
           ? ctx.t("manage_events.event_participant", {
@@ -470,14 +604,16 @@ async function updateManageEventParticipantsMenu(ctx: Context) {
               name: sanitizeHtmlOrEmpty(signup.user.name),
               pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
               username: sanitizeHtml(signup.user.username),
+              options,
             })
           : ctx.t("manage_events.event_participant_no_username", {
               id: String(signup.user.id),
               name: sanitizeHtmlOrEmpty(signup.user.name),
               pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
+              options,
             }),
-      }),
-    )
+      });
+    })
     .join("\n");
 
   await editMessageTextSafe(

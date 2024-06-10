@@ -112,27 +112,41 @@ const eventMenu = new Menu<Context>("eventMenu")
     const event = await getEventFromMatch(ctx);
     if (event === undefined) return;
 
-    range.text(
-      withPayload(
-        ctx.t("menu.signup_button", {
-          name: event.name,
-          date: toFluentDateTime(event.date),
-          signedUp:
-            event.signup === undefined
-              ? "no"
-              : {
-                  [SignupStatus.Approved]: "approved",
-                  [SignupStatus.Rejected]: "rejected",
-                  [SignupStatus.PendingApproval]: "pending",
-                  [SignupStatus.PendingPayment]: "pending",
-                }[event.signup.status],
-        }),
-      ),
-      async (ctx) => {
-        await signupForEvent(null, ctx, event.id, ctx.user);
-        await updateEventMenu(ctx);
-      },
-    );
+    if (event.signup === undefined && event.participationOptions !== null) {
+      range.submenu(
+        withPayload(
+          ctx.t("menu.signup_button", {
+            name: event.name,
+            date: toFluentDateTime(event.date),
+            signedUp: "no",
+          }),
+        ),
+        "optionsMenu",
+        updateOptionsMenu,
+      );
+    } else {
+      range.text(
+        withPayload(
+          ctx.t("menu.signup_button", {
+            name: event.name,
+            date: toFluentDateTime(event.date),
+            signedUp:
+              event.signup === undefined
+                ? "no"
+                : {
+                    [SignupStatus.Approved]: "approved",
+                    [SignupStatus.Rejected]: "rejected",
+                    [SignupStatus.PendingApproval]: "pending",
+                    [SignupStatus.PendingPayment]: "pending",
+                  }[event.signup.status],
+          }),
+        ),
+        async (ctx) => {
+          await signupForEvent(null, ctx, event.id, ctx.user, null);
+          await updateEventMenu(ctx);
+        },
+      );
+    }
     if (
       event.signup !== undefined &&
       [
@@ -168,8 +182,9 @@ async function updateEventMenu(ctx: Context) {
     ctx,
     event.announceTextHtml ??
       ctx.t("menu.event", {
-        name: event.name,
+        name: sanitizeHtmlOrEmpty(event.name),
         date: toFluentDateTime(event.date),
+        price: sanitizeHtmlOrEmpty(event.price),
       }),
   );
 }
@@ -184,20 +199,32 @@ async function updateEventParticipantsMenu(ctx: Context) {
   if (event === undefined) return;
 
   const participants = (await getApprovedEventSignups(event.id))
-    .map((signup) =>
-      signup.user.username
+    .map((signup) => {
+      let options = (signup.participationOptions ?? [])
+        .map(
+          (option) =>
+            /^(?<emoji>\p{Emoji})/gu.exec(option)?.groups?.emoji ?? option,
+        )
+        .join("/");
+      if (options.length > 0) {
+        options = `(${options})`;
+      }
+
+      return signup.user.username
         ? ctx.t("menu.event_participant", {
             id: String(signup.user.id),
             name: sanitizeHtmlOrEmpty(signup.user.name),
             pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
             username: sanitizeHtml(signup.user.username),
+            options,
           })
         : ctx.t("menu.event_participant_no_username", {
             id: String(signup.user.id),
             name: sanitizeHtmlOrEmpty(signup.user.name),
             pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
-          }),
-    )
+            options,
+          });
+    })
     .join("\n");
 
   await editMessageTextSafe(
@@ -231,17 +258,105 @@ export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu")
       if (event === undefined) return;
 
       await withdrawSignup(null, ctx, event.id, ctx.user);
+      await updateEventMenu(ctx);
     },
-    updateEventMenu,
   );
 eventMenu.register(cancelSignupMenu);
 async function updateCancelSignupMenu(ctx: Context) {
   await editMessageTextSafe(ctx, ctx.t("menu.cancel_signup_confirmation"));
 }
 
-async function getEventFromMatch(ctx: Context) {
-  const eventId = Number(ctx.match);
+const optionsMenu = new Menu<Context>("optionsMenu", {
+  fingerprint: async (ctx) =>
+    (await getEventFromMatch(ctx))?.participationOptions?.join("\n") ?? "",
+}).dynamic(async (ctx, range) => {
+  const event = await getEventFromMatch(ctx);
+  if (event === undefined) return;
+
+  const { eventId, options } = unpackMatch(ctx.match);
+  const participationOptions = event.participationOptions ?? [];
+
+  for (let i = 0; i < participationOptions.length; i += 1) {
+    const selected = options[i] ?? false;
+    options[i] = !selected;
+    range.text(
+      {
+        text: (selected ? "☑️ " : "➖ ") + participationOptions[i],
+        payload: packMatch(eventId ?? NaN, [...options]),
+      },
+      updateOptionsMenu,
+    );
+    range.row();
+    options[i] = selected;
+  }
+
+  range.back(
+    {
+      text: (ctx) => ctx.t("menu.back"),
+      payload: (ctx) => String(unpackMatch(ctx.match).eventId),
+    },
+    updateEventMenu,
+  );
+
+  range.back(
+    withPayload(
+      ctx.t("menu.signup_button", {
+        name: event.name,
+        date: toFluentDateTime(event.date),
+        signedUp: "no",
+      }),
+    ),
+    async (ctx) => {
+      const chosenOptions = [];
+      for (let i = 0; i < participationOptions.length; i += 1) {
+        if (options[i]) {
+          chosenOptions.push(participationOptions[i]);
+        }
+      }
+
+      await signupForEvent(null, ctx, event.id, ctx.user, chosenOptions);
+      await updateEventMenu(ctx);
+    },
+  );
+});
+eventMenu.register(optionsMenu);
+async function updateOptionsMenu(ctx: Context) {
+  await updateEventMenu(ctx);
+}
+
+function packMatch(eventId: number, options: boolean[]) {
+  let optionBits = 0;
+  for (let i = 0; i < options.length; i += 1) {
+    if (options[i]) {
+      // eslint-disable-next-line no-bitwise
+      optionBits |= 1 << i;
+    }
+  }
+  return `${eventId};${String.fromCharCode(optionBits)}`;
+}
+
+function unpackMatch(match?: string): { eventId?: number; options: boolean[] } {
+  const [encodedEventId, encodedOptions] = match?.split(";") ?? ["", ""];
+
+  let eventId: number | undefined = Number(encodedEventId);
   if (!Number.isFinite(eventId)) {
+    eventId = undefined;
+  }
+
+  let bitOptions = (encodedOptions ?? "").charCodeAt(0);
+  const options = [];
+  while (bitOptions > 0) {
+    // eslint-disable-next-line no-bitwise
+    options.push((bitOptions & 1) === 1);
+    // eslint-disable-next-line no-bitwise
+    bitOptions >>= 1;
+  }
+  return { eventId, options };
+}
+
+async function getEventFromMatch(ctx: Context) {
+  const { eventId } = unpackMatch(ctx.match);
+  if (eventId === undefined) {
     ctx.logger.error("Can't get event id form match", { match: ctx.match });
     return;
   }

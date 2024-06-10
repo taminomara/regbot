@@ -87,11 +87,12 @@ interview =
     .interview_replies_saved =
         Ответы сохранены ✨ Скоро мы посмотрим их и вернёмся.
 
-    .edit_name = Введите новое имя:
-    .edit_pronouns = Введите новые местоимения:
-    .edit_gender = Введите новую гендерную идентичность:
-    .edit_sexuality = Введите новую сексуальную идентичность:
+    .edit_name = Введите новое имя или /cancel чтобы отменить редактирование:
+    .edit_pronouns = Введите новые местоимения или /cancel чтобы отменить редактирование:
+    .edit_gender = Введите новую гендерную идентичность или /cancel чтобы отменить редактирование:
+    .edit_sexuality = Введите новую сексуальную идентичность или /cancel чтобы отменить редактирование:
     .edit_success = Данные сохранены
+    .edit_cancel = Отменено 👌
 
     .finish_interview_first = Сначала нужно закончить собеседование.
     .edit_name_first = Сначала введите новое имя.
@@ -177,6 +178,7 @@ menu =
         <b>{$name}</b>
 
         Когда: <b>{DATETIME($date, dateStyle: "short", timeStyle: "short")}</b>
+        Стоимость: <b>{$price}</b>
     .signup_button = {$signedUp ->
         *[no]       Зарегистрироваться
          [approved] ✅ Вы зарегистрированы
@@ -193,8 +195,8 @@ menu =
 
         {$participants}
     .event_participants_empty = Пока что никто не записался.
-    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}
-    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}
+    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns} {$options}
+    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns} {$options}
 
 manage_events =
     .events = Предстоящие события:
@@ -202,6 +204,8 @@ manage_events =
         <b>{$name}</b>
 
         Когда: <b>{DATETIME($date, dateStyle: "short", timeStyle: "short")}</b>
+        Стоимость: <b>{$price}</b>
+        Опции: <b>{$options}</b>
 
         -------
 
@@ -240,10 +244,12 @@ manage_events =
     .publish_yes = 🚀 Да
     .publish_no = ⬅️ Нет
 
-    .add_post = ✏️ Добавить пост
-    .edit_post = ✏️ Редактировать пост
-    .edit_name = ✏️ Редактировать название
-    .edit_date = ✏️ Редактировать дату
+    .add_post = ✏️ Пост
+    .edit_post = ✏️ Пост
+    .edit_name = ✏️ Название
+    .edit_date = ✏️ Дата
+    .edit_price = ✏️ Стоимость
+    .edit_options =  ✏️ Опции
 
     .manage_participants = 👯‍♀️ Участники ({$participants})
     .manage_participants_with_pending = 👯‍♀️ Участники ({$participants}+{$pending}⏳)
@@ -262,6 +268,11 @@ manage_events =
     .enter_post =
         Введите текст поста с анонсом события.
         К посту можно прикрепить одну фотографию.
+    .enter_price =
+        Введите стоимость или отправьте /empty чтобы сбросить стоимость.
+    .enter_options =
+        Введите опции для регистрации, по одной на каждую строку, или отправьте /empty чтобы сбросить опции.
+
     .edit_success = Данные сохранены
 
     .event_created = Событие успешно создано.
@@ -278,7 +289,7 @@ manage_events =
         [Approved] {$event_participant}
         *[Rejected] {$event_participant}, ❌ Заявка отклонена
     }
-    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}
+    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns} {$options}
     .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}
 
 event_signup =
@@ -287,8 +298,14 @@ event_signup =
         Неизвестное событие.
         Возможно, мы накосячили со ссылкой в посте, напишите нам об этом.
 
-    .pending_approval = Заявка на участие отправлена, скоро мы посмотрим её и вернёмся.
-    .admin_message_pending_approval = ℹ️ Пользователь хочет на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
+    .chosen_options = Выбранные опции: <b>{$options}</b>
+
+    .pending_approval =
+        Заявка на участие отправлена, скоро мы посмотрим её и вернёмся.
+    .admin_message_pending_approval =
+        ℹ️ Пользователь хочет на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
+
+        {$options}
 
     .pending_payment =
         Пожалуйста, оплатите участие в событии и пришлите скриншот с подтверждением оплаты в этот чат.
@@ -296,13 +313,22 @@ event_signup =
         Стоимость: <b>{$price}</b>
         IBAN: <b><code>{$iban}</code></b>
         Получатель: <b><code>{$recipient}</code></b>
-    .admin_message_pending_payment = ℹ️ Ждём оплаты за <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
+    .admin_message_pending_payment =
+        ℹ️ Ждём оплаты за <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
 
-    .registered = ✅ Вы зарегистрированы на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
-    .admin_message_registered = ✅ Пользователь зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$approveDate}.
+        {$options}
 
-    .rejected = ❌ К сожалению, мы не можем зарегистрировать вас на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
-    .admin_message_rejected = ❌ Пользователь не зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$rejectDate}.
+    .registered =
+        ✅ Вы зарегистрированы на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
+    .admin_message_registered =
+        ✅ Пользователь зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$approveDate}.
+
+        {$options}
+
+    .rejected =
+        ❌ К сожалению, мы не можем зарегистрировать вас на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
+    .admin_message_rejected =
+        ❌ Пользователь не зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$rejectDate}.
 
     .rejected_with_refund =
         ❌ К сожалению, мы не можем зарегистрировать вас на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
@@ -326,6 +352,7 @@ event_signup =
         ⚠️ Возможно, нужен возврат денег.
 
     .prompt_signup = Хотите записаться на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}?
+    .prompt_signup_with_options = Теперь вы можете записаться на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
     .prompt_signup_no = ⬅️ Нет
     .prompt_signup_yes = ✅ Да
     .prompt_signup_reject_ok = Хорошо 😌👌

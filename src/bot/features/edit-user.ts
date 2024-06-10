@@ -37,13 +37,24 @@ export async function editName(
     inInterview ? ctx.t("interview.name") : ctx.t("interview.edit_name"),
     { message_thread_id: ctx.msg?.message_thread_id },
   );
-  const reply = await waitForSkipCommands(conversation, "message:text");
-  await conversation.external(async () => {
-    await setUserName(user.id, reply.message.text);
-  });
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    inInterview ? [] : ["cancel"],
+  );
+  if (command !== "cancel") {
+    await conversation.external(async () => {
+      await setUserName(user.id, reply.message.text);
+    });
+  }
 
   if (!inInterview) {
-    await sendEditConfirmation(conversation, reply, user.id);
+    await sendEditConfirmation(
+      conversation,
+      reply,
+      user.id,
+      command === "cancel",
+    );
   }
 }
 
@@ -78,13 +89,24 @@ export async function editPronouns(
       message_thread_id: ctx.msg?.message_thread_id,
     },
   );
-  const reply = await waitForSkipCommands(conversation, "message:text");
-  await conversation.external(async () => {
-    await setUserPronouns(user.id, reply.message.text);
-  });
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    inInterview ? [] : ["cancel"],
+  );
+  if (command !== "cancel") {
+    await conversation.external(async () => {
+      await setUserPronouns(user.id, reply.message.text);
+    });
+  }
 
   if (!inInterview) {
-    await sendEditConfirmation(conversation, reply, user.id);
+    await sendEditConfirmation(
+      conversation,
+      reply,
+      user.id,
+      command === "cancel",
+    );
   }
 }
 
@@ -115,13 +137,24 @@ export async function editGender(
       message_thread_id: ctx.msg?.message_thread_id,
     },
   );
-  const reply = await waitForSkipCommands(conversation, "message:text");
-  await conversation.external(async () => {
-    await setUserGender(user.id, reply.message.text);
-  });
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    inInterview ? [] : ["cancel"],
+  );
+  if (command !== "cancel") {
+    await conversation.external(async () => {
+      await setUserGender(user.id, reply.message.text);
+    });
+  }
 
   if (!inInterview) {
-    await sendEditConfirmation(conversation, reply, user.id);
+    await sendEditConfirmation(
+      conversation,
+      reply,
+      user.id,
+      command === "cancel",
+    );
   }
 }
 
@@ -156,13 +189,25 @@ export async function editSexuality(
       message_thread_id: ctx.msg?.message_thread_id,
     },
   );
-  const reply = await waitForSkipCommands(conversation, "message:text");
-  await conversation.external(async () => {
-    await setUserSexuality(user.id, reply.message.text);
-  });
+
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    inInterview ? [] : ["cancel"],
+  );
+  if (command !== "cancel") {
+    await conversation.external(async () => {
+      await setUserSexuality(user.id, reply.message.text);
+    });
+  }
 
   if (!inInterview) {
-    await sendEditConfirmation(conversation, reply, user.id);
+    await sendEditConfirmation(
+      conversation,
+      reply,
+      user.id,
+      command === "cancel",
+    );
   }
 }
 
@@ -170,12 +215,16 @@ async function sendEditConfirmation(
   conversation: Conversation,
   ctx: Context,
   userId: number,
+  canceled: boolean,
 ) {
-  await ctx.reply(ctx.t("interview.edit_success"), {
-    reply_markup: { remove_keyboard: true },
-    message_thread_id: ctx.msg?.message_thread_id,
-    reply_to_message_id: ctx.msgId,
-  });
+  await ctx.reply(
+    ctx.t(canceled ? "interview.edit_cancel" : "interview.edit_success"),
+    {
+      reply_markup: { remove_keyboard: true },
+      message_thread_id: ctx.msg?.message_thread_id,
+      reply_to_message_id: ctx.msgId,
+    },
+  );
   const user = await conversation.external(async () => getUserOrFail(userId));
   await updateAdminGroupTopicTitle(ctx, user);
 }

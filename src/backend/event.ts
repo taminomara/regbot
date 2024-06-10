@@ -1,4 +1,4 @@
-import { EntityDTO, Loaded, LockMode, wrap } from "@mikro-orm/core";
+import { EntityDTO, Loaded, LockMode, ref, wrap } from "@mikro-orm/core";
 
 import { orm } from "#root/backend/data-source.js";
 import {
@@ -6,6 +6,7 @@ import {
   EventSignup as EventSignupObject,
   SignupStatus,
 } from "#root/backend/entities/event.js";
+import { User as UserObject } from "#root/backend/entities/user.js";
 
 export { SignupStatus } from "#root/backend/entities/event.js";
 export type EventSignup = EntityDTO<EventSignupObject>;
@@ -39,41 +40,38 @@ export async function signupForEvent(
   event: Event,
   userId: number,
   adminId: number,
+  participationOptions: string[] | null,
 ): Promise<{ signup: EventSignup; signupPerformed: boolean }> {
-  return orm.em.transactional(async () => {
-    const oldSignup = await orm.em.findOne(
-      EventSignupObject,
-      {
-        event: event.id,
-        user: userId,
-      },
-      { lockMode: LockMode.PESSIMISTIC_WRITE },
-    );
-    if (oldSignup !== null) {
-      return { signup: wrap(oldSignup).toObject(), signupPerformed: false };
-    }
-
-    let status: SignupStatus;
-    let approvedBy: number | null = null;
-    let approvedAt: Date | null = null;
-    if (event.requireApproval) {
-      status = SignupStatus.PendingApproval;
-    } else if (event.requirePayment) {
-      status = SignupStatus.PendingPayment;
-    } else {
-      status = SignupStatus.Approved;
-      approvedBy = adminId;
-      approvedAt = new Date();
-    }
-
-    const signup = await orm.em.upsert(
-      EventSignupObject,
-      { event: event.id, user: userId, status, approvedBy, approvedAt },
-      { onConflictAction: "ignore" },
-    );
-
-    return { signup: wrap(signup).toObject(), signupPerformed: true };
+  const oldSignup = await orm.em.findOne(EventSignupObject, {
+    event: event.id,
+    user: userId,
   });
+  if (oldSignup !== null) {
+    return { signup: wrap(oldSignup).toObject(), signupPerformed: false };
+  }
+
+  const signup = new EventSignupObject(
+    ref(EventObject, event.id),
+    ref(UserObject, userId),
+    SignupStatus.PendingApproval,
+  );
+
+  signup.approvedBy = null;
+  signup.approvedAt = null;
+  if (event.requireApproval) {
+    signup.status = SignupStatus.PendingApproval;
+  } else if (event.requirePayment) {
+    signup.status = SignupStatus.PendingPayment;
+  } else {
+    signup.status = SignupStatus.Approved;
+    signup.approvedBy = adminId;
+    signup.approvedAt = new Date();
+  }
+  signup.participationOptions = participationOptions;
+
+  await orm.em.persistAndFlush(signup);
+
+  return { signup: wrap(signup).toObject(), signupPerformed: true };
 }
 
 export async function withdrawSignup(
