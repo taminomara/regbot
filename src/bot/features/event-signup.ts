@@ -322,6 +322,9 @@ async function sendConfirmation(
             recipient: sanitizeHtmlOrEmpty(config.PAYMENT_RECIPIENT),
           },
         ),
+        {
+          protect_content: true,
+        },
       );
       await sendMessageToAdminGroupTopic(
         ctx,
