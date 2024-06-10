@@ -33,7 +33,7 @@ import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
 
-const feature = composer.chatType("private").filter(isApproved);
+const feature = composer.filter(isApproved);
 
 export const eventsMenu = new Menu<Context>("eventsMenu")
   .text((ctx) => ctx.t("menu.update"), updateEventsMenu)
@@ -321,7 +321,18 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
 });
 eventMenu.register(optionsMenu);
 async function updateOptionsMenu(ctx: Context) {
-  await updateEventMenu(ctx);
+  // Do not edit message text.
+  //
+  // When this menu is rendered from the event list, the text will contain
+  // event description, which is what we want. When this menu is rendered
+  // from the post-interview signup process, the text will contain
+  // registration prompt, which is also what we want.
+  //
+  // In either case, we don't want to override this text.
+  // We still invoke `editMessageTextSafe` to refresh menu, though.
+  await editMessageTextSafe(ctx, ctx.msg!.text!, {
+    entities: ctx.msg!.entities,
+  });
 }
 
 function packMatch(eventId: number, options: boolean[]) {
@@ -368,7 +379,7 @@ async function getEventFromMatch(ctx: Context) {
   return event;
 }
 
-feature.command("menu", async (ctx) => {
+feature.chatType("private").command("menu", async (ctx) => {
   await ctx.reply(ctx.t("menu.events"), { reply_markup: eventsMenu });
 });
 
