@@ -55,12 +55,8 @@ export async function postInterviewSignup(
 
   if (event.signup === undefined) {
     // We need to extract the current context from the conversation
-    // and set its match to event id. Otherwise, the menu will not
+    // and set its match and locale. Otherwise, the menu will not
     // render correctly.
-    //
-    // Technically, we will get outdated context if `postInterviewSignup`
-    // call gets replayed in the conversation. We don't care, though, because
-    // by that time the menu will have been already rendered.
     let currentCtx = ctx;
     if (conversation !== null) {
       await conversation.run(async (ctx, next) => {
@@ -69,6 +65,8 @@ export async function postInterviewSignup(
       });
     }
     currentCtx.match = String(event.id);
+    const prevLocale = await currentCtx.i18n.getLocale();
+    currentCtx.i18n.useLocale(user.locale ?? config.DEFAULT_LOCALE);
     await currentCtx.api.sendMessage(
       user.id,
       i18n.t(
@@ -83,6 +81,7 @@ export async function postInterviewSignup(
         reply_markup: eventsMenu.at("optionsMenu"),
       },
     );
+    currentCtx.i18n.useLocale(prevLocale);
   } else {
     await ctx.api.sendMessage(
       user.id,
