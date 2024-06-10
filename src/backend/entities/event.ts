@@ -30,7 +30,7 @@ export class Event {
   date: Date;
 
   @Property() // TODO: make lazy
-  announceTextHtml: Ref<string> | null = null;
+  announceTextHtml: string | null = null;
 
   @Property()
   announcePhotoId: string | null = null;
@@ -62,8 +62,8 @@ export class Event {
   @Property()
   price: string | null = null;
 
-  @Property() // TODO: make lazy
-  participationOptions: Ref<string[]> | null = null;
+  @Property({ type: "json" }) // TODO: make lazy
+  participationOptions: string[] | null = null;
 
   @OneToMany("EventSignup", "event", { orphanRemoval: true })
   signups = new Collection<EventSignup>(this);
@@ -80,6 +80,12 @@ export enum SignupStatus {
 @Index({ properties: ["event", "user"] })
 @Unique({ properties: ["event", "user"] })
 export class EventSignup {
+  constructor(event: Ref<Event>, user: Ref<User>, status: SignupStatus) {
+    this.event = event;
+    this.user = user;
+    this.status = status;
+  }
+
   @ManyToOne({ primary: true, updateRule: "cascade", deleteRule: "cascade" })
   event: Ref<Event>;
 
@@ -96,4 +102,7 @@ export class EventSignup {
 
   @Property()
   approvedAt: Date | null = null;
+
+  @Property({ type: "json" }) // TODO: make lazy
+  participationOptions: string[] | null = null;
 }

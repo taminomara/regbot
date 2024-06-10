@@ -64,14 +64,18 @@ export async function postInterviewSignup(
       user.id,
       i18n.t(
         user.locale ?? config.DEFAULT_LOCALE,
-        "event_signup.prompt_signup",
+        event.participationOptions
+          ? "event_signup.prompt_signup"
+          : "event_signup.prompt_signup_with_options",
         {
           name: sanitizeHtmlOrEmpty(event.name),
           date: toFluentDateTime(event.date),
         },
       ),
       {
-        reply_markup: createUserSignupKeyboard(user.pendingSignup, user),
+        reply_markup: event.participationOptions
+          ? undefined
+          : createUserSignupKeyboard(user.pendingSignup, user),
       },
     );
   } else {
@@ -98,13 +102,15 @@ export async function signupForEvent(
   ctx: Context,
   eventId: number,
   user: UserLite,
+  participationOptions: string[] | null,
 ) {
   const event = await getEventForSignup(conversation, ctx, eventId, user);
   if (event === undefined) return;
 
   const { signup, signupPerformed } = await maybeExternal(
     conversation,
-    async () => signupForEventDb(event, user.id, ctx.me.id),
+    async () =>
+      signupForEventDb(event, user.id, ctx.me.id, participationOptions),
   );
 
   if (!signupPerformed) return;
@@ -262,6 +268,15 @@ async function sendConfirmation(
     signup.approvedBy === null ? undefined : getUserLite(signup.approvedBy),
   );
 
+  const options =
+    event.participationOptions === null
+      ? ""
+      : i18n.t(config.DEFAULT_LOCALE, "event_signup.chosen_options", {
+          options: sanitizeHtmlOrEmpty(
+            (signup.participationOptions ?? []).join("; "),
+          ),
+        });
+
   switch (signup.status) {
     case SignupStatus.PendingApproval: {
       await ctx.api.sendMessage(
@@ -284,6 +299,7 @@ async function sendConfirmation(
           {
             name: sanitizeHtmlOrEmpty(event.name),
             date: toFluentDateTime(event.date),
+            options,
           },
         ),
         {
@@ -316,6 +332,7 @@ async function sendConfirmation(
           {
             name: sanitizeHtmlOrEmpty(event.name),
             date: toFluentDateTime(event.date),
+            options,
           },
         ),
         {
@@ -345,6 +362,7 @@ async function sendConfirmation(
           adminId: String(admin?.id),
           adminName: sanitizeHtmlOrEmpty(admin?.name),
           approveDate: toFluentDateTime(signup.approvedAt ?? new Date(0)),
+          options,
         }),
       );
       break;
@@ -377,6 +395,7 @@ async function sendConfirmation(
             adminId: String(admin?.id),
             adminName: sanitizeHtmlOrEmpty(admin?.name),
             rejectDate: toFluentDateTime(signup.approvedAt ?? new Date(0)),
+            options,
           },
         ),
       );
@@ -413,7 +432,7 @@ feature.callbackQuery(userConfirmSignupData.filter(), async (ctx) => {
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });
-  await signupForEvent(null, ctx, eventId, ctx.user);
+  await signupForEvent(null, ctx, eventId, ctx.user, null);
 });
 
 feature.callbackQuery(userRejectSignupData.filter(), async (ctx) => {
