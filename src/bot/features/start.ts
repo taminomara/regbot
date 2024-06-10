@@ -1,14 +1,11 @@
-import { BotCommand } from "@grammyjs/types";
 import { Composer } from "grammy";
 
 import { UserStatus, updateUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import { ensureHasAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
-import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { enterInterview } from "#root/bot/features/interview.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
-import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
@@ -54,13 +51,4 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
       await ctx.reply(ctx.t("welcome.all_set"));
     }
   }
-});
-
-registerCommandHelpProvider((localeCode: string): BotCommand[] => {
-  return [
-    {
-      command: "start",
-      description: i18n.t(localeCode, "start_command.description"),
-    },
-  ];
 });
