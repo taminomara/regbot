@@ -109,6 +109,6 @@ export async function getUserLiteByAdminGroupTopic(
 export async function getUserByAdminGroupTopic(
   adminGroupTopic: number,
 ): Promise<User | null> {
-  const userLite = await orm.em.findOne(UserObject, { adminGroupTopic });
-  return userLite === null ? null : wrap(userLite).toObject();
+  const user = await orm.em.findOne(UserObject, { adminGroupTopic });
+  return user === null ? null : wrap(user).toObject();
 }
