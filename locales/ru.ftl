@@ -121,7 +121,7 @@ interview =
 admin_group =
     .topic_name = {$name} (@{$username})
     .topic_header =
-        <b>Диалог с пользователем <a href="tg://user?id={$id}">{$name}</a></b>
+        <b>Диалог с пользователем <a href="tg://user?id={$id}">{$name}</a> (@{$username})</b>
     .message_question =
         ↩️ <b>Interview question</b>
 
