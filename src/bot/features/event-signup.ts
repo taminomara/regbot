@@ -1,5 +1,3 @@
-import { createCallbackData } from "callback-data";
-import { Composer, InlineKeyboard } from "grammy";
 import moment from "moment-timezone";
 
 import {
@@ -26,17 +24,13 @@ import {
   createConfirmSignupKeyboard,
 } from "#root/bot/features/admin-group-menu.js";
 import { sendMessageToAdminGroupTopic } from "#root/bot/features/admin-group.js";
+import { eventsMenu } from "#root/bot/features/menu.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
 import { maybeExternal } from "#root/bot/helpers/conversations.js";
-import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
-
-export const composer = new Composer<Context>();
-
-const feature = composer.chatType("private");
 
 export async function postInterviewSignup(
   conversation: Conversation | null,
@@ -60,22 +54,33 @@ export async function postInterviewSignup(
   if (event === undefined) return;
 
   if (event.signup === undefined) {
-    await ctx.api.sendMessage(
+    // We need to extract the current context from the conversation
+    // and set its match to event id. Otherwise, the menu will not
+    // render correctly.
+    //
+    // Technically, we will get outdated context if `postInterviewSignup`
+    // call gets replayed in the conversation. We don't care, though, because
+    // by that time the menu will have been already rendered.
+    let currentCtx = ctx;
+    if (conversation !== null) {
+      await conversation.run(async (ctx, next) => {
+        currentCtx = ctx;
+        return next();
+      });
+    }
+    currentCtx.match = String(event.id);
+    await currentCtx.api.sendMessage(
       user.id,
       i18n.t(
         user.locale ?? config.DEFAULT_LOCALE,
-        event.participationOptions
-          ? "event_signup.prompt_signup_with_options"
-          : "event_signup.prompt_signup",
+        "event_signup.prompt_signup",
         {
           name: sanitizeHtmlOrEmpty(event.name),
           date: toFluentDateTime(event.date),
         },
       ),
       {
-        reply_markup: event.participationOptions
-          ? undefined
-          : createUserSignupKeyboard(user.pendingSignup, user),
+        reply_markup: eventsMenu.at("optionsMenu"),
       },
     );
   } else {
@@ -406,44 +411,3 @@ async function sendConfirmation(
     }
   }
 }
-
-const userConfirmSignupData = createCallbackData("userConfirmSignupData", {
-  eventId: Number,
-});
-const userRejectSignupData = createCallbackData("userRejectSignupData", {});
-
-export function createUserSignupKeyboard(eventId: number, user: UserLite) {
-  return new InlineKeyboard()
-    .text(
-      i18n.t(
-        user.locale ?? config.DEFAULT_LOCALE,
-        "event_signup.prompt_signup_no",
-      ),
-      userRejectSignupData.pack({}),
-    )
-    .text(
-      i18n.t(
-        user.locale ?? config.DEFAULT_LOCALE,
-        "event_signup.prompt_signup_yes",
-      ),
-      userConfirmSignupData.pack({ eventId }),
-    );
-}
-
-feature.callbackQuery(userConfirmSignupData.filter(), async (ctx) => {
-  const { eventId } = userConfirmSignupData.unpack(ctx.callbackQuery.data);
-  await ctx.editMessageReplyMarkup({
-    reply_markup: new InlineKeyboard(),
-  });
-  await signupForEvent(null, ctx, eventId, ctx.user, null);
-});
-
-feature.callbackQuery(userRejectSignupData.filter(), async (ctx) => {
-  await editMessageTextSafe(
-    ctx,
-    ctx.t("event_signup.prompt_signup_reject_ok"),
-    {
-      reply_markup: new InlineKeyboard(),
-    },
-  );
-});
