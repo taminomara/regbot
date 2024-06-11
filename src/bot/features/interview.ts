@@ -100,6 +100,7 @@ async function interview(conversation: Conversation, ctx: Context) {
           .text(ctx.t("interview.rules_no"))
           .resized()
           .oneTime(),
+        link_preview_options: { is_disabled: true },
       });
       await sendInterviewQuestionToAdminGroupTopic(
         ctx,
