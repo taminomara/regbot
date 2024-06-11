@@ -189,10 +189,15 @@ async function updateEventMenu(ctx: Context) {
   );
 }
 
-const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu").back(
-  withPayload((ctx) => ctx.t("menu.back")),
-  updateEventMenu,
-);
+const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu")
+  .back(
+    withPayload((ctx) => ctx.t("menu.back")),
+    updateEventMenu,
+  )
+  .text(
+    withPayload((ctx) => ctx.t("menu.update")),
+    updateEventParticipantsMenu,
+  );
 eventMenu.register(eventParticipantsMenu);
 async function updateEventParticipantsMenu(ctx: Context) {
   const event = await getEventFromMatch(ctx);
