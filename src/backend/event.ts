@@ -36,6 +36,13 @@ export async function getEventWithSignupStats(
     : { ...wrap(event).toObject(), ...signupStats(event.signups.getItems()) };
 }
 
+export async function getEventByChannelPostId(
+  channelPostId: number,
+): Promise<Event | null> {
+  const event = await orm.em.findOne(EventObject, { channelPostId });
+  return event === null ? null : { ...wrap(event).toObject() };
+}
+
 export async function signupForEvent(
   event: Event,
   userId: number,

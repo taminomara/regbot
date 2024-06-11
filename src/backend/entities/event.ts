@@ -38,7 +38,7 @@ export class Event {
   @Property()
   published: boolean = false;
 
-  @Property()
+  @Property({ index: true })
   channelPostId: number | null = null;
 
   @Property()
