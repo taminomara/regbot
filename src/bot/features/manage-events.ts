@@ -675,32 +675,9 @@ async function getEventForEditFromMatch(
 }
 
 feature.command("manage_events", logHandle("manage_events"), async (ctx) => {
-  const commandParse = /^\/manage_events\s+(?<eventId>\d+)/.exec(
-    ctx.message.text,
-  );
-  const eventId = commandParse?.groups?.eventId;
-
-  if (eventId) {
-    ctx.match = eventId;
-
-    const event = await getEventFromMatch(null, ctx);
-    if (event === undefined) return;
-
-    await ctx.reply(
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.event", {
-        name: sanitizeHtmlOrEmpty(event.name),
-        date: toFluentDateTime(event.date),
-        text: event.announceTextHtml ?? "&lt;empty&gt;",
-      }),
-      {
-        reply_markup: manageEventMenu,
-      },
-    );
-  } else {
-    await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.events"), {
-      reply_markup: manageEventsMenu,
-    });
-  }
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.events"), {
+    reply_markup: manageEventsMenu,
+  });
 });
 
 registerCommandHelpProvider((localeCode, isAdmin) => {
