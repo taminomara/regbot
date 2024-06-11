@@ -295,6 +295,9 @@ async function publishEvent(ctx: Context) {
     channelPost = await ctx.api.sendMessage(
       config.CHANNEL,
       event.announceTextHtml,
+      {
+        link_preview_options: { is_disabled: true },
+      },
     );
   }
 
