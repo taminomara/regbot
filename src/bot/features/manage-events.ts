@@ -555,15 +555,15 @@ async function updatePublishEventMenu(ctx: Context) {
 }
 
 export const deleteEventMenu = new Menu<Context>("deleteEventMenu")
-  .back(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_no")),
-    updateManageEventMenu,
-  )
   .text(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_yes"),
     ),
     deleteEvent,
+  )
+  .back(
+    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_no")),
+    updateManageEventMenu,
   );
 manageEventMenu.register(deleteEventMenu);
 async function updateDeleteEventMenu(ctx: Context) {
@@ -575,10 +575,15 @@ async function updateDeleteEventMenu(ctx: Context) {
 
 export const manageEventParticipantsMenu = new Menu<Context>(
   "manageEventParticipantsMenu",
-).back(
-  withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
-  updateManageEventMenu,
-);
+)
+  .text(
+    withPayload((ctx) => ctx.t("manage_events.update")),
+    updateManageEventParticipantsMenu,
+  )
+  .back(
+    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
+    updateManageEventMenu,
+  );
 manageEventMenu.register(manageEventParticipantsMenu);
 async function updateManageEventParticipantsMenu(ctx: Context) {
   const event = await getEventFromMatch(null, ctx);
