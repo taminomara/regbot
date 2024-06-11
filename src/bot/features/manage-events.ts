@@ -1,11 +1,12 @@
 import { Menu } from "@grammyjs/menu";
-import { Composer } from "grammy";
+import { Composer, Filter } from "grammy";
 import moment from "moment-timezone";
 
 import {
   Event,
   createEvent as createDbEvent,
   deleteEvent as deleteDbEvent,
+  getEventByChannelPostId,
   getEventSignups,
   getEventWithSignupStats,
   upcomingEventsWithSignupStats,
@@ -116,24 +117,38 @@ async function editEventPost(
     await reply.react("👌");
     return;
   }
-  const announceText = reply.message.text ?? reply.message.caption ?? "";
-  const announceEntities =
-    reply.message.entities ?? reply.message.caption_entities ?? [];
+
+  await editEventPostFromCtx(conversation, reply, event);
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
+    reply_to_message_id: reply.message.message_id,
+  });
+}
+feature.use(createConversation(editEventPost));
+
+async function editEventPostFromCtx(
+  conversation: Conversation | null,
+  ctx: Filter<Context, "message"> | Filter<Context, "edited_message">,
+  event: Event,
+) {
+  const announceText = ctx.msg.text ?? ctx.msg.caption ?? "";
+  const announceEntities = ctx.msg.entities ?? ctx.msg.caption_entities ?? [];
   event.announceTextHtml = parseTelegramEntities(
     announceText,
     announceEntities,
   );
-  if (event.announcePhotoId !== null) {
+  if (!event.published || event.announcePhotoId !== null) {
     event.announcePhotoId =
-      reply.message?.photo?.reduce((a, b) => (a.width > b.width ? a : b))
-        ?.file_id ?? event.announcePhotoId;
+      ctx.msg?.photo?.reduce((a, b) => (a.width > b.width ? a : b))?.file_id ??
+      event.announcePhotoId;
   }
 
-  await conversation.external(async () => {
-    await updateEvent(event.id, event);
-  });
+  await maybeExternal(conversation, async () => updateEvent(event.id, event));
 
-  if (event.channelPostId !== null) {
+  if (
+    event.channelPostId !== null &&
+    event.channelPostId !== ctx.msg?.message_id
+  ) {
     if (event.announcePhotoId) {
       await ctx.api.editMessageMedia(config.CHANNEL, event.channelPostId, {
         type: "photo",
@@ -145,15 +160,13 @@ async function editEventPost(
         config.CHANNEL,
         event.channelPostId,
         event.announceTextHtml,
+        {
+          link_preview_options: { is_disabled: true },
+        },
       );
     }
   }
-
-  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
-    reply_to_message_id: reply.message.message_id,
-  });
 }
-feature.use(createConversation(editEventPost));
 
 export const enterEditEventPrice = async (ctx: Context) => {
   await ctx.conversation.enter("editEventPrice");
@@ -532,6 +545,9 @@ async function updateManageEventMenu(ctx: Context) {
       botUsername: ctx.me.username,
       eventId: String(event.id),
     }),
+    {
+      link_preview_options: { is_disabled: true },
+    },
   );
 }
 
@@ -690,3 +706,12 @@ registerCommandHelpProvider((localeCode, isAdmin) => {
       ]
     : [];
 });
+
+composer
+  .filter((ctx) => ctx.chatId === config.CHANNEL)
+  .on("edited_message", async (ctx) => {
+    const event = await getEventByChannelPostId(ctx.msg.message_id);
+    if (event !== null) {
+      await editEventPostFromCtx(null, ctx, event);
+    }
+  });

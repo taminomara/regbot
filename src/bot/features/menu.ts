@@ -186,6 +186,9 @@ async function updateEventMenu(ctx: Context) {
         date: toFluentDateTime(event.date),
         price: sanitizeHtmlOrEmpty(event.price),
       }),
+    {
+      link_preview_options: { is_disabled: true },
+    },
   );
 }
 
