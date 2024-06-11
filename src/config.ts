@@ -1,11 +1,11 @@
-import { loadEnvFile } from "node:process";
+import { env, loadEnvFile } from "node:process";
 import { parseEnv, z } from "znv";
 
 // fix for https://github.com/microsoft/TypeScript/issues/47663
 import * as _ from "#root/../node_modules/znv/dist/util.js";
 
 try {
-  loadEnvFile();
+  loadEnvFile(env.REGBOT_ENV_FILE_PATH);
 } catch {
   // No .env file found
 }
