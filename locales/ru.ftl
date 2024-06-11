@@ -208,6 +208,7 @@ manage_events =
         Когда: <b>{DATETIME($date, dateStyle: "short", timeStyle: "short")}</b>
         Стоимость: <b>{$price}</b>
         Опции: <b>{$options}</b>
+        Ссылка для регистрации: <code>https://t.me/{$botUsername}?start={$eventId}</code>.
 
         -------
 

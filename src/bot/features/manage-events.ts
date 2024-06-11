@@ -529,6 +529,8 @@ async function updateManageEventMenu(ctx: Context) {
         .map(sanitizeHtmlOrEmpty)
         .join("; "),
       text: event.announceTextHtml ?? "&lt;empty&gt;",
+      botUsername: ctx.me.username,
+      eventId: String(event.id),
     }),
   );
 }
