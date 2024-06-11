@@ -92,7 +92,7 @@ export async function setUserSexuality(
 
 const normalizeIdentity = (s: string) => {
   return s
-    .replaceAll(/^\p{Emoji}/gu, "")
+    .replaceAll(/^[🌻🌸🪻🌿🐝🦊🐨🧁🍩🍉🥑]/gu, "")
     .replaceAll(/\s+/gu, " ")
     .replaceAll(/\s*?\/\s*/gu, "/")
     .trim()
