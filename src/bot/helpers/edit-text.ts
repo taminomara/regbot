@@ -25,3 +25,23 @@ export async function editMessageTextSafe(
     }
   }
 }
+
+export async function deleteMessageSafe(
+  ctx: Context,
+  chatId: number,
+  messageId: number,
+) {
+  try {
+    return await ctx.api.deleteMessage(chatId, messageId);
+  } catch (error) {
+    if (error instanceof GrammyError && error.error_code === 400) {
+      if (error.description.includes("message to delete not found")) {
+        ctx.logger.debug("Ignored MESSAGE_NOT_FOUND error");
+      } else {
+        ctx.logger.warn(error);
+      }
+    } else {
+      throw error;
+    }
+  }
+}

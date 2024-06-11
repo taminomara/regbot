@@ -1,12 +1,11 @@
 import { Menu } from "@grammyjs/menu";
-import { Composer, Filter } from "grammy";
+import { Composer, Filter, GrammyError } from "grammy";
 import moment from "moment-timezone";
 
 import {
   Event,
   createEvent as createDbEvent,
   deleteEvent as deleteDbEvent,
-  getEventByChannelPostId,
   getEventSignups,
   getEventWithSignupStats,
   upcomingEventsWithSignupStats,
@@ -21,7 +20,10 @@ import {
   waitForDate,
   waitForSkipCommands,
 } from "#root/bot/helpers/conversations.js";
-import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
+import {
+  deleteMessageSafe,
+  editMessageTextSafe,
+} from "#root/bot/helpers/edit-text.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 import { parseTelegramEntities } from "#root/bot/helpers/parse-telegram-entities.js";
@@ -149,21 +151,33 @@ async function editEventPostFromCtx(
     event.channelPostId !== null &&
     event.channelPostId !== ctx.msg?.message_id
   ) {
-    if (event.announcePhotoId) {
-      await ctx.api.editMessageMedia(config.CHANNEL, event.channelPostId, {
-        type: "photo",
-        media: event.announcePhotoId,
-        caption: event.announceTextHtml,
-      });
-    } else {
-      await ctx.api.editMessageText(
-        config.CHANNEL,
-        event.channelPostId,
-        event.announceTextHtml,
-        {
-          link_preview_options: { is_disabled: true },
-        },
-      );
+    try {
+      if (event.announcePhotoId) {
+        await ctx.api.editMessageMedia(config.CHANNEL, event.channelPostId, {
+          type: "photo",
+          media: event.announcePhotoId,
+          caption: event.announceTextHtml,
+        });
+      } else {
+        await ctx.api.editMessageText(
+          config.CHANNEL,
+          event.channelPostId,
+          event.announceTextHtml,
+          {
+            link_preview_options: { is_disabled: true },
+          },
+        );
+      }
+    } catch (error) {
+      if (error instanceof GrammyError && error.error_code === 400) {
+        if (error.description.includes("message is not modified")) {
+          ctx.logger.debug("Ignored MESSAGE_NOT_MODIFIED error");
+        } else {
+          ctx.logger.warn(error);
+        }
+      } else {
+        throw error;
+      }
     }
   }
 }
@@ -301,11 +315,11 @@ async function deleteEvent(ctx: Context) {
   if (event === undefined) return;
 
   if (event.chatPostId !== null) {
-    await ctx.api.deleteMessage(config.MEMBERS_GROUP, event.chatPostId);
+    await deleteMessageSafe(ctx, config.MEMBERS_GROUP, event.chatPostId);
   }
 
   if (event.channelPostId !== null) {
-    await ctx.api.deleteMessage(config.CHANNEL, event.channelPostId);
+    await deleteMessageSafe(ctx, config.CHANNEL, event.channelPostId);
   }
 
   await deleteDbEvent(event.id);
@@ -573,15 +587,15 @@ async function updatePublishEventMenu(ctx: Context) {
 }
 
 export const deleteEventMenu = new Menu<Context>("deleteEventMenu")
+  .back(
+    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_no")),
+    updateManageEventMenu,
+  )
   .text(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_yes"),
     ),
     deleteEvent,
-  )
-  .back(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_no")),
-    updateManageEventMenu,
   );
 manageEventMenu.register(deleteEventMenu);
 async function updateDeleteEventMenu(ctx: Context) {
@@ -594,13 +608,13 @@ async function updateDeleteEventMenu(ctx: Context) {
 export const manageEventParticipantsMenu = new Menu<Context>(
   "manageEventParticipantsMenu",
 )
-  .text(
-    withPayload((ctx) => ctx.t("manage_events.update")),
-    updateManageEventParticipantsMenu,
-  )
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
     updateManageEventMenu,
+  )
+  .text(
+    withPayload((ctx) => ctx.t("manage_events.update")),
+    updateManageEventParticipantsMenu,
   );
 manageEventMenu.register(manageEventParticipantsMenu);
 async function updateManageEventParticipantsMenu(ctx: Context) {
@@ -706,12 +720,3 @@ registerCommandHelpProvider((localeCode, isAdmin) => {
       ]
     : [];
 });
-
-composer
-  .filter((ctx) => ctx.chatId === config.CHANNEL)
-  .on("edited_message", async (ctx) => {
-    const event = await getEventByChannelPostId(ctx.msg.message_id);
-    if (event !== null) {
-      await editEventPostFromCtx(null, ctx, event);
-    }
-  });
