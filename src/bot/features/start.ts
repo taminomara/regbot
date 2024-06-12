@@ -13,7 +13,9 @@ export const composer = new Composer<Context>();
 const feature = composer.chatType("private");
 
 feature.command("start", logHandle("command-start"), async (ctx) => {
-  const command = /^\/start\s+(?<eventId>\d+)\s*$/u.exec(ctx.message.text);
+  const command = /^\/start(?:@[a-zA-Z_]*)?\s+(?<eventId>\d+)\s*$/u.exec(
+    ctx.message.text,
+  );
   const eventId = command ? Number(command.groups!.eventId) : undefined;
 
   if (eventId !== undefined) {
