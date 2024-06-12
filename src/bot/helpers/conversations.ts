@@ -44,9 +44,12 @@ export async function waitForSkipCommands<Q extends FilterQuery, C>(
   );
 
   if (reply.entities("bot_command").length > 0) {
+    const { command } = /^\/?(?<command>[^@]*)/u.exec(
+      reply.entities("bot_command")[0].text,
+    )!.groups!;
     return {
       reply: reply as Filter<Context, "message:text">,
-      command: reply.entities("bot_command")[0].text.slice(1) as C,
+      command: command as C,
     };
   } else {
     return {
