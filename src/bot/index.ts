@@ -10,6 +10,7 @@ import { Counter } from "prom-client";
 import { orm } from "#root/backend/data-source.js";
 import { createUser, updateUser } from "#root/backend/user.js";
 import { Context, SessionData } from "#root/bot/context.js";
+import { startBackgroundProcess } from "#root/bot/features/event-reminders.js";
 import { setCommands } from "#root/bot/features/help.js";
 import { composer as featuresComposer } from "#root/bot/features/index.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
@@ -96,6 +97,7 @@ export async function onStart(bot: Bot<Context>) {
       sexuality: "pansexual",
     });
     await orm.em.flush();
+    startBackgroundProcess(bot);
     logger.info({
       msg: "Bot running...",
       id: bot.botInfo.id,

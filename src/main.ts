@@ -3,6 +3,7 @@ import {
   runMigrations,
   shutDownConnection,
 } from "#root/backend/data-source.js";
+import { stopBackgroundProcess } from "#root/bot/features/event-reminders.js";
 import { createBot, onStart } from "#root/bot/index.js";
 import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
@@ -26,9 +27,12 @@ async function startPolling() {
 
   // graceful shutdown
   onShutdown(async () => {
+    await stopBackgroundProcess();
     await bot.stop();
     await shutDownConnection();
-    server.close();
+    await new Promise((resolve) => {
+      server.close(resolve);
+    });
   });
 
   // start bot

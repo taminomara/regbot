@@ -209,13 +209,11 @@ async function updateEventParticipantsMenu(ctx: Context) {
   const participants = (await getApprovedEventSignups(event.id))
     .map((signup) => {
       let options = (signup.participationOptions ?? [])
-        .map(
-          (option) =>
-            /^(?<emoji>\p{Emoji})/gu.exec(option)?.groups?.emoji ?? option,
-        )
+        .map((option) => /^(?<emoji>\p{Emoji})/gu.exec(option)?.groups?.emoji)
+        .filter((option) => option)
         .join("/");
       if (options.length > 0) {
-        options = `(${options})`;
+        options = `, ${options}`;
       }
 
       return signup.user.username

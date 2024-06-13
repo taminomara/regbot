@@ -631,9 +631,12 @@ async function updateManageEventParticipantsMenu(ctx: Context) {
           (option) =>
             /^(?<emoji>\p{Emoji})/gu.exec(option)?.groups?.emoji ?? option,
         )
-        .join("/");
+        .join("");
+      if (signup.participationConfirmed) {
+        options += "👌";
+      }
       if (options.length > 0) {
-        options = `(${options})`;
+        options = `, ${options}`;
       }
 
       return ctx.t("manage_events.event_participant_with_status", {
