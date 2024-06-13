@@ -44,6 +44,7 @@
     "no-await-in-loop": "off",
     "no-constant-condition": "off",
     "no-param-reassign": "off",
+    "lines-between-class-members": "off",
     "no-restricted-syntax": [
       "off",
       "ForOfStatement"

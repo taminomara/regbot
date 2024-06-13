@@ -54,10 +54,7 @@ export class Event {
   requirePayment: boolean = false;
 
   @Property()
-  firstReminderSent: boolean = false; // TODO!
-
-  @Property()
-  secondReminderSent: boolean = false; // TODO!
+  reminderSent: boolean = false;
 
   @Property()
   price: string | null = null;
@@ -105,4 +102,7 @@ export class EventSignup {
 
   @Property({ type: "json" }) // TODO: make lazy
   participationOptions: string[] | null = null;
+
+  @Property()
+  participationConfirmed: boolean = false;
 }

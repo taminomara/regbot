@@ -27,6 +27,7 @@ const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
     PAYMENT_IBAN: z.string(),
     PAYMENT_RECIPIENT: z.string(),
     METRICS_PORT: z.number().default(8080),
+    BACKGROUND_TASK_FREQUENCY_MS: z.number().default(30000),
   });
 
   return {

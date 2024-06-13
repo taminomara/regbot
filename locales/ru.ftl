@@ -86,6 +86,7 @@ interview =
 
     .interview_replies_saved =
         Ответы сохранены ✨ Скоро мы посмотрим их и вернёмся.
+        Если у вас появятся какие-нибудь вопросы, можете задавать их прямо в этом чате.
 
     .edit_name = Введите новое имя или /cancel чтобы отменить редактирование:
     .edit_pronouns = Введите новые местоимения или /cancel чтобы отменить редактирование:
@@ -197,8 +198,8 @@ menu =
 
         {$participants}
     .event_participants_empty = Пока что никто не записался.
-    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns} {$options}
-    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns} {$options}
+    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}{$options}
+    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}{$options}
 
 manage_events =
     .events = Предстоящие события:
@@ -292,8 +293,8 @@ manage_events =
         [Approved] {$event_participant}
         *[Rejected] {$event_participant}, ❌ Заявка отклонена
     }
-    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns} {$options}
-    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}
+    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}{$options}
+    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}{$options}
 
 event_signup =
     .event_in_past = Событие уже прошло.
@@ -356,3 +357,27 @@ event_signup =
 
     .prompt_signup = Хотите зарегистрироваться на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}?
     .already_registered = Вы уже зарегистрированы на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
+
+event_reminders =
+    .event_reminder =
+        <b>{$name}</b> уже завтра! Начинаем в {DATETIME($date, hour: "2-digit", minute: "2-digit")}.
+
+        Если вы хотите прийти, но ещё не регистрировались, <a href="https://t.me/{$botUsername}?start={$eventId}">самое время это сделать</a>!
+
+    .signup_reminder =
+        Завтра, в {DATETIME($date, hour: "2-digit", minute: "2-digit")}, будет <b>{$name}</b>!
+
+    .i_cant_make_it = 😥 Ой, а я не приду
+    .i_will_be_there = ☺️ Я буду
+
+    .donate_reminder =
+        🍩 Квирные квартирники существуют на ваши донаты.
+        Вы можете оставлять их наличкой на самом мероприятиии, или сделать перевод вот по этим реквизитам:
+
+        IBAN: <b><code>{$iban}</code></b>
+        Получатель: <b><code>{$recipient}</code></b>
+
+        Но это совсем не обязательно. Главное, приходите и веселитесь!
+
+    .waiting_for_you =
+        Ждём тебя!

@@ -1,4 +1,5 @@
 import { EntityDTO, Loaded, LockMode, ref, wrap } from "@mikro-orm/core";
+import moment from "moment-timezone";
 
 import { orm } from "#root/backend/data-source.js";
 import {
@@ -348,6 +349,20 @@ export async function updateEvent(
   return wrappedEvent.toObject();
 }
 
+export async function updateEventSignup(
+  eventId: number,
+  userId: number,
+  data: Partial<Omit<EventSignup, "event" | "user">>,
+): Promise<EventSignup> {
+  const signup = await orm.em.findOneOrFail(EventSignupObject, {
+    event: eventId,
+    user: userId,
+  });
+  const wrappedEvent = wrap(signup);
+  wrappedEvent.assign(data);
+  return wrappedEvent.toObject();
+}
+
 export async function deleteEvent(id: number) {
   const event = await orm.em.findOneOrFail(
     EventObject,
@@ -355,4 +370,30 @@ export async function deleteEvent(id: number) {
     { populate: ["signups"] },
   );
   orm.em.remove(event);
+}
+
+export async function lockEventForSendingReminders(): Promise<{
+  event: Event;
+  signups: PopulatedEventSignup[];
+} | null> {
+  return orm.em.transactional(async () => {
+    const event = await orm.em.findOne(
+      EventObject,
+      {
+        reminderSent: false,
+        date: { $lte: moment.utc().add({ days: 1 }).toDate() },
+      },
+      {
+        lockMode: LockMode.PESSIMISTIC_WRITE,
+        populate: ["signups"],
+      },
+    );
+
+    if (event === null) {
+      return null;
+    } else {
+      event.reminderSent = true;
+      return { event, signups: await getEventSignups(event.id) };
+    }
+  });
 }
