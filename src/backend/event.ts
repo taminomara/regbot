@@ -397,3 +397,14 @@ export async function lockEventForSendingReminders(): Promise<{
     }
   });
 }
+
+export async function cancelAllFutureSignupsForUser(userId: number) {
+  await orm.em.nativeUpdate(
+    EventSignupObject,
+    {
+      user: userId,
+      event: { date: { $gte: new Date() } },
+    },
+    { status: SignupStatus.Rejected },
+  );
+}

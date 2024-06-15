@@ -6,6 +6,7 @@ import {
   User as UserObject,
   UserStatus,
 } from "#root/backend/entities/user.js";
+import { cancelAllFutureSignupsForUser } from "#root/backend/event.js";
 
 export { UserStatus } from "#root/backend/entities/user.js";
 export type UserLite = EntityDTO<UserLiteObject>;
@@ -63,6 +64,30 @@ export async function approveUser(id: number, adminId: number): Promise<User> {
 export async function rejectUser(id: number, adminId: number): Promise<User> {
   return updateUser(id, {
     status: UserStatus.Rejected,
+    verifiedBy: adminId,
+    verifiedAt: new Date(),
+  });
+}
+
+export async function banUser(
+  id: number,
+  adminId: number,
+  banReason: string,
+): Promise<User> {
+  await cancelAllFutureSignupsForUser(id);
+  return updateUser(id, {
+    status: UserStatus.Banned,
+    bannedBy: adminId,
+    bannedAt: new Date(),
+    canManageEvents: false,
+    canManageInterviews: false,
+    banReason,
+  });
+}
+
+export async function unbanUser(id: number, adminId: number): Promise<User> {
+  return updateUser(id, {
+    status: UserStatus.Approved,
     verifiedBy: adminId,
     verifiedAt: new Date(),
   });

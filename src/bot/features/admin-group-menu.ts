@@ -64,7 +64,9 @@ export const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu")
 feature.use(adminGroupUserMenu);
 async function updateMe(ctx: Context) {
   const user = await getUserForTopic(ctx);
-  if (user !== undefined) await editMessageTextSafe(ctx, formatAboutMe(user));
+  if (user !== undefined) {
+    await editMessageTextSafe(ctx, await formatAboutMe(user));
+  }
 }
 
 const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")

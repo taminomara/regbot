@@ -4,10 +4,14 @@ import { Composer, Filter, GrammyError } from "grammy";
 import {
   User,
   UserLite,
+  UserStatus,
+  banUser as banUserDb,
   getUserByAdminGroupTopic,
+  getUserLite,
   getUserLiteByAdminGroupTopic,
   getUserOrFail,
   setUserAdminGroupTopicId,
+  unbanUser as unbanUserDb,
 } from "#root/backend/user.js";
 import type { Context, Conversation } from "#root/bot/context.js";
 import {
@@ -20,6 +24,7 @@ import {
 } from "#root/bot/features/edit-cache.js";
 import { isAdmin } from "#root/bot/filters/index.js";
 import { maybeExternal } from "#root/bot/helpers/conversations.js";
+import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
@@ -52,7 +57,7 @@ export async function ensureHasAdminGroupTopic(
     setUserAdminGroupTopicId(user.id, topic.message_thread_id),
   );
 
-  await ctx.api.sendMessage(config.ADMIN_GROUP, formatAboutMe(user), {
+  await ctx.api.sendMessage(config.ADMIN_GROUP, await formatAboutMe(user), {
     message_thread_id: topic.message_thread_id,
     reply_markup: adminGroupUserMenu,
   });
@@ -75,11 +80,7 @@ export async function updateAdminGroupTopicTitle(ctx: Context, user: UserLite) {
       name: formatTopicName(user),
     });
   } catch (error) {
-    if (
-      error instanceof GrammyError &&
-      error.error_code === 400 &&
-      error.description.includes("TOPIC_NOT_MODIFIED")
-    ) {
+    if (error instanceof GrammyError && error.error_code === 400) {
       if (error.description.includes("TOPIC_NOT_MODIFIED")) {
         ctx.logger.debug("ignored TOPIC_NOT_MODIFIED error");
       } else {
@@ -144,7 +145,25 @@ export async function sendMessageToAdminGroupTopic(
   });
 }
 
-export function formatAboutMe(user: User) {
+export async function formatAboutMe(user: User) {
+  let details = "";
+  if (user.status === UserStatus.Rejected && user.verifiedBy !== null) {
+    const admin = await getUserLite(user.verifiedBy);
+    details = i18n.t(config.DEFAULT_LOCALE, "admin_group.rejection_details", {
+      id: String(admin.id),
+      name: sanitizeHtmlOrEmpty(admin.name),
+      date: toFluentDateTime(user.verifiedAt ?? new Date(0)),
+    });
+  } else if (user.status === UserStatus.Banned && user.verifiedBy !== null) {
+    const admin = await getUserLite(user.verifiedBy);
+    details = i18n.t(config.DEFAULT_LOCALE, "admin_group.ban_details", {
+      id: String(admin.id),
+      name: sanitizeHtmlOrEmpty(admin.name),
+      date: toFluentDateTime(user.verifiedAt ?? new Date(0)),
+      reason: sanitizeHtmlOrEmpty(user.banReason),
+    });
+  }
+
   return [
     i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_header", {
       id: String(user.id),
@@ -158,6 +177,7 @@ export function formatAboutMe(user: User) {
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
       status: user.status,
       username: sanitizeHtmlOrEmpty(user.username),
+      details,
     }),
   ].join("\n\n");
 }
@@ -182,6 +202,100 @@ export async function getUserForTopic(ctx: Context) {
   return (await getUserByAdminGroupTopic(threadId)) ?? undefined;
 }
 
+export async function banUser(ctx: Context, user: UserLite, banReason: string) {
+  if (user.status === UserStatus.Banned) return;
+
+  const bannedUser = await banUserDb(user.id, ctx.user.id, banReason);
+
+  await sendMessageToAdminGroupTopic(
+    ctx,
+    bannedUser.adminGroupTopic,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.admin_message_banned", {
+      adminId: String(ctx.user.id),
+      adminName: sanitizeHtmlOrEmpty(ctx.user.name),
+      date: toFluentDateTime(bannedUser.bannedAt ?? new Date(0)),
+      reason: banReason,
+    }),
+  );
+
+  try {
+    for (const chatId of [
+      config.MEMBERS_GROUP,
+      config.ADMIN_GROUP,
+      config.CHANNEL,
+    ]) {
+      const channelMember = await ctx.api.getChatMember(chatId, bannedUser.id);
+      if (
+        channelMember.status === "administrator" &&
+        !channelMember.can_be_edited
+      ) {
+        await sendMessageToAdminGroupTopic(
+          ctx,
+          bannedUser.adminGroupTopic,
+          i18n.t(config.DEFAULT_LOCALE, "admin_group.banning_privileged_user", {
+            chat: {
+              [config.MEMBERS_GROUP]: "MEMBERS_GROUP",
+              [config.ADMIN_GROUP]: "ADMIN_GROUP",
+              [config.CHANNEL]: "CHANNEL",
+            }[chatId],
+          }),
+        );
+        continue;
+      } else if (channelMember.status === "administrator") {
+        await ctx.api.promoteChatMember(chatId, bannedUser.id, {
+          is_anonymous: false,
+          can_manage_chat: false,
+          can_delete_messages: false,
+          can_manage_video_chats: false,
+          can_restrict_members: false,
+          can_promote_members: false,
+          can_change_info: false,
+          can_invite_users: false,
+          can_post_stories: false,
+          can_edit_stories: false,
+          can_delete_stories: false,
+          can_post_messages: false,
+          can_edit_messages: false,
+          can_pin_messages: false,
+          can_manage_topics: false,
+        });
+      }
+      if (chatId !== config.CHANNEL) {
+        await ctx.api.banChatMember(chatId, bannedUser.id);
+      }
+    }
+  } catch (error) {
+    ctx.logger.error(error);
+  }
+}
+
+export async function unbanUser(ctx: Context, user: UserLite) {
+  if (user.status !== UserStatus.Banned) return;
+
+  const unbannedUser = await unbanUserDb(user.id, ctx.user.id);
+
+  for (const chatId of [
+    config.MEMBERS_GROUP,
+    config.ADMIN_GROUP,
+    config.CHANNEL,
+  ]) {
+    const channelMember = await ctx.api.getChatMember(chatId, unbannedUser.id);
+    if (channelMember.status === "kicked") {
+      await ctx.api.unbanChatMember(chatId, unbannedUser.id);
+    }
+  }
+
+  await sendMessageToAdminGroupTopic(
+    ctx,
+    unbannedUser.adminGroupTopic,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.admin_message_unbanned", {
+      adminId: String(ctx.user.id),
+      adminName: sanitizeHtmlOrEmpty(ctx.user.name),
+      date: toFluentDateTime(unbannedUser.verifiedAt ?? new Date(0)),
+    }),
+  );
+}
+
 const feature = composer
   .filter(isAdmin)
   .filter((ctx) => ctx.chatId === config.ADMIN_GROUP);
@@ -189,10 +303,27 @@ const feature = composer
 feature.command("about", logHandle("admin-about"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user !== undefined) {
-    await ctx.api.sendMessage(config.ADMIN_GROUP, formatAboutMe(user), {
+    await ctx.api.sendMessage(config.ADMIN_GROUP, await formatAboutMe(user), {
       message_thread_id: ctx.msg?.message_thread_id,
       reply_markup: adminGroupUserMenu,
     });
+  }
+});
+
+feature.command("ban", logHandle("admin-ban"), async (ctx) => {
+  const user = await getUserForTopic(ctx);
+  if (user !== undefined) {
+    const reason =
+      /\/ban(?:@[a-zA-Z0-9_]*)?\s*(?<reason>.*)/u.exec(ctx.msg.text)?.groups
+        ?.reason ?? "";
+    await banUser(ctx, user, reason);
+  }
+});
+
+feature.command("unban", logHandle("admin-unban"), async (ctx) => {
+  const user = await getUserForTopic(ctx);
+  if (user !== undefined) {
+    await unbanUser(ctx, user);
   }
 });
 
