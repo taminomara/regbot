@@ -144,6 +144,30 @@ admin_group =
              [Banned]               ⛔ пользователь забанен.
         }</b>
 
+        {$details}
+
+    .rejection_details =
+        Собеседовал админ <a href="tg://user?id={$id}">{$name}</a> {$date}
+
+    .ban_details =
+        Забанил админ <a href="tg://user?id={$id}">{$name}</a> {$date}
+
+        {$reason}
+
+    .admin_message_banned =
+        ⛔ Пользователь забанен админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+
+        {$reason}
+
+    .banning_privileged_user = ⚠️ Пользователь является админом {$chat ->
+        *[MEMBERS_GROUP] чата квирных квартирников
+        [ADMIN_GROUP] группы собеседований
+        [CHANNEL] канала с анонсами
+    }, бот не имеет достаточно прав для разжалования.
+
+    .admin_message_unbanned =
+        ✅ Пользователь разбанен админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+
 menu =
     .about =
         Имя: <b>{$name}</b>

@@ -40,6 +40,15 @@ export class User {
   bannedAt: Date | null = null;
 
   @Property()
+  banReason: string | null = null;
+
+  @Property()
+  canManageEvents: boolean = false;
+
+  @Property()
+  canManageInterviews: boolean = false;
+
+  @Property()
   name: string | null = null;
 
   @Property()
