@@ -322,8 +322,10 @@ async function sendConfirmation(
             name: sanitizeHtmlOrEmpty(event.name),
             date: toFluentDateTime(event.date),
             price: sanitizeHtmlOrEmpty(event.price),
-            iban: sanitizeHtmlOrEmpty(config.PAYMENT_IBAN),
-            recipient: sanitizeHtmlOrEmpty(config.PAYMENT_RECIPIENT),
+            iban: sanitizeHtmlOrEmpty(event.iban ?? config.PAYMENT_IBAN),
+            recipient: sanitizeHtmlOrEmpty(
+              event.recipient ?? config.PAYMENT_RECIPIENT,
+            ),
           },
         ),
         {

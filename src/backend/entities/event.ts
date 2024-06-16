@@ -36,6 +36,9 @@ export class Event {
   announcePhotoId: string | null = null;
 
   @Property()
+  reminderTextHtml: string | null = null;
+
+  @Property()
   published: boolean = false;
 
   @Property()
@@ -51,19 +54,25 @@ export class Event {
   requireApproval: boolean = false;
 
   @Property()
-  requirePayment: boolean = false;
-
-  @Property()
-  reminderSent: boolean = false;
+  payment: EventPayment = EventPayment.Donation;
 
   @Property()
   price: string | null = null;
+
+  @Property()
+  iban: string | null = null;
+
+  @Property()
+  recipient: string | null = null;
 
   @Property({ type: "json" }) // TODO: make lazy
   participationOptions: string[] | null = null;
 
   @OneToMany("EventSignup", "event", { orphanRemoval: true })
   signups = new Collection<EventSignup>(this);
+
+  @Property()
+  reminderSent: boolean = false;
 }
 
 export enum SignupStatus {
@@ -71,6 +80,12 @@ export enum SignupStatus {
   PendingPayment = "PendingPayment",
   Approved = "Approved",
   Rejected = "Rejected",
+}
+
+export enum EventPayment {
+  Required = "Required",
+  Donation = "Donation",
+  NotRequired = "NotRequired",
 }
 
 @Entity()

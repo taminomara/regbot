@@ -178,6 +178,7 @@ eventsMenu.register(eventMenu);
 async function updateEventMenu(ctx: Context) {
   const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
+  // TODO: default template?
   await editMessageTextSafe(
     ctx,
     event.announceTextHtml ??

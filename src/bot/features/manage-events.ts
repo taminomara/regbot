@@ -2,6 +2,7 @@ import { Menu } from "@grammyjs/menu";
 import { Composer, Filter, GrammyError } from "grammy";
 import moment from "moment-timezone";
 
+import { EventPayment } from "#root/backend/entities/event.js";
 import {
   Event,
   createEvent as createDbEvent,
@@ -135,34 +136,39 @@ async function editEventPostFromCtx(
 ) {
   const announceText = ctx.msg.text ?? ctx.msg.caption ?? "";
   const announceEntities = ctx.msg.entities ?? ctx.msg.caption_entities ?? [];
-  event.announceTextHtml = parseTelegramEntities(
+  const announceTextHtml = parseTelegramEntities(
     announceText,
     announceEntities,
   );
+  let announcePhotoId: string | null = null;
   if (!event.published || event.announcePhotoId !== null) {
-    event.announcePhotoId =
+    announcePhotoId =
       ctx.msg?.photo?.reduce((a, b) => (a.width > b.width ? a : b))?.file_id ??
       event.announcePhotoId;
   }
 
-  await maybeExternal(conversation, async () => updateEvent(event.id, event));
+  await maybeExternal(conversation, async () => updateEvent(event.id, {
+    announceTextHtml,
+    announcePhotoId,
+  }));
 
   if (
     event.channelPostId !== null &&
     event.channelPostId !== ctx.msg?.message_id
   ) {
     try {
-      if (event.announcePhotoId) {
+      // TODO: safe edit
+      if (announcePhotoId) {
         await ctx.api.editMessageMedia(config.CHANNEL, event.channelPostId, {
           type: "photo",
-          media: event.announcePhotoId,
-          caption: event.announceTextHtml,
+          media: announcePhotoId,
+          caption: announceTextHtml,
         });
       } else {
         await ctx.api.editMessageText(
           config.CHANNEL,
           event.channelPostId,
-          event.announceTextHtml,
+          announceTextHtml,
           {
             link_preview_options: { is_disabled: true },
           },
@@ -222,12 +228,15 @@ async function switchConfirmation(ctx: Context) {
   }
 }
 
-async function switchPayment(ctx: Context) {
+async function switchEventPayment(ctx: Context, payment: EventPayment) {
   const event = await getEventForEditFromMatch(null, ctx);
   if (event !== undefined) {
-    await updateEvent(event.id, { requirePayment: !event.requirePayment });
+    await updateEvent(event.id, { payment });
     ctx.menu.update();
-    if (event.price === null) {
+    if (
+      event.price === null &&
+      [EventPayment.Required, EventPayment.Donation].includes(payment)
+    ) {
       await enterEditEventPrice(ctx);
     }
   }
@@ -374,9 +383,7 @@ async function createEvent(conversation: Conversation, ctx: Context) {
     }),
   );
 
-  await editEventPrice(conversation, ctx, event);
   await editEventPost(conversation, ctx, event);
-  await editEventOptions(conversation, ctx, event);
 }
 feature.use(createConversation(createEvent));
 
@@ -447,24 +454,6 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
     if (event === undefined) return;
 
     range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.confirmation", {
-          required: event.requireApproval ? "yes" : "no",
-        }),
-      ),
-      switchConfirmation,
-    );
-    range.row();
-    range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.payment", {
-          required: event.requirePayment ? "yes" : "no",
-        }),
-      ),
-      switchPayment,
-    );
-    range.row();
-    range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_name")),
       enterEditEventName,
     );
@@ -485,14 +474,29 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
       );
     }
     range.text(
-      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_price")),
-      enterEditEventPrice,
-    );
-    range.row();
-    range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_options")),
       enterEditEventOptions,
     );
+    range.row();
+    range.text(
+      withPayload(
+        i18n.t(config.DEFAULT_LOCALE, "manage_events.confirmation", {
+          required: event.requireApproval ? "yes" : "no",
+        }),
+      ),
+      switchConfirmation,
+    );
+    range.row();
+    range.submenu(
+      withPayload(
+        i18n.t(config.DEFAULT_LOCALE, "manage_events.manage_event_price", {
+          payment: event.payment,
+        }),
+      ),
+      "manageEventPriceMenu",
+      updateManageEventPriceMenu,
+    );
+    range.row();
 
     if (event.published) {
       range.text(
@@ -549,23 +553,82 @@ async function updateManageEventMenu(ctx: Context) {
   const event = await getEventFromMatch(null, ctx);
   if (event === undefined) return;
 
-  await editMessageTextSafe(
-    ctx,
-    i18n.t(config.DEFAULT_LOCALE, "manage_events.event", {
-      name: sanitizeHtmlOrEmpty(event.name),
-      date: toFluentDateTime(event.date),
-      price: sanitizeHtmlOrEmpty(event.price),
-      options: (event.participationOptions ?? [])
-        .map(sanitizeHtmlOrEmpty)
-        .join("; "),
-      text: event.announceTextHtml ?? "&lt;empty&gt;",
-      botUsername: ctx.me.username,
-      eventId: String(event.id),
-    }),
-    {
-      link_preview_options: { is_disabled: true },
-    },
+  let eventDescription = i18n.t(config.DEFAULT_LOCALE, "manage_events.event", {
+    id: String(event.id),
+    botUsername: ctx.me.username,
+    name: sanitizeHtmlOrEmpty(event.name),
+    date: toFluentDateTime(event.date),
+    options: (event.participationOptions ?? [undefined])
+      .map(sanitizeHtmlOrEmpty)
+      .join("; "),
+    payment: event.payment,
+    price: sanitizeHtmlOrEmpty(event.price),
+  });
+
+  if (event.announceTextHtml !== null) {
+    eventDescription += `\n\n${i18n.t(
+      config.DEFAULT_LOCALE,
+      "manage_events.eventText",
+    )}\n\n<blockquote expandable>${event.announceTextHtml}</blockquote>`;
+  }
+  if (event.reminderTextHtml !== null) {
+    eventDescription += `\n\n${i18n.t(
+      config.DEFAULT_LOCALE,
+      "manage_events.eventReminder",
+    )}\n\n<blockquote expandable>${event.reminderTextHtml}</blockquote>`;
+  }
+
+  await editMessageTextSafe(ctx, eventDescription, {
+    link_preview_options: { is_disabled: true },
+  });
+}
+
+export const manageEventPriceMenu = new Menu<Context>("manageEventPriceMenu")
+  .dynamic(async (ctx, range) => {
+    const event = await getEventFromMatch(null, ctx);
+    if (event === undefined) return;
+
+    range.text(
+      withPayload(
+        i18n.t(config.DEFAULT_LOCALE, "manage_events.required_payment", {
+          requirePayment:
+            event.payment === EventPayment.Required ? "yes" : "no",
+        }),
+      ),
+      async (ctx) => switchEventPayment(ctx, EventPayment.Required),
+    );
+    range.row();
+    range.text(
+      withPayload(
+        i18n.t(config.DEFAULT_LOCALE, "manage_events.required_donation", {
+          requireDonation:
+            event.payment === EventPayment.Donation ? "yes" : "no",
+        }),
+      ),
+      async (ctx) => switchEventPayment(ctx, EventPayment.Donation),
+    );
+    range.row();
+    range.text(
+      withPayload(
+        i18n.t(config.DEFAULT_LOCALE, "manage_events.payment_not_required", {
+          paymentNotRequired:
+            event.payment === EventPayment.NotRequired ? "yes" : "no",
+        }),
+      ),
+      async (ctx) => switchEventPayment(ctx, EventPayment.NotRequired),
+    );
+    range.row();
+    // TODO edit price
+  })
+  .back(
+    withPayload(() =>
+      i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_no"),
+    ),
+    updateManageEventMenu,
   );
+manageEventMenu.register(manageEventPriceMenu);
+async function updateManageEventPriceMenu(ctx: Context) {
+  await updateManageEventMenu(ctx);
 }
 
 export const publishEventMenu = new Menu<Context>("publishEventMenu")

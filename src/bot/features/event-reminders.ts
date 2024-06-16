@@ -1,6 +1,7 @@
 import { createCallbackData } from "callback-data";
 import { Bot, Composer, InlineKeyboard } from "grammy";
 
+import { EventPayment } from "#root/backend/entities/event.js";
 import {
   Event,
   PopulatedEventSignup,
@@ -149,6 +150,39 @@ class BackgroundProcess {
   private async sendSignupReminder(signup: PopulatedEventSignup) {
     await delay(1000 + Math.random() * 5000);
     try {
+      let more = signup.event.reminderTextHtml ?? "";
+      if (signup.event.payment === EventPayment.Donation) {
+        if (more.length > 0) more += "\n\n";
+        if (signup.event.price !== null) {
+          more += i18n.t(
+            signup.user.locale ?? config.DEFAULT_LOCALE,
+            "event_reminders.payment_details_with_price",
+            {
+              price: sanitizeHtmlOrEmpty(signup.event.price),
+              iban: sanitizeHtmlOrEmpty(
+                signup.event.iban ?? config.PAYMENT_IBAN,
+              ),
+              recipient: sanitizeHtmlOrEmpty(
+                signup.event.recipient ?? config.PAYMENT_RECIPIENT,
+              ),
+            },
+          );
+        } else {
+          more += i18n.t(
+            signup.user.locale ?? config.DEFAULT_LOCALE,
+            "event_reminders.payment_details",
+            {
+              iban: sanitizeHtmlOrEmpty(
+                signup.event.iban ?? config.PAYMENT_IBAN,
+              ),
+              recipient: sanitizeHtmlOrEmpty(
+                signup.event.recipient ?? config.PAYMENT_RECIPIENT,
+              ),
+            },
+          );
+        }
+      }
+
       await this.bot.api.sendMessage(
         signup.user.id,
         i18n.t(
@@ -158,6 +192,7 @@ class BackgroundProcess {
             eventId: String(signup.event.id),
             name: sanitizeHtmlOrEmpty(signup.event.name),
             date: toFluentDateTime(signup.event.date),
+            more,
           },
         ),
         {
@@ -165,6 +200,7 @@ class BackgroundProcess {
             signup.event.id,
             signup.user.locale ?? config.DEFAULT_LOCALE,
           ),
+          protect_content: true,
         },
       );
     } catch (error) {
