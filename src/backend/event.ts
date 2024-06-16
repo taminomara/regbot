@@ -4,6 +4,7 @@ import moment from "moment-timezone";
 import { orm } from "#root/backend/data-source.js";
 import {
   Event as EventObject,
+  EventPayment,
   EventSignup as EventSignupObject,
   SignupStatus,
 } from "#root/backend/entities/event.js";
@@ -61,7 +62,7 @@ export async function signupForEvent(
   signup.approvedAt = null;
   if (event.requireApproval) {
     signup.status = SignupStatus.PendingApproval;
-  } else if (event.requirePayment) {
+  } else if (event.payment === EventPayment.Required) {
     signup.status = SignupStatus.PendingPayment;
   } else {
     signup.status = SignupStatus.Approved;
@@ -94,7 +95,8 @@ export async function withdrawSignup(
         return { requireRefund: false, withdrawPerformed: false };
       }
       const requireRefund =
-        event.requirePayment && signup.status === SignupStatus.Approved;
+        event.payment === EventPayment.Required &&
+        signup.status === SignupStatus.Approved;
       orm.em.remove(signup);
       return { requireRefund, withdrawPerformed: true };
     } else {
@@ -170,9 +172,10 @@ async function doConfirmSignup(
     }
 
     if (signup.status === SignupStatus.PendingApproval) {
-      signup.status = event.requirePayment
-        ? SignupStatus.PendingPayment
-        : SignupStatus.Approved;
+      signup.status =
+        event.payment === EventPayment.Required
+          ? SignupStatus.PendingPayment
+          : SignupStatus.Approved;
     } else {
       signup.status = SignupStatus.Approved;
     }
@@ -221,7 +224,8 @@ export async function rejectSignup(
     }
 
     const requireRefund =
-      event.requirePayment && signup.status === SignupStatus.Approved;
+      event.payment === EventPayment.Required &&
+      signup.status === SignupStatus.Approved;
 
     signup.status = SignupStatus.Rejected;
     signup.approvedBy = adminId;
