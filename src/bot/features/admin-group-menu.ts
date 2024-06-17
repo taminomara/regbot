@@ -6,8 +6,10 @@ import { isAdmin } from "grammy-guard";
 import { UserStatus } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import {
+  banUser,
   formatAboutMe,
   getUserForTopic,
+  unbanUser,
 } from "#root/bot/features/admin-group.js";
 import {
   enterEditGender,
@@ -22,6 +24,7 @@ import {
 } from "#root/bot/features/event-signup.js";
 import { approve, reject } from "#root/bot/features/interview.js";
 import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
+import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
@@ -30,11 +33,14 @@ export const composer = new Composer<Context>();
 const feature = composer.filter(isAdmin);
 
 export const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu")
-  .text(() => i18n.t(config.DEFAULT_LOCALE, "menu.update"), updateMe)
+  .text(
+    () => i18n.t(config.DEFAULT_LOCALE, "menu.update"),
+    updateAdminGroupUserMenu,
+  )
   .submenu(
     () => i18n.t(config.DEFAULT_LOCALE, "menu.edit"),
     "adminGroupEditUserMenu",
-    updateEdit,
+    updateAdminGroupEditUserMenu,
   )
   .row()
   .dynamic(async (ctx, range) => {
@@ -44,25 +50,39 @@ export const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu")
     if (ctx.chat?.id !== config.ADMIN_GROUP) return;
 
     const user = await getUserForTopic(ctx);
-    if (user?.status === UserStatus.PendingApproval) {
+    if (user === undefined) return;
+
+    if (user.status === UserStatus.PendingApproval) {
       range.text(
         i18n.t(config.DEFAULT_LOCALE, "admin_group.reject"),
         async (ctx) => {
           await reject(ctx);
-          await updateMe(ctx);
+          await updateAdminGroupUserMenu(ctx);
         },
       );
       range.text(
         i18n.t(config.DEFAULT_LOCALE, "admin_group.approve"),
         async (ctx) => {
           await approve(ctx);
-          await updateMe(ctx);
+          await updateAdminGroupUserMenu(ctx);
         },
+      );
+    } else if (user.status === UserStatus.Approved) {
+      range.submenu(
+        i18n.t(config.DEFAULT_LOCALE, "admin_group.ban"),
+        "adminGroupBanUserMenu",
+        updateAdminGroupBanUserMenu,
+      );
+    } else if (user.status === UserStatus.Banned) {
+      range.submenu(
+        i18n.t(config.DEFAULT_LOCALE, "admin_group.unban"),
+        "adminGroupUnbanUserMenu",
+        updateAdminGroupUnbanUserMenu,
       );
     }
   });
 feature.use(adminGroupUserMenu);
-async function updateMe(ctx: Context) {
+async function updateAdminGroupUserMenu(ctx: Context) {
   const user = await getUserForTopic(ctx);
   if (user !== undefined) {
     await editMessageTextSafe(ctx, await formatAboutMe(user));
@@ -85,12 +105,73 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")
     enterEditSexuality,
   )
   .row()
-  .back(() => i18n.t(config.DEFAULT_LOCALE, "menu.back"), updateMe);
+  .back(
+    () => i18n.t(config.DEFAULT_LOCALE, "menu.back"),
+    updateAdminGroupUserMenu,
+  );
 adminGroupUserMenu.register(adminGroupEditUserMenu);
-async function updateEdit(ctx: Context) {
+async function updateAdminGroupEditUserMenu(ctx: Context) {
   await editMessageTextSafe(
     ctx,
     i18n.t(config.DEFAULT_LOCALE, "menu.edit_prompt"),
+  );
+}
+
+const adminGroupBanUserMenu = new Menu<Context>("adminGroupBanUserMenu")
+  .back(
+    () => i18n.t(config.DEFAULT_LOCALE, "menu.back"),
+    updateAdminGroupUserMenu,
+  )
+  .back(
+    () => i18n.t(config.DEFAULT_LOCALE, "admin_group.ban"),
+    async (ctx) => {
+      const user = await getUserForTopic(ctx);
+      if (user === undefined) return;
+
+      await banUser(ctx, user, "");
+      await updateAdminGroupUserMenu(ctx);
+    },
+  );
+adminGroupUserMenu.register(adminGroupBanUserMenu);
+async function updateAdminGroupBanUserMenu(ctx: Context) {
+  const user = await getUserForTopic(ctx);
+  if (user === undefined) return;
+
+  await editMessageTextSafe(
+    ctx,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.ban_prompt", {
+      id: String(user.id),
+      name: sanitizeHtmlOrEmpty(user.name),
+    }),
+  );
+}
+
+const adminGroupUnbanUserMenu = new Menu<Context>("adminGroupUnbanUserMenu")
+  .back(
+    () => i18n.t(config.DEFAULT_LOCALE, "menu.back"),
+    updateAdminGroupUserMenu,
+  )
+  .back(
+    () => i18n.t(config.DEFAULT_LOCALE, "admin_group.unban"),
+    async (ctx) => {
+      const user = await getUserForTopic(ctx);
+      if (user === undefined) return;
+
+      await unbanUser(ctx, user);
+      await updateAdminGroupUserMenu(ctx);
+    },
+  );
+adminGroupUserMenu.register(adminGroupUnbanUserMenu);
+async function updateAdminGroupUnbanUserMenu(ctx: Context) {
+  const user = await getUserForTopic(ctx);
+  if (user === undefined) return;
+
+  await editMessageTextSafe(
+    ctx,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.unban_prompt", {
+      id: String(user.id),
+      name: sanitizeHtmlOrEmpty(user.name),
+    }),
   );
 }
 
