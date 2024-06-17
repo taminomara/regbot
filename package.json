@@ -6,14 +6,14 @@
     "#root/*": "./build/src/*"
   },
   "scripts": {
-    "build": "tsc && NODE_ENV=development npx mikro-orm cache:generate --combined && cp temp/metadata.json build/metadata.json",
-    "clean": "rm -rf build node_modules temp",
+    "build": "node scripts/compile-locales.js > src/_messages.gen.ts && tsc && NODE_ENV=development npx mikro-orm cache:generate --combined && cp temp/metadata.json build/metadata.json",
+    "clean": "rm -rf build node_modules temp src/_messages.gen.js",
     "dev": "tsc-watch --onSuccess \"tsx ./src/main.ts\"",
     "format": "eslint . --fix",
     "lint": "eslint .",
     "make-migrations": "tsc && npx mikro-orm migration:create",
     "migrate": "tsc && npx mikro-orm migration:up",
-    "prepare": "husky || true",
+    "prepare": "(husky || true) && node scripts/compile-locales.js > src/_messages.gen.ts",
     "start": "tsc && tsx ./src/main.ts",
     "start:prod": "node ./build/src/main.js"
   },
@@ -46,6 +46,7 @@
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@fluent/syntax": "^0.19.0",
     "@mikro-orm/cli": "^6.2.7",
     "@mikro-orm/reflection": "^6.2.7",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",

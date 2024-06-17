@@ -129,6 +129,7 @@ dist
 data/
 temp/
 src/backend/migrations/.snapshot-*.json
+src/_messages.gen.ts
 
 # IDE
 .vscode/

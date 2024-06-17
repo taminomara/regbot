@@ -4,11 +4,11 @@ import {
   Conversation as DefaultConversation,
 } from "@grammyjs/conversations";
 import { HydrateFlavor } from "@grammyjs/hydrate";
-import { I18nFlavor } from "@grammyjs/i18n";
 import { MenuFlavor } from "@grammyjs/menu";
 import { ParseModeFlavor } from "@grammyjs/parse-mode";
 import { Context as DefaultContext, SessionFlavor } from "grammy";
 
+import { I18nFlavor } from "#root/_messages.gen.js";
 import { UserLite } from "#root/backend/user.js";
 import { Logger } from "#root/logger.js";
 
