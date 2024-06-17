@@ -103,7 +103,7 @@ interview =
 
     .admin_message_approved =
         ✅ Пользователь верифицирован админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
-    .user_message_approved =
+    .message_approved =
         ✅ <b>Добро пожаловать на квирные квартирники!</b>
 
         Вы можете присоединиться к <a href="{$chatLink}">нашему чату</a>.
@@ -111,7 +111,7 @@ interview =
 
     .admin_message_rejected =
         ❌ Пользователь отклонён админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
-    .user_message_rejected =
+    .message_rejected =
         ❌ <b>К сожалению, ваша заявка была отклонена.</b>
 
         Спасибо за вашу заявку и интерес к нашему мероприятию. Мы очень ценим это.
@@ -123,14 +123,7 @@ admin_group =
     .topic_name = {$name} (@{$username})
     .topic_header =
         <b>Диалог с пользователем <a href="tg://user?id={$id}">{$name}</a> (@{$username})</b>
-    .message_question =
-        ↩️ <b>Interview question</b>
-
-        {$question}
-    .interview_finished = ℹ️ <b>Собеседование закончено, пользователь ждёт решения.</b>
-    .approve = ✅ Подтвердить
-    .reject = ❌ Отказать
-    .about =
+    .topic_body =
         Имя: <b>{$name}</b>
         Местоимения: <b>{$pronouns}</b>
         Гендерная идентичность: <b>{$gender}</b>
@@ -145,14 +138,28 @@ admin_group =
         }</b>
 
         {$details}
-
     .rejection_details =
         Собеседовал админ <a href="tg://user?id={$id}">{$name}</a> {$date}
-
     .ban_details =
         Забанил админ <a href="tg://user?id={$id}">{$name}</a> {$date}
 
         {$reason}
+
+    .message_interview_question =
+        ↩️ <b>Interview question</b>
+
+        {$question}
+    .message_interview_finished =
+        ℹ️ <b>Собеседование закончено, пользователь ждёт решения.</b>
+
+
+    .approve = ✅ Подтвердить
+    .message_interview_approved =
+        ✅ Пользователь верифицирован админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+
+    .reject = ❌ Отказать
+    .message_interview_rejected =
+        ❌ Пользователь отклонён админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
 
     .ban = ⛔ Забанить
     .ban_prompt =
@@ -161,6 +168,15 @@ admin_group =
         Пользователь будет удалён из чатов, регистрации пользователя на будущие события будут отозваны.
 
         Пользователь не получит сообщения о бане. Прокомуницируйте причину бана через этот чат самостоятельно!
+    .message_banned =
+        ⛔ Пользователь забанен админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+
+        {$reason}
+    .message_banned_privileged_user = ⚠️ Пользователь является админом {$chat ->
+        *[MEMBERS_GROUP] чата квирных квартирников
+        [ADMIN_GROUP] группы собеседований
+        [CHANNEL] канала с анонсами
+    }, бот не имеет достаточно прав для разжалования.
 
     .unban = ⚠️ Разбанить
     .unban_prompt =
@@ -170,19 +186,9 @@ admin_group =
 
         Пользователь не получит сообщения о разбане и свежую ссылку на чат участников. Прокомуницируйте разбан через этот чат самостоятельно!
 
-    .admin_message_banned =
-        ⛔ Пользователь забанен админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
-
-        {$reason}
-
-    .banning_privileged_user = ⚠️ Пользователь является админом {$chat ->
-        *[MEMBERS_GROUP] чата квирных квартирников
-        [ADMIN_GROUP] группы собеседований
-        [CHANNEL] канала с анонсами
-    }, бот не имеет достаточно прав для разжалования.
-
-    .admin_message_unbanned =
+    .message_unbanned =
         ✅ Пользователь разбанен админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+
 
 menu =
     .about =

@@ -131,3 +131,78 @@ export async function maybeExternal<T>(
     return conversation.external(closure);
   }
 }
+
+/**
+ * Find the latest context available in the given conversation,
+ * or return the current context if conversation is not passed.
+ *
+ * This function can be used instead of saving every context after every call
+ * to `conversation.wait...`:
+ *
+ * ```ts
+ * function conv(conversation, ctx) {
+ *   let lastCtx = ctx;
+ *   lastCtx = await conversation.waitFor(...);
+ *   lastCtx = await conversation.waitFor(...);
+ *   lastCtx = await conversation.waitFor(...);
+ *   // use lastCtx here...
+ * }
+ * ```
+ *
+ * This is equivalent to:
+ *
+ * ```ts
+ * function conv(conversation, ctx) {
+ *   await conversation.waitFor(...);
+ *   await conversation.waitFor(...);
+ *   await conversation.waitFor(...);
+ *   const lastCtx = await extractLatestContext(conversation, ctx);
+ *   // use lastCtx here...
+ * }
+ * ```
+ */
+export async function extractLatestContext(
+  conversation: Conversation | null,
+  ctx: Context,
+): Promise<Context> {
+  if (conversation === null) {
+    return ctx;
+  }
+
+  let currentCtx = ctx;
+  await conversation.run(async (ctx, next) => {
+    currentCtx = ctx;
+    return next();
+  });
+
+  return currentCtx;
+}
+
+/**
+ * Run a callback with patched context.
+ *
+ * This function retrieves the latest context from a conversation
+ * (see `extractLatestContext`), patches its match and locale,
+ * and runs a callback with it. After execution, it un-patches the context.
+ */
+export async function patchCtx(
+  conversation: Conversation | null,
+  ctx: Context,
+  options: {
+    match?: string | number;
+    locale?: string;
+  },
+  callback: (ctx: Context) => void | Promise<void>,
+) {
+  const lastCtx = await extractLatestContext(conversation, ctx);
+  const lastMatch = lastCtx.match;
+  const lastLocale = await lastCtx.i18n.getLocale();
+  try {
+    if (options.match) lastCtx.match = String(options.match);
+    if (options.locale) await lastCtx.i18n.setLocale(options.locale);
+    await callback(lastCtx);
+  } finally {
+    if (options.match) lastCtx.match = lastMatch;
+    if (options.locale) await lastCtx.i18n.setLocale(lastLocale);
+  }
+}

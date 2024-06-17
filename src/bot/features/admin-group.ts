@@ -15,8 +15,8 @@ import {
 } from "#root/backend/user.js";
 import type { Context, Conversation } from "#root/bot/context.js";
 import {
-  adminGroupUserMenu,
   adminPostInterviewMenu,
+  sendAdminGroupUserMenu,
 } from "#root/bot/features/admin-group-menu.js";
 import {
   copyMessageTo,
@@ -48,6 +48,11 @@ export async function ensureHasAdminGroupTopic(
     getUserOrFail(userLite.id),
   );
 
+  // Account for changes made in DB but not propagated to `ctx.user`.
+  if (user.adminGroupTopic !== null) {
+    return user.adminGroupTopic;
+  }
+
   const topic = await ctx.api.createForumTopic(
     config.ADMIN_GROUP,
     formatTopicName(user),
@@ -57,10 +62,7 @@ export async function ensureHasAdminGroupTopic(
     setUserAdminGroupTopicId(user.id, topic.message_thread_id),
   );
 
-  await ctx.api.sendMessage(config.ADMIN_GROUP, await formatAboutMe(user), {
-    message_thread_id: topic.message_thread_id,
-    reply_markup: adminGroupUserMenu,
-  });
+  await sendAdminGroupUserMenu(conversation, ctx, user);
 
   return topic.message_thread_id;
 }
@@ -68,16 +70,23 @@ export async function ensureHasAdminGroupTopic(
 /**
  * Update topic name after the user changes their data.
  * Does nothing if there is no topic for this user.
- *
- * @param ctx used to interact with the bot.
- * @param user user for whom the topic needs to be updated.
  */
-export async function updateAdminGroupTopicTitle(ctx: Context, user: UserLite) {
-  if (user.adminGroupTopic === null) return;
+export async function updateAdminGroupTopicTitle(
+  conversation: Conversation | null,
+  ctx: Context,
+  userLite: UserLite,
+) {
+  userLite ??= ctx.user;
+
+  const adminGroupTopic = await ensureHasAdminGroupTopic(
+    conversation,
+    ctx,
+    userLite,
+  );
 
   try {
-    await ctx.api.editForumTopic(config.ADMIN_GROUP, user.adminGroupTopic, {
-      name: formatTopicName(user),
+    await ctx.api.editForumTopic(config.ADMIN_GROUP, adminGroupTopic, {
+      name: formatTopicName(userLite),
     });
   } catch (error) {
     if (error instanceof GrammyError && error.error_code === 400) {
@@ -92,53 +101,65 @@ export async function updateAdminGroupTopicTitle(ctx: Context, user: UserLite) {
   }
 }
 
-/**
- * Send message from a user to the given topic.
- */
 export async function copyMessageToAdminGroupTopic(
   conversation: Conversation | null,
   ctx: Filter<Context, "message">,
-  adminGroupTopic: number | null,
 ) {
-  if (adminGroupTopic === null) return;
+  const adminGroupTopic = await ensureHasAdminGroupTopic(
+    conversation,
+    ctx,
+    ctx.user,
+  );
   await copyMessageTo(conversation, ctx, config.ADMIN_GROUP, {
     message_thread_id: adminGroupTopic,
   });
 }
 
 export async function sendInterviewQuestionToAdminGroupTopic(
+  conversation: Conversation | null,
   ctx: Context,
-  adminGroupTopic: number | null,
+  userLite: UserLite,
   question: string,
 ) {
   await sendMessageToAdminGroupTopic(
+    conversation,
     ctx,
-    adminGroupTopic,
-    i18n.t(config.DEFAULT_LOCALE, "admin_group.message_question", {
+    userLite,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.message_interview_question", {
       question,
     }),
+    {},
   );
 }
+
 export async function sendInterviewFinishNotificationToAdminGroupTopic(
+  conversation: Conversation | null,
   ctx: Context,
-  adminGroupTopic: number | null,
+  userLite: UserLite,
 ) {
   await sendMessageToAdminGroupTopic(
+    conversation,
     ctx,
-    adminGroupTopic,
-    i18n.t(config.DEFAULT_LOCALE, "admin_group.interview_finished"),
+    userLite,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.message_interview_finished"),
     {
       reply_markup: adminPostInterviewMenu,
     },
   );
 }
+
 export async function sendMessageToAdminGroupTopic(
+  conversation: Conversation | null,
   ctx: Context,
-  adminGroupTopic: number | null,
+  userLite: UserLite,
   message: string,
   other?: Other<"sendMessage", "chat_id" | "text" | "message_thread_id">,
 ) {
-  if (adminGroupTopic === null) return;
+  const adminGroupTopic = await ensureHasAdminGroupTopic(
+    conversation,
+    ctx,
+    userLite,
+  );
   await ctx.api.sendMessage(config.ADMIN_GROUP, message, {
     ...other,
     message_thread_id: adminGroupTopic,
@@ -170,7 +191,7 @@ export async function formatAboutMe(user: User) {
       name: sanitizeHtmlOrEmpty(user.name),
       username: sanitizeHtmlOrEmpty(user.username),
     }),
-    i18n.t(config.DEFAULT_LOCALE, "admin_group.about", {
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_body", {
       name: sanitizeHtmlOrEmpty(user.name),
       pronouns: sanitizeHtmlOrEmpty(user.pronouns),
       gender: sanitizeHtmlOrEmpty(user.gender),
@@ -182,10 +203,10 @@ export async function formatAboutMe(user: User) {
   ].join("\n\n");
 }
 
-export function formatTopicName(user: UserLite) {
+export function formatTopicName(userLite: UserLite) {
   return i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_name", {
-    name: user.name ?? "???",
-    username: user.username ?? "???",
+    name: userLite.name ?? "???",
+    username: userLite.username ?? "???",
   });
 }
 
@@ -202,77 +223,94 @@ export async function getUserForTopic(ctx: Context) {
   return (await getUserByAdminGroupTopic(threadId)) ?? undefined;
 }
 
-export async function banUser(ctx: Context, user: UserLite, banReason: string) {
-  if (user.status === UserStatus.Banned) return;
+export async function banUser(
+  conversation: Conversation | null,
+  ctx: Context,
+  userLite: UserLite,
+  banReason: string,
+) {
+  if (userLite.status === UserStatus.Banned) return;
 
-  const bannedUser = await banUserDb(user.id, ctx.user.id, banReason);
+  const bannedUser = await maybeExternal(conversation, async () =>
+    banUserDb(userLite.id, ctx.user.id, banReason),
+  );
 
   await sendMessageToAdminGroupTopic(
+    conversation,
     ctx,
-    bannedUser.adminGroupTopic,
-    i18n.t(config.DEFAULT_LOCALE, "admin_group.admin_message_banned", {
+    bannedUser,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.message_banned", {
       adminId: String(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
       date: toFluentDateTime(bannedUser.bannedAt ?? new Date(0)),
       reason: banReason,
     }),
+    {},
   );
 
-  try {
-    for (const chatId of [
-      config.MEMBERS_GROUP,
-      config.ADMIN_GROUP,
-      config.CHANNEL,
-    ]) {
-      const channelMember = await ctx.api.getChatMember(chatId, bannedUser.id);
-      if (
-        channelMember.status === "administrator" &&
-        !channelMember.can_be_edited
-      ) {
-        await sendMessageToAdminGroupTopic(
-          ctx,
-          bannedUser.adminGroupTopic,
-          i18n.t(config.DEFAULT_LOCALE, "admin_group.banning_privileged_user", {
+  for (const chatId of [
+    config.MEMBERS_GROUP,
+    config.ADMIN_GROUP,
+    config.CHANNEL,
+  ]) {
+    const channelMember = await ctx.api.getChatMember(chatId, bannedUser.id);
+    if (
+      channelMember.status === "administrator" &&
+      !channelMember.can_be_edited
+    ) {
+      await sendMessageToAdminGroupTopic(
+        conversation,
+        ctx,
+        bannedUser,
+        i18n.t(
+          config.DEFAULT_LOCALE,
+          "admin_group.message_banned_privileged_user",
+          {
             chat: {
               [config.MEMBERS_GROUP]: "MEMBERS_GROUP",
               [config.ADMIN_GROUP]: "ADMIN_GROUP",
               [config.CHANNEL]: "CHANNEL",
             }[chatId],
-          }),
-        );
-        continue;
-      } else if (channelMember.status === "administrator") {
-        await ctx.api.promoteChatMember(chatId, bannedUser.id, {
-          is_anonymous: false,
-          can_manage_chat: false,
-          can_delete_messages: false,
-          can_manage_video_chats: false,
-          can_restrict_members: false,
-          can_promote_members: false,
-          can_change_info: false,
-          can_invite_users: false,
-          can_post_stories: false,
-          can_edit_stories: false,
-          can_delete_stories: false,
-          can_post_messages: false,
-          can_edit_messages: false,
-          can_pin_messages: false,
-          can_manage_topics: false,
-        });
-      }
-      if (chatId !== config.CHANNEL) {
-        await ctx.api.banChatMember(chatId, bannedUser.id);
-      }
+          },
+        ),
+        {},
+      );
+      continue;
+    } else if (channelMember.status === "administrator") {
+      await ctx.api.promoteChatMember(chatId, bannedUser.id, {
+        is_anonymous: false,
+        can_manage_chat: false,
+        can_delete_messages: false,
+        can_manage_video_chats: false,
+        can_restrict_members: false,
+        can_promote_members: false,
+        can_change_info: false,
+        can_invite_users: false,
+        can_post_stories: false,
+        can_edit_stories: false,
+        can_delete_stories: false,
+        can_post_messages: false,
+        can_edit_messages: false,
+        can_pin_messages: false,
+        can_manage_topics: false,
+      });
     }
-  } catch (error) {
-    ctx.logger.error(error);
+    if (chatId !== config.CHANNEL) {
+      await ctx.api.banChatMember(chatId, bannedUser.id);
+    }
   }
 }
 
-export async function unbanUser(ctx: Context, user: UserLite) {
-  if (user.status !== UserStatus.Banned) return;
+export async function unbanUser(
+  conversation: Conversation | null,
+  ctx: Context,
+  userLite: UserLite,
+) {
+  if (userLite.status !== UserStatus.Banned) return;
 
-  const unbannedUser = await unbanUserDb(user.id, ctx.user.id);
+  const unbannedUser = await maybeExternal(conversation, async () =>
+    unbanUserDb(userLite.id, ctx.user.id),
+  );
 
   for (const chatId of [
     config.MEMBERS_GROUP,
@@ -286,13 +324,15 @@ export async function unbanUser(ctx: Context, user: UserLite) {
   }
 
   await sendMessageToAdminGroupTopic(
+    conversation,
     ctx,
-    unbannedUser.adminGroupTopic,
-    i18n.t(config.DEFAULT_LOCALE, "admin_group.admin_message_unbanned", {
+    unbannedUser,
+    i18n.t(config.DEFAULT_LOCALE, "admin_group.message_unbanned", {
       adminId: String(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
       date: toFluentDateTime(unbannedUser.verifiedAt ?? new Date(0)),
     }),
+    {},
   );
 }
 
@@ -302,12 +342,9 @@ const feature = composer
 
 feature.command("about", logHandle("admin-about"), async (ctx) => {
   const user = await getUserForTopic(ctx);
-  if (user !== undefined) {
-    await ctx.api.sendMessage(config.ADMIN_GROUP, await formatAboutMe(user), {
-      message_thread_id: ctx.msg?.message_thread_id,
-      reply_markup: adminGroupUserMenu,
-    });
-  }
+  if (user === undefined || user.adminGroupTopic === null) return;
+
+  await sendAdminGroupUserMenu(null, ctx, user);
 });
 
 feature.command("ban", logHandle("admin-ban"), async (ctx) => {
@@ -316,14 +353,14 @@ feature.command("ban", logHandle("admin-ban"), async (ctx) => {
     const reason =
       /\/ban(?:@[a-zA-Z0-9_]*)?\s*(?<reason>.*)/u.exec(ctx.msg.text)?.groups
         ?.reason ?? "";
-    await banUser(ctx, user, reason);
+    await banUser(null, ctx, user, reason);
   }
 });
 
 feature.command("unban", logHandle("admin-unban"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user !== undefined) {
-    await unbanUser(ctx, user);
+    await unbanUser(null, ctx, user);
   }
 });
 

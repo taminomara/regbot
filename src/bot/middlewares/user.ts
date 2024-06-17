@@ -24,7 +24,7 @@ export function user(): Middleware<Context> {
     ) {
       ctx.user.username = ctx.from?.username ?? null;
       await updateUser(ctx.user.id, { username: ctx.user.username });
-      await updateAdminGroupTopicTitle(ctx, ctx.user);
+      await updateAdminGroupTopicTitle(null, ctx, ctx.user);
     }
 
     const locale = await ctx.i18n.getLocale();

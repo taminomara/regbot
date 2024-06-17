@@ -24,7 +24,7 @@ import {
   createConfirmSignupKeyboard,
 } from "#root/bot/features/admin-group-menu.js";
 import { sendMessageToAdminGroupTopic } from "#root/bot/features/admin-group.js";
-import { eventsMenu } from "#root/bot/features/menu.js";
+import { sendEventMenu } from "#root/bot/features/menu.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
 import { maybeExternal } from "#root/bot/helpers/conversations.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
@@ -54,21 +54,11 @@ export async function postInterviewSignup(
   if (event === undefined) return;
 
   if (event.signup === undefined) {
-    // We need to extract the current context from the conversation
-    // and set its match and locale. Otherwise, the menu will not
-    // render correctly.
-    let currentCtx = ctx;
-    if (conversation !== null) {
-      await conversation.run(async (ctx, next) => {
-        currentCtx = ctx;
-        return next();
-      });
-    }
-    currentCtx.match = String(event.id);
-    const prevLocale = await currentCtx.i18n.getLocale();
-    currentCtx.i18n.useLocale(user.locale ?? config.DEFAULT_LOCALE);
-    await currentCtx.api.sendMessage(
+    await sendEventMenu(
+      conversation,
+      ctx,
       user.id,
+      event,
       i18n.t(
         user.locale ?? config.DEFAULT_LOCALE,
         "event_signup.prompt_signup",
@@ -77,11 +67,8 @@ export async function postInterviewSignup(
           date: toFluentDateTime(event.date),
         },
       ),
-      {
-        reply_markup: eventsMenu.at("optionsMenu"),
-      },
+      user.locale ?? config.DEFAULT_LOCALE,
     );
-    currentCtx.i18n.useLocale(prevLocale);
   } else {
     await ctx.api.sendMessage(
       user.id,
@@ -209,8 +196,9 @@ export async function withdrawSignup(
     ),
   );
   await sendMessageToAdminGroupTopic(
+    conversation,
     ctx,
-    user.adminGroupTopic,
+    user,
     i18n.t(
       config.DEFAULT_LOCALE,
       requireRefund
@@ -295,8 +283,9 @@ async function sendConfirmation(
         ),
       );
       await sendMessageToAdminGroupTopic(
+        conversation,
         ctx,
-        user.adminGroupTopic,
+        user,
         i18n.t(
           config.DEFAULT_LOCALE,
           "event_signup.admin_message_pending_approval",
@@ -333,8 +322,9 @@ async function sendConfirmation(
         },
       );
       await sendMessageToAdminGroupTopic(
+        conversation,
         ctx,
-        user.adminGroupTopic,
+        user,
         i18n.t(
           config.DEFAULT_LOCALE,
           "event_signup.admin_message_pending_payment",
@@ -363,8 +353,9 @@ async function sendConfirmation(
         ),
       );
       await sendMessageToAdminGroupTopic(
+        conversation,
         ctx,
-        user.adminGroupTopic,
+        user,
         i18n.t(config.DEFAULT_LOCALE, "event_signup.admin_message_registered", {
           name: sanitizeHtmlOrEmpty(event.name),
           date: toFluentDateTime(event.date),
@@ -391,8 +382,9 @@ async function sendConfirmation(
         ),
       );
       await sendMessageToAdminGroupTopic(
+        conversation,
         ctx,
-        user.adminGroupTopic,
+        user,
         i18n.t(
           config.DEFAULT_LOCALE,
           requireRefund

@@ -226,7 +226,7 @@ async function sendEditConfirmation(
     },
   );
   const user = await conversation.external(async () => getUserOrFail(userId));
-  await updateAdminGroupTopicTitle(ctx, user);
+  await updateAdminGroupTopicTitle(conversation, ctx, user);
 }
 
 composer.use(createConversation(editName));

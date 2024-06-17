@@ -62,17 +62,18 @@ async function interview(conversation: Conversation, ctx: Context) {
     });
   }
 
-  const adminGroupTopic = await ensureHasAdminGroupTopic(
-    conversation,
-    ctx,
-    ctx.user,
-  );
+  const user = {
+    ...ctx.user,
+    adminGroupTopic: await ensureHasAdminGroupTopic(
+      conversation,
+      ctx,
+      ctx.user,
+    ),
+  };
 
-  if (
-    [UserStatus.New, UserStatus.InterviewInProgress].includes(ctx.user.status)
-  ) {
+  if ([UserStatus.New, UserStatus.InterviewInProgress].includes(user.status)) {
     await conversation.external(async () => {
-      await updateUser(ctx.user.id, { status: UserStatus.InterviewInProgress });
+      await updateUser(user.id, { status: UserStatus.InterviewInProgress });
     });
 
     {
@@ -85,12 +86,13 @@ async function interview(conversation: Conversation, ctx: Context) {
           .oneTime(),
       });
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
     {
       const question = ctx.t("interview.rules");
@@ -103,12 +105,13 @@ async function interview(conversation: Conversation, ctx: Context) {
         link_preview_options: { is_disabled: true },
       });
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
 
     // await ctx.reply(ctx.t("interview.multiline_questions"), {
@@ -119,82 +122,89 @@ async function interview(conversation: Conversation, ctx: Context) {
       const question = ctx.t("interview.experience");
       await ctx.reply(question, { reply_markup: { remove_keyboard: true } });
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
     {
       const question = ctx.t("interview.how_do_you_know_us");
       await ctx.reply(question);
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
     {
       const question = ctx.t("interview.active_consent");
       await ctx.reply(question);
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
     {
       const question = ctx.t("interview.lgbt_check");
       await ctx.reply(question);
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
     {
       const question = ctx.t("interview.transgender_check");
       await ctx.reply(question);
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
     {
       const question = ctx.t("interview.personal_borders");
       await ctx.reply(question);
       await sendInterviewQuestionToAdminGroupTopic(
+        conversation,
         ctx,
-        adminGroupTopic,
+        user,
         question,
       );
       const { reply } = await waitForSkipCommands(conversation, "message:text");
-      await copyMessageToAdminGroupTopic(conversation, reply, adminGroupTopic);
+      await copyMessageToAdminGroupTopic(conversation, reply);
     }
 
     await ctx.replyWithChatAction("typing");
 
     await conversation.external(async () => {
-      await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
+      await updateUser(user.id, { status: UserStatus.PendingApproval });
     });
     await sendInterviewFinishNotificationToAdminGroupTopic(
+      conversation,
       ctx,
-      adminGroupTopic,
+      user,
     );
 
     await ctx.reply(ctx.t("interview.interview_replies_saved"));
   } else {
-    await sendApproveMessage(ctx, ctx.user);
+    await sendApproveMessage(ctx, user);
     await postInterviewSignup(conversation, ctx);
   }
 }
@@ -208,8 +218,9 @@ export async function approve(ctx: Context) {
   const approvedUser = await approveUser(user.id, ctx.user.id);
 
   await sendMessageToAdminGroupTopic(
+    null,
     ctx,
-    approvedUser.adminGroupTopic,
+    approvedUser,
     i18n.t(config.DEFAULT_LOCALE, "interview.admin_message_approved", {
       adminId: String(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
@@ -227,7 +238,7 @@ async function sendApproveMessage(ctx: Context, approvedUser: UserLite) {
     approvedUser.id,
     i18n.t(
       approvedUser.locale || config.DEFAULT_LOCALE,
-      "interview.user_message_approved",
+      "interview.message_approved",
       {
         chatLink: memberGroup.invite_link ?? "",
       },
@@ -246,8 +257,9 @@ export async function reject(ctx: Context) {
   const rejectedUser = await rejectUser(user.id, ctx.user.id);
 
   await sendMessageToAdminGroupTopic(
+    null,
     ctx,
-    rejectedUser.adminGroupTopic,
+    rejectedUser,
     i18n.t(config.DEFAULT_LOCALE, "interview.admin_message_rejected", {
       adminId: String(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
@@ -260,7 +272,7 @@ export async function reject(ctx: Context) {
     rejectedUser.id,
     i18n.t(
       rejectedUser.locale || config.DEFAULT_LOCALE,
-      "interview.user_message_rejected",
+      "interview.message_rejected",
       {
         chatLink: memberGroup.invite_link ?? "",
       },

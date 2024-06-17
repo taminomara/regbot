@@ -24,7 +24,7 @@ feature.on(
   handleMessageEdit,
 );
 feature.on("message", logHandle("unhandled-message"), async (ctx) =>
-  copyMessageToAdminGroupTopic(null, ctx, ctx.user.adminGroupTopic),
+  copyMessageToAdminGroupTopic(null, ctx),
 );
 
 feature.on("callback_query", logHandle("unhandled-callback-query"), (ctx) => {
