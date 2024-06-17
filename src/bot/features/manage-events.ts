@@ -222,25 +222,73 @@ async function editEventPrice(
 }
 feature.use(createConversation(editEventPrice));
 
+export const enterEditEventPaymentDetails = async (ctx: Context) => {
+  await ctx.conversation.enter("editEventPaymentDetails");
+};
+async function editEventPaymentDetails(
+  conversation: Conversation,
+  ctx: Context,
+  event?: Event,
+) {
+  event = event ?? (await getEventForEditFromMatch(conversation, ctx));
+  if (event === undefined) return;
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_iban"));
+  const { reply: ibanReply, command: ibanCommand } = await waitForSkipCommands(
+    conversation,
+    "message:text",
+    ["cancel"],
+  );
+  if (ibanCommand === "cancel") {
+    await ibanReply.react("👌");
+    return;
+  }
+  await ctx.reply(
+    i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_recipient"),
+  );
+  const { reply: recipientReply, command: recipientCommand } =
+    await waitForSkipCommands(conversation, "message:text", ["cancel"]);
+  if (recipientCommand === "cancel") {
+    await recipientReply.react("👌");
+    return;
+  }
+
+  await conversation.external(async () => {
+    await updateEvent(event.id, {
+      iban: ibanReply.message.text,
+      recipient: recipientReply.message.text,
+    });
+  });
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
+    reply_to_message_id: recipientReply.message.message_id,
+  });
+}
+feature.use(createConversation(editEventPaymentDetails));
+
 async function switchConfirmation(ctx: Context) {
   const event = await getEventForEditFromMatch(null, ctx);
   if (event !== undefined) {
     await updateEvent(event.id, { requireApproval: !event.requireApproval });
-    ctx.menu.update();
+    await updateManageEventMenu(ctx);
   }
 }
 
-async function switchEventPayment(ctx: Context, payment: EventPayment) {
+async function switchEventPayment(ctx: Context) {
   const event = await getEventForEditFromMatch(null, ctx);
   if (event !== undefined) {
-    await updateEvent(event.id, { payment });
-    ctx.menu.update();
-    if (
-      event.price === null &&
-      [EventPayment.Required, EventPayment.Donation].includes(payment)
-    ) {
-      await enterEditEventPrice(ctx);
+    switch (event.payment) {
+      case EventPayment.Required:
+        await updateEvent(event.id, { payment: EventPayment.Donation });
+        break;
+      case EventPayment.Donation:
+        await updateEvent(event.id, { payment: EventPayment.NotRequired });
+        break;
+      case EventPayment.NotRequired:
+        await updateEvent(event.id, { payment: EventPayment.Required });
+        break;
     }
+    await updateManageEventMenu(ctx);
   }
 }
 
@@ -282,6 +330,48 @@ async function editEventOptions(
   });
 }
 feature.use(createConversation(editEventOptions));
+
+export async function enterEditEventReminder(ctx: Context) {
+  await ctx.conversation.enter("editEventReminder");
+}
+async function editEventReminder(
+  conversation: Conversation,
+  ctx: Context,
+  event?: Event,
+) {
+  event = event ?? (await getEventForEditFromMatch(conversation, ctx));
+  if (event === undefined) return;
+
+  await ctx.reply(
+    i18n.t(config.DEFAULT_LOCALE, "manage_events.enter_reminder"),
+  );
+
+  const { reply, command } = await waitForSkipCommands(
+    conversation,
+    "message",
+    ["cancel", "empty"],
+  );
+  if (command === "cancel") {
+    await reply.react("👌");
+    return;
+  }
+
+  const reminderTextHtml =
+    command === "empty"
+      ? null
+      : parseTelegramEntities(
+          reply.msg.text ?? reply.msg.caption ?? "",
+          reply.msg.entities ?? reply.msg.caption_entities ?? [],
+        );
+  await conversation.external(async () => {
+    await updateEvent(event.id, { reminderTextHtml });
+  });
+
+  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_success"), {
+    reply_to_message_id: reply.message.message_id,
+  });
+}
+feature.use(createConversation(editEventReminder));
 
 async function publishEvent(ctx: Context) {
   const event = await getEventForEditFromMatch(null, ctx);
@@ -481,6 +571,22 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
     );
     range.row();
     range.text(
+      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_price")),
+      enterEditEventPrice,
+    );
+    range.text(
+      withPayload(
+        i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_payment_details"),
+      ),
+      enterEditEventPaymentDetails,
+    );
+    range.row();
+    range.text(
+      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_reminder")),
+      enterEditEventReminder,
+    );
+    range.row();
+    range.text(
       withPayload(
         i18n.t(config.DEFAULT_LOCALE, "manage_events.confirmation", {
           required: event.requireApproval ? "yes" : "no",
@@ -489,14 +595,13 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
       switchConfirmation,
     );
     range.row();
-    range.submenu(
+    range.text(
       withPayload(
         i18n.t(config.DEFAULT_LOCALE, "manage_events.manage_event_price", {
           payment: event.payment,
         }),
       ),
-      "manageEventPriceMenu",
-      updateManageEventPriceMenu,
+      switchEventPayment,
     );
     range.row();
 
@@ -565,6 +670,8 @@ async function updateManageEventMenu(ctx: Context) {
       .join("; "),
     payment: event.payment,
     price: sanitizeHtmlOrEmpty(event.price),
+    iban: sanitizeHtmlOrEmpty(event.iban ?? config.PAYMENT_IBAN),
+    recipient: sanitizeHtmlOrEmpty(event.recipient ?? config.PAYMENT_RECIPIENT),
   });
 
   if (event.announceTextHtml !== null) {
@@ -583,52 +690,6 @@ async function updateManageEventMenu(ctx: Context) {
   await editMessageTextSafe(ctx, eventDescription, {
     link_preview_options: { is_disabled: true },
   });
-}
-
-export const manageEventPriceMenu = new Menu<Context>("manageEventPriceMenu")
-  .dynamic(async (ctx, range) => {
-    const event = await getEventFromMatch(null, ctx);
-    if (event === undefined) return;
-
-    range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.required_payment", {
-          requirePayment:
-            event.payment === EventPayment.Required ? "yes" : "no",
-        }),
-      ),
-      async (ctx) => switchEventPayment(ctx, EventPayment.Required),
-    );
-    range.row();
-    range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.required_donation", {
-          requireDonation:
-            event.payment === EventPayment.Donation ? "yes" : "no",
-        }),
-      ),
-      async (ctx) => switchEventPayment(ctx, EventPayment.Donation),
-    );
-    range.row();
-    range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.payment_not_required", {
-          paymentNotRequired:
-            event.payment === EventPayment.NotRequired ? "yes" : "no",
-        }),
-      ),
-      async (ctx) => switchEventPayment(ctx, EventPayment.NotRequired),
-    );
-    range.row();
-    // TODO edit price
-  })
-  .back(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
-    updateManageEventMenu,
-  );
-manageEventMenu.register(manageEventPriceMenu);
-async function updateManageEventPriceMenu(ctx: Context) {
-  await updateManageEventMenu(ctx);
 }
 
 export const publishEventMenu = new Menu<Context>("publishEventMenu")
