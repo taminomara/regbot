@@ -13,7 +13,11 @@ import {
   updateEvent,
 } from "#root/backend/event.js";
 import { Context, Conversation } from "#root/bot/context.js";
-import { registerCommandHelpProvider } from "#root/bot/features/help.js";
+import {
+  CommandPrivileges,
+  CommandScope,
+  registerCommandHelp,
+} from "#root/bot/features/help.js";
 import { isAdmin } from "#root/bot/filters/index.js";
 import {
   createConversation,
@@ -38,7 +42,7 @@ import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
 
-const feature = composer.chatType("private").filter(isAdmin);
+const feature = composer.filter(isAdmin);
 
 export const enterEditEventName = async (ctx: Context) => {
   await ctx.conversation.enter("editEventName");
@@ -834,19 +838,16 @@ async function getEventForEditFromMatch(
   return event;
 }
 
-feature.command("manage_events", logHandle("manage_events"), async (ctx) => {
-  await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.events"), {
-    reply_markup: manageEventsMenu,
+feature
+  .chatType("private")
+  .command("manage_events", logHandle("manage_events"), async (ctx) => {
+    await ctx.reply(i18n.t(config.DEFAULT_LOCALE, "manage_events.events"), {
+      reply_markup: manageEventsMenu,
+    });
   });
-});
 
-registerCommandHelpProvider((localeCode, isAdmin) => {
-  return isAdmin
-    ? [
-        {
-          command: "manage_events",
-          description: i18n.t(localeCode, "manage_events_command.description"),
-        },
-      ]
-    : [];
+registerCommandHelp({
+  command: "manage_events",
+  scope: CommandScope.PrivateChat,
+  privileges: CommandPrivileges.Admins,
 });

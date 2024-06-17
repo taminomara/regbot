@@ -1,54 +1,116 @@
 import { BotCommand } from "@grammyjs/types";
+import type { BotCommandScope } from "@grammyjs/types/settings.js";
 import { Bot } from "grammy";
 
 import { Context } from "#root/bot/context.js";
-import { i18n, isMultipleLocales } from "#root/bot/i18n.js";
+import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
-export type CommandHelpProvider = (
-  localeCode: string,
-  isAdmin: boolean,
-) => BotCommand[];
-
-const providers: CommandHelpProvider[] = [];
-
-export const registerCommandHelpProvider = (provider: CommandHelpProvider) => {
-  providers.push(provider);
+export type CommandHelp = {
+  command: string;
+  scope: CommandScope;
+  privileges: CommandPrivileges;
 };
 
-export const getCommands = (
-  localeCode: string,
-  isAdmin: boolean,
-): BotCommand[] => {
-  return providers.flatMap((provider) => provider(localeCode, isAdmin));
-};
+export enum CommandScope {
+  PrivateChat,
+  AdminGroup,
+  MembersGroup,
+}
+
+export enum CommandPrivileges {
+  AllUsers = 1,
+  Admins = 2,
+}
+
+const COMMANDS: CommandHelp[] = [];
+
+export function registerCommandHelp(...commands: CommandHelp[]) {
+  COMMANDS.push(...commands);
+}
+
+function getCommands(
+  scope: CommandScope,
+  privileges: CommandPrivileges,
+  locale: string,
+): BotCommand[] {
+  return COMMANDS.filter(
+    (command) => command.scope === scope && command.privileges <= privileges,
+  ).map(({ command }) => {
+    return {
+      command,
+      description: i18n.translate(locale, `${command}_command.description`),
+    };
+  });
+}
+
+async function setCommandsFor(
+  bot: Bot<Context>,
+  tgScopes: BotCommandScope[],
+  scope: CommandScope,
+  privileges: CommandPrivileges,
+) {
+  const promises = tgScopes.flatMap((tgScope) => [
+    bot.api.setMyCommands(
+      getCommands(scope, privileges, config.DEFAULT_LOCALE),
+      { scope: tgScope },
+    ),
+    ...i18n.locales.map((locale) =>
+      bot.api.setMyCommands(
+        getCommands(scope, privileges, config.DEFAULT_LOCALE),
+        {
+          language_code: locale,
+          scope: tgScope,
+        },
+      ),
+    ),
+  ]);
+
+  await Promise.all(promises);
+}
 
 export async function setCommands(bot: Bot<Context>) {
-  // Set default commands for all users.
-  await bot.api.setMyCommands(getCommands(config.DEFAULT_LOCALE, false), {
-    scope: { type: "all_private_chats" },
-  });
-  if (isMultipleLocales) {
-    const requests = i18n.locales.map((code) =>
-      bot.api.setMyCommands(getCommands(code, false), {
-        language_code: code,
-        scope: {
-          type: "all_private_chats",
-        },
-      }),
-    );
-
-    await Promise.all(requests);
-  }
-
-  // Set admin commands for admins.
-  const requests = config.BOT_ADMINS.map((id) =>
-    bot.api.setMyCommands(getCommands(config.DEFAULT_LOCALE, true), {
-      scope: {
-        type: "chat",
-        chat_id: id,
-      },
-    }),
+  // Private chats.
+  await setCommandsFor(
+    bot,
+    [{ type: "all_private_chats" }],
+    CommandScope.PrivateChat,
+    CommandPrivileges.AllUsers,
   );
-  await Promise.all(requests);
+  await setCommandsFor(
+    bot,
+    config.BOT_ADMINS.map((id) => {
+      return { type: "chat", chat_id: id };
+    }),
+    CommandScope.PrivateChat,
+    CommandPrivileges.Admins,
+  );
+
+  // Members group.
+  await setCommandsFor(
+    bot,
+    [{ type: "chat", chat_id: config.MEMBERS_GROUP }],
+    CommandScope.MembersGroup,
+    CommandPrivileges.AllUsers,
+  );
+  await setCommandsFor(
+    bot,
+    [{ type: "chat_administrators", chat_id: config.MEMBERS_GROUP }],
+    CommandScope.MembersGroup,
+    CommandPrivileges.Admins,
+  );
+
+  // Admin group.
+  await setCommandsFor(
+    bot,
+    [{ type: "chat", chat_id: config.ADMIN_GROUP }],
+    CommandScope.AdminGroup,
+    CommandPrivileges.AllUsers,
+  );
+  await setCommandsFor(
+    bot,
+    [{ type: "chat_administrators", chat_id: config.ADMIN_GROUP }],
+    CommandScope.AdminGroup,
+    CommandPrivileges.Admins,
+  );
 }

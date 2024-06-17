@@ -21,7 +21,11 @@ import {
   signupForEvent,
   withdrawSignup,
 } from "#root/bot/features/event-signup.js";
-import { registerCommandHelpProvider } from "#root/bot/features/help.js";
+import {
+  CommandPrivileges,
+  CommandScope,
+  registerCommandHelp,
+} from "#root/bot/features/help.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
 import { patchCtx } from "#root/bot/helpers/conversations.js";
 import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
@@ -31,7 +35,6 @@ import {
   sanitizeHtmlOrEmpty,
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
-import { i18n } from "#root/bot/i18n.js";
 
 export const composer = new Composer<Context>();
 
@@ -440,11 +443,8 @@ feature.chatType("private").command("menu", async (ctx) => {
   await sendEventsMenu(null, ctx, ctx.chatId);
 });
 
-registerCommandHelpProvider((localeCode) => {
-  return [
-    {
-      command: "menu",
-      description: i18n.t(localeCode, "menu_command.description"),
-    },
-  ];
+registerCommandHelp({
+  command: "menu",
+  scope: CommandScope.PrivateChat,
+  privileges: CommandPrivileges.AllUsers,
 });
