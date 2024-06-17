@@ -51,7 +51,7 @@ export async function sendEventsMenu(
   await patchCtx(conversation, ctx, { locale }, async (ctx) => {
     await ctx.api.sendMessage(chatId, text ?? ctx.t("menu.events"), {
       ...other,
-      reply_markup: eventsMenu.at("eventMenu"),
+      reply_markup: eventsMenu,
     });
   });
 }
