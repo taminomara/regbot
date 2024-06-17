@@ -6,6 +6,12 @@ menu_command =
     .description = Открыть меню
 manage_events_command =
     .description = Управление событиями
+about_command =
+    .description = Информация о пользователе
+ban_command =
+    .description = Забанить пользователя
+unban_command =
+    .description = Разбанить пользователя
 
 welcome = Добро пожаловать!
     .all_set =

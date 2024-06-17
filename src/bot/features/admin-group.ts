@@ -22,6 +22,11 @@ import {
   copyMessageTo,
   handleMessageEdit,
 } from "#root/bot/features/edit-cache.js";
+import {
+  CommandPrivileges,
+  CommandScope,
+  registerCommandHelp,
+} from "#root/bot/features/help.js";
 import { isAdmin } from "#root/bot/filters/index.js";
 import { maybeExternal } from "#root/bot/helpers/conversations.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
@@ -346,6 +351,11 @@ feature.command("about", logHandle("admin-about"), async (ctx) => {
 
   await sendAdminGroupUserMenu(null, ctx, user);
 });
+registerCommandHelp({
+  command: "about",
+  scope: CommandScope.AdminGroup,
+  privileges: CommandPrivileges.Admins,
+});
 
 feature.command("ban", logHandle("admin-ban"), async (ctx) => {
   const user = await getUserForTopic(ctx);
@@ -356,12 +366,22 @@ feature.command("ban", logHandle("admin-ban"), async (ctx) => {
     await banUser(null, ctx, user, reason);
   }
 });
+registerCommandHelp({
+  command: "ban",
+  scope: CommandScope.AdminGroup,
+  privileges: CommandPrivileges.Admins,
+});
 
 feature.command("unban", logHandle("admin-unban"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user !== undefined) {
     await unbanUser(null, ctx, user);
   }
+});
+registerCommandHelp({
+  command: "unban",
+  scope: CommandScope.AdminGroup,
+  privileges: CommandPrivileges.Admins,
 });
 
 feature

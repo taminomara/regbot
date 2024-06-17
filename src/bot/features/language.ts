@@ -1,11 +1,14 @@
-import { BotCommand } from "@grammyjs/types";
 import { createCallbackData } from "callback-data";
 import { Composer, InlineKeyboard } from "grammy";
 import ISO6391 from "iso-639-1";
 
 import { updateUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
-import { registerCommandHelpProvider } from "#root/bot/features/help.js";
+import {
+  CommandPrivileges,
+  CommandScope,
+  registerCommandHelp,
+} from "#root/bot/features/help.js";
 import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { chunk } from "#root/bot/helpers/keyboard.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
@@ -74,13 +77,10 @@ feature.callbackQuery(
   },
 );
 
-registerCommandHelpProvider((localeCode: string): BotCommand[] => {
-  return isMultipleLocales
-    ? [
-        {
-          command: "language",
-          description: i18n.t(localeCode, "language_command.description"),
-        },
-      ]
-    : [];
-});
+if (isMultipleLocales) {
+  registerCommandHelp({
+    command: "language",
+    scope: CommandScope.PrivateChat,
+    privileges: CommandPrivileges.AllUsers,
+  });
+}
