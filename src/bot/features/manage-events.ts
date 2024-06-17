@@ -147,10 +147,12 @@ async function editEventPostFromCtx(
       event.announcePhotoId;
   }
 
-  await maybeExternal(conversation, async () => updateEvent(event.id, {
-    announceTextHtml,
-    announcePhotoId,
-  }));
+  await maybeExternal(conversation, async () =>
+    updateEvent(event.id, {
+      announceTextHtml,
+      announcePhotoId,
+    }),
+  );
 
   if (
     event.channelPostId !== null &&
@@ -621,9 +623,7 @@ export const manageEventPriceMenu = new Menu<Context>("manageEventPriceMenu")
     // TODO edit price
   })
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_no"),
-    ),
+    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
     updateManageEventMenu,
   );
 manageEventMenu.register(manageEventPriceMenu);

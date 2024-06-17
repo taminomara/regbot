@@ -1,14 +1,16 @@
+import { Other } from "@grammyjs/hydrate";
 import { Menu } from "@grammyjs/menu";
 import { Composer } from "grammy";
 
 import {
+  Event,
   SignupStatus,
   getApprovedEventSignups,
   getEventWithUserSignup,
   upcomingEventsWithUserSignup,
 } from "#root/backend/event.js";
 import { getUserOrFail } from "#root/backend/user.js";
-import { Context } from "#root/bot/context.js";
+import { Context, Conversation } from "#root/bot/context.js";
 import {
   enterEditGender,
   enterEditName,
@@ -21,6 +23,7 @@ import {
 } from "#root/bot/features/event-signup.js";
 import { registerCommandHelpProvider } from "#root/bot/features/help.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
+import { patchCtx } from "#root/bot/helpers/conversations.js";
 import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import {
@@ -29,13 +32,64 @@ import {
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
-import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
 
 const feature = composer.filter(isApproved);
 
-export const eventsMenu = new Menu<Context>("eventsMenu")
+export async function sendEventsMenu(
+  conversation: Conversation | null,
+  ctx: Context,
+  chatId: number,
+  text?: string,
+  locale?: string,
+  other?: Other<"sendMessage", "chat_id" | "text" | "reply_markup">,
+) {
+  await patchCtx(conversation, ctx, { locale }, async (ctx) => {
+    await ctx.api.sendMessage(chatId, text ?? ctx.t("menu.events"), {
+      ...other,
+      reply_markup: eventsMenu.at("eventMenu"),
+    });
+  });
+}
+
+export async function sendEventMenu(
+  conversation: Conversation | null,
+  ctx: Context,
+  chatId: number,
+  event: Event,
+  text?: string,
+  locale?: string,
+  other?: Other<
+    "sendMessage",
+    "chat_id" | "text" | "reply_markup" | "link_preview_options"
+  >,
+) {
+  await patchCtx(
+    conversation,
+    ctx,
+    { match: event.id, locale },
+    async (ctx) => {
+      await ctx.api.sendMessage(
+        chatId,
+        text ??
+          event.announceTextHtml ??
+          ctx.t("menu.event", {
+            name: sanitizeHtmlOrEmpty(event.name),
+            date: toFluentDateTime(event.date),
+            price: sanitizeHtmlOrEmpty(event.price),
+          }),
+        {
+          ...other,
+          link_preview_options: { is_disabled: true },
+          reply_markup: eventsMenu.at("eventMenu"),
+        },
+      );
+    },
+  );
+}
+
+const eventsMenu = new Menu<Context>("eventsMenu")
   .text((ctx) => ctx.t("menu.update"), updateEventsMenu)
   .submenu((ctx) => ctx.t("menu.profile"), "profileMenu", updateProfileMenu)
   .row()
@@ -251,15 +305,11 @@ async function updateEventParticipantsMenu(ctx: Context) {
 
 export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu")
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "menu.cancel_signup_button_no"),
-    ),
+    withPayload((ctx) => ctx.t("menu.cancel_signup_button_no")),
     updateEventMenu,
   )
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "menu.cancel_signup_button_yes"),
-    ),
+    withPayload((ctx) => ctx.t("menu.cancel_signup_button_yes")),
     async (ctx) => {
       const event = await getEventFromMatch(ctx);
       if (event === undefined) return;
@@ -387,7 +437,7 @@ async function getEventFromMatch(ctx: Context) {
 }
 
 feature.chatType("private").command("menu", async (ctx) => {
-  await ctx.reply(ctx.t("menu.events"), { reply_markup: eventsMenu });
+  await sendEventsMenu(null, ctx, ctx.chatId);
 });
 
 registerCommandHelpProvider((localeCode) => {
