@@ -40,7 +40,7 @@ async function startPolling() {
 }
 
 try {
-  await runMigrations(); // TODO: backup db in prod?
+  await runMigrations();
   await startPolling();
 } catch (error) {
   logger.error(error);
