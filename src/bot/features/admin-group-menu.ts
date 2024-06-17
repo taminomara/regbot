@@ -220,43 +220,46 @@ adminPostInterviewMenu.register(adminPostInterviewDecisionMadeMenu);
 
 const confirmSignupData = createCallbackData("confirmSignup", {
   eventId: Number,
+  userId: Number,
 });
 const confirmPaymentData = createCallbackData("confirmPayment", {
   eventId: Number,
+  userId: Number,
 });
 const rejectSignupData = createCallbackData("rejectSignup", {
   eventId: Number,
+  userId: Number,
 });
 
-export function createConfirmSignupKeyboard(eventId: number) {
+export function createConfirmSignupKeyboard(eventId: number, userId: number) {
   return new InlineKeyboard()
     .text(
       i18n.t(config.DEFAULT_LOCALE, "admin_group.reject"),
-      rejectSignupData.pack({ eventId }),
+      rejectSignupData.pack({ eventId, userId }),
     )
     .text(
       i18n.t(config.DEFAULT_LOCALE, "admin_group.approve"),
-      confirmSignupData.pack({ eventId }),
+      confirmSignupData.pack({ eventId, userId }),
     );
 }
 
-export function createConfirmPaymentKeyboard(eventId: number) {
+export function createConfirmPaymentKeyboard(eventId: number, userId: number) {
   return new InlineKeyboard()
     .text(
       i18n.t(config.DEFAULT_LOCALE, "admin_group.reject"),
-      rejectSignupData.pack({ eventId }),
+      rejectSignupData.pack({ eventId, userId }),
     )
     .text(
       i18n.t(config.DEFAULT_LOCALE, "admin_group.approve"),
-      confirmPaymentData.pack({ eventId }),
+      confirmPaymentData.pack({ eventId, userId }),
     );
 }
 
 feature.callbackQuery(confirmSignupData.filter(), async (ctx) => {
-  const { eventId } = confirmSignupData.unpack(ctx.callbackQuery.data);
+  const { eventId, userId } = confirmSignupData.unpack(ctx.callbackQuery.data);
 
-  const user = await getUserFromMatch(ctx);
-  if (user === undefined) return;
+  const user = await getUser(userId);
+  if (user === null) return;
 
   await confirmSignup(null, ctx, eventId, user);
   await ctx.editMessageReplyMarkup({
@@ -265,10 +268,10 @@ feature.callbackQuery(confirmSignupData.filter(), async (ctx) => {
 });
 
 feature.callbackQuery(confirmPaymentData.filter(), async (ctx) => {
-  const { eventId } = confirmPaymentData.unpack(ctx.callbackQuery.data);
+  const { eventId, userId } = confirmPaymentData.unpack(ctx.callbackQuery.data);
 
-  const user = await getUserFromMatch(ctx);
-  if (user === undefined) return;
+  const user = await getUser(userId);
+  if (user === null) return;
 
   await confirmPayment(null, ctx, eventId, user);
   await ctx.editMessageReplyMarkup({
@@ -277,10 +280,10 @@ feature.callbackQuery(confirmPaymentData.filter(), async (ctx) => {
 });
 
 feature.callbackQuery(rejectSignupData.filter(), async (ctx) => {
-  const { eventId } = rejectSignupData.unpack(ctx.callbackQuery.data);
+  const { eventId, userId } = rejectSignupData.unpack(ctx.callbackQuery.data);
 
-  const user = await getUserFromMatch(ctx);
-  if (user === undefined) return;
+  const user = await getUser(userId);
+  if (user === null) return;
 
   await rejectSignup(null, ctx, eventId, user);
   await ctx.editMessageReplyMarkup({

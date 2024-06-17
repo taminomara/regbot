@@ -296,7 +296,7 @@ async function sendConfirmation(
           },
         ),
         {
-          reply_markup: createConfirmSignupKeyboard(event.id),
+          reply_markup: createConfirmSignupKeyboard(event.id, user.id),
         },
       );
       break;
@@ -335,7 +335,7 @@ async function sendConfirmation(
           },
         ),
         {
-          reply_markup: createConfirmPaymentKeyboard(event.id),
+          reply_markup: createConfirmPaymentKeyboard(event.id, user.id),
         },
       );
       break;
