@@ -48,7 +48,7 @@ async function interview(conversation: Conversation, ctx: Context) {
   }
 
   if (!ctx.user.finishedInitialSurvey) {
-    ctx.chatAction = "typing";
+    await ctx.replyWithChatAction("typing");
 
     await editName(conversation, ctx, true);
     await editPronouns(conversation, ctx, true);
