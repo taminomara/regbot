@@ -267,15 +267,11 @@ export async function reject(ctx: Context) {
     }),
   );
 
-  const memberGroup = await ctx.api.getChat(config.MEMBERS_GROUP);
   await ctx.api.sendMessage(
     rejectedUser.id,
     i18n.t(
       rejectedUser.locale || config.DEFAULT_LOCALE,
       "interview.message_rejected",
-      {
-        chatLink: memberGroup.invite_link ?? "",
-      },
     ),
   );
 }

@@ -276,10 +276,6 @@ async function sendConfirmation(
         i18n.t(
           user.locale ?? config.DEFAULT_LOCALE,
           "event_signup.pending_approval",
-          {
-            name: sanitizeHtmlOrEmpty(event.name),
-            date: toFluentDateTime(event.date),
-          },
         ),
       );
       await sendMessageToAdminGroupTopic(
@@ -308,8 +304,6 @@ async function sendConfirmation(
           user.locale ?? config.DEFAULT_LOCALE,
           "event_signup.pending_payment",
           {
-            name: sanitizeHtmlOrEmpty(event.name),
-            date: toFluentDateTime(event.date),
             price: sanitizeHtmlOrEmpty(event.price),
             iban: sanitizeHtmlOrEmpty(event.iban ?? config.PAYMENT_IBAN),
             recipient: sanitizeHtmlOrEmpty(
@@ -396,7 +390,6 @@ async function sendConfirmation(
             adminId: String(admin?.id),
             adminName: sanitizeHtmlOrEmpty(admin?.name),
             rejectDate: toFluentDateTime(signup.approvedAt ?? new Date(0)),
-            options,
           },
         ),
       );

@@ -189,7 +189,6 @@ class BackgroundProcess {
           signup.user.locale ?? config.DEFAULT_LOCALE,
           "event_reminders.signup_reminder",
           {
-            eventId: String(signup.event.id),
             name: sanitizeHtmlOrEmpty(signup.event.name),
             date: toFluentDateTime(signup.event.date),
             more,

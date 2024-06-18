@@ -470,7 +470,7 @@ event_reminders =
         Получатель: <b><code>{$recipient}</code></b>
 
     .payment_details_with_price =
-        Донат: <b>${price}</b>
+        Донат: <b>{$price}</b>
         IBAN: <b><code>{$iban}</code></b>
         Получатель: <b><code>{$recipient}</code></b>
 
