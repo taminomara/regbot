@@ -385,7 +385,10 @@ export async function lockEventForSendingReminders(): Promise<{
       EventObject,
       {
         reminderSent: false,
-        date: { $lte: moment.utc().add({ days: 1 }).toDate() },
+        date: {
+          $lte: moment.utc().add({ days: 1 }).toDate(),
+          $gte: moment.utc().add({ hours: 12 }).toDate(),
+        },
       },
       {
         lockMode: LockMode.PESSIMISTIC_WRITE,
@@ -397,7 +400,12 @@ export async function lockEventForSendingReminders(): Promise<{
       return null;
     } else {
       event.reminderSent = true;
-      return { event, signups: await getEventSignups(event.id) };
+      return {
+        event,
+        signups: (await getEventSignups(event.id)).filter(
+          (signup) => signup.status === SignupStatus.Approved,
+        ),
+      };
     }
   });
 }

@@ -452,7 +452,7 @@ event_reminders =
     .signup_reminder =
         Завтра, в {DATETIME($date, hour: "2-digit", minute: "2-digit")}, будет <b>{$name}</b>!
 
-        ${more}
+        {$more}
 
     .i_cant_make_it = 😥 Ой, а я не приду
     .i_will_be_there = ☺️ Я буду
