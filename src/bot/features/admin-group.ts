@@ -202,7 +202,6 @@ export async function formatAboutMe(user: User) {
       gender: sanitizeHtmlOrEmpty(user.gender),
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
       status: user.status,
-      username: sanitizeHtmlOrEmpty(user.username),
       details,
     }),
   ].join("\n\n");
