@@ -8,7 +8,7 @@ import { MenuFlavor } from "@grammyjs/menu";
 import { ParseModeFlavor } from "@grammyjs/parse-mode";
 import { Context as DefaultContext, SessionFlavor } from "grammy";
 
-import { I18nFlavor } from "#root/_messages.gen.js";
+import { I18nFlavor } from "#root/_messages.js";
 import { UserLite } from "#root/backend/user.js";
 import { Logger } from "#root/logger.js";
 

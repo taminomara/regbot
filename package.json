@@ -6,14 +6,14 @@
     "#root/*": "./build/src/*"
   },
   "scripts": {
-    "build": "node scripts/compile-locales.js > src/_messages.gen.ts && tsc && NODE_ENV=development npx mikro-orm cache:generate --combined && cp temp/metadata.json build/metadata.json",
+    "build": "node scripts/compile-locales.js && tsc && NODE_ENV=development npx mikro-orm cache:generate --combined && cp temp/metadata.json build/metadata.json",
     "clean": "rm -rf build node_modules temp src/_messages.gen.js",
     "dev": "nodemon",
     "format": "eslint . --fix",
     "lint": "eslint .",
     "make-migrations": "tsc && npx mikro-orm migration:create",
     "migrate": "tsc && npx mikro-orm migration:up",
-    "prepare": "(husky || true) && node scripts/compile-locales.js > src/_messages.gen.ts",
+    "prepare": "(husky || true) && node scripts/compile-locales.js",
     "start": "npm run build || exit 1 && tsx ./src/main.ts",
     "start:prod": "node ./build/src/main.js"
   },
@@ -67,6 +67,7 @@
     "nodemon": "^3.1.3",
     "prettier": "^3.2.5",
     "prettier-plugin-organize-imports": "3.2.4",
+    "source-map": "^0.7.4",
     "tsx": "4.10.4",
     "typescript": "5.4.5"
   },
@@ -84,6 +85,11 @@
   },
   "nodemonConfig": {
     "ext": "js,jsx,ts,tsx,json,ftl",
-    "ignore": ["build/*", "temp/*", "src/backend/migrations/*", "src/_messages.gen.ts"]
+    "ignore": [
+      "build/*",
+      "temp/*",
+      "src/backend/migrations/*",
+      "src/_messages.ts"
+    ]
   }
 }

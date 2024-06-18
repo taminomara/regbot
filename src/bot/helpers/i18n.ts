@@ -3,7 +3,7 @@ import { FluentDateTime } from "@grammyjs/i18n/node_modules/@fluent/bundle/index
 
 import { config } from "#root/config.js";
 
-export function toFluentDateTime(date: Date) {
+export function toFluentDateTime(date: Date): FluentDateTime {
   return new FluentDateTime(date.getTime(), {
     timeZone: config.TIMEZONE,
   });

@@ -61,5 +61,5 @@
       }
     }
   },
-  "ignorePatterns": ["build/*", "scripts/*", "src/backend/migrations/*", "src/_messages.gen.ts"]
+  "ignorePatterns": ["build/*", "scripts/*", "src/backend/migrations/*", "src/_messages.ts"]
 }
