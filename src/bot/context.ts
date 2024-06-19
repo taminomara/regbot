@@ -13,7 +13,7 @@ import { UserLite } from "#root/backend/user.js";
 import { Logger } from "#root/logger.js";
 
 export type SessionData = {
-  // field?: string;
+  interviewStep?: number;
 };
 
 type ExtendedContextFlavor = {
