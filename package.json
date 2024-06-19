@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "make-migrations": "tsc && npx mikro-orm migration:create",
     "migrate": "tsc && npx mikro-orm migration:up",
-    "prepare": "(husky || true) && node scripts/compile-locales.js",
+    "prepare": "(husky && node scripts/compile-locales.js) || true",
     "start": "npm run build || exit 1 && tsx ./src/main.ts",
     "start:prod": "node ./build/src/main.js"
   },
