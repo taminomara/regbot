@@ -311,9 +311,6 @@ async function sendConfirmation(
             ),
           },
         ),
-        {
-          protect_content: true,
-        },
       );
       await sendMessageToAdminGroupTopic(
         conversation,

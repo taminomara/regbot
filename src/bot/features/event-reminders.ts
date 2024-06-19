@@ -199,7 +199,6 @@ class BackgroundProcess {
             signup.event.id,
             signup.user.locale ?? config.DEFAULT_LOCALE,
           ),
-          protect_content: true,
         },
       );
     } catch (error) {
