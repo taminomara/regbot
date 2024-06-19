@@ -63,11 +63,11 @@ export async function ensureHasAdminGroupTopic(
     formatTopicName(user),
   );
 
-  await maybeExternal(conversation, async () =>
+  const userWithTopic = await maybeExternal(conversation, async () =>
     setUserAdminGroupTopicId(user.id, topic.message_thread_id),
   );
 
-  await sendAdminGroupUserMenu(conversation, ctx, user);
+  await sendAdminGroupUserMenu(conversation, ctx, userWithTopic);
 
   return topic.message_thread_id;
 }

@@ -21,9 +21,6 @@ export class User {
   @Property()
   status: UserStatus = UserStatus.New;
 
-  @Property()
-  finishedInitialSurvey: boolean = false;
-
   @Property({ index: true })
   adminGroupTopic: number | null = null;
 
@@ -72,7 +69,7 @@ export class User {
 
 @Entity({
   expression:
-    "select id, status, username, finished_initial_survey, admin_group_topic, name, locale from user",
+    "select id, status, username, admin_group_topic, name, locale from user",
 })
 export class UserLite {
   @Property()
@@ -86,9 +83,6 @@ export class UserLite {
 
   @Property()
   locale: string | null = null;
-
-  @Property()
-  finishedInitialSurvey: boolean;
 
   @Property()
   adminGroupTopic: number | null;

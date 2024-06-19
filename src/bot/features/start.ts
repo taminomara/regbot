@@ -4,9 +4,8 @@ import { UserStatus, updateUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import { ensureHasAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
-import { enterInterview } from "#root/bot/features/interview.js";
+import { startInterview } from "#root/bot/features/interview-v2.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
-import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
 
@@ -22,30 +21,12 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
     await updateUser(ctx.user.id, { pendingSignup: eventId });
   }
 
-  if (
-    !("interview" in (await ctx.conversation.active())) &&
-    (!ctx.user.finishedInitialSurvey ||
-      [UserStatus.New, UserStatus.InterviewInProgress].includes(
-        ctx.user.status,
-      ))
-  ) {
-    // Allow manually approved people in.
-    const chatMember = await ctx.api.getChatMember(
-      config.MEMBERS_GROUP,
-      ctx.user.id,
-    );
-    if (["member", "creator", "administrator"].includes(chatMember.status)) {
-      ctx.user.status = UserStatus.Approved;
-      await updateUser(ctx.user.id, { status: UserStatus.Approved });
-    }
-
-    // Start an interview.
-    await ctx.reply(ctx.t("welcome"));
-    await enterInterview(ctx);
+  if (ctx.user.status === UserStatus.New) {
+    await startInterview(ctx);
   } else {
     await ensureHasAdminGroupTopic(null, ctx, ctx.user);
 
-    if ("interview" in (await ctx.conversation.active())) {
+    if (ctx.user.status === UserStatus.InterviewInProgress) {
       await ctx.reply(ctx.t("welcome.in_progress"));
     } else if (eventId !== undefined) {
       await postInterviewSignup(null, ctx);
