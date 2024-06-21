@@ -4,7 +4,7 @@ import { UserStatus, updateUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import { ensureHasAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
-import { startInterview } from "#root/bot/features/interview-v2.js";
+import { interviewConversation } from "#root/bot/features/interview-v2.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 
 export const composer = new Composer<Context>();
@@ -22,7 +22,7 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
   }
 
   if (ctx.user.status === UserStatus.New) {
-    await startInterview(ctx);
+    await interviewConversation.forceEnter(ctx);
   } else {
     await ensureHasAdminGroupTopic(null, ctx, ctx.user);
 

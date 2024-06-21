@@ -1,9 +1,9 @@
-import { StorageAdapter } from "grammy";
+import { Enhance, StorageAdapter } from "grammy";
 
 import { del, read, write } from "#root/backend/session.js";
-import { SessionData } from "#root/bot/context.js";
+import { SessionData } from "#root/bot/sessions.js";
 
-type SessionDataExtended = SessionData & { [key: string]: unknown };
+type SessionDataExtended = Enhance<SessionData & { [key: string]: unknown }>;
 
 export class SessionStorage implements StorageAdapter<SessionDataExtended> {
   async delete(key: string): Promise<void> {
