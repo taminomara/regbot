@@ -4,17 +4,16 @@ import { conversations } from "@grammyjs/conversations";
 import { hydrate } from "@grammyjs/hydrate";
 import { hydrateReply, parseMode } from "@grammyjs/parse-mode";
 import { RequestContext } from "@mikro-orm/core";
-import { Bot, ErrorHandler, Bot as TelegramBot, session } from "grammy";
+import { Bot, ErrorHandler, Bot as TelegramBot } from "grammy";
 import { Counter } from "prom-client";
 
 import { orm } from "#root/backend/data-source.js";
 import { createUser, updateUser } from "#root/backend/user.js";
-import { Context, SessionData } from "#root/bot/context.js";
+import { Context } from "#root/bot/context.js";
 import { startBackgroundProcess } from "#root/bot/features/event-reminders.js";
 import { setCommands } from "#root/bot/features/help.js";
 import { composer as featuresComposer } from "#root/bot/features/index.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
-import { SessionStorage } from "#root/bot/helpers/session-storage.js";
 import { i18n } from "#root/bot/i18n.js";
 import {
   apiLogger as apiLoggerMw,
@@ -23,6 +22,7 @@ import {
   updateLogger as updateLoggerMw,
   user as userMw,
 } from "#root/bot/middlewares/index.js";
+import { session } from "#root/bot/sessions.js";
 import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
 
@@ -41,12 +41,6 @@ const errorHandler: ErrorHandler<Context> = (error) => {
     update: getUpdateInfo(ctx),
   });
 };
-
-function getSessionKey(ctx: Omit<Context, "session">) {
-  return ctx.chatId === config.ADMIN_GROUP
-    ? `${ctx.chatId}/${ctx.msg?.message_thread_id}`
-    : ctx.chat?.id.toString();
-}
 
 export function createBot(token: string) {
   const bot = new TelegramBot<Context>(token);
@@ -67,13 +61,7 @@ export function createBot(token: string) {
   protectedBot.use(autoChatAction(bot.api));
   protectedBot.use(hydrateReply);
   protectedBot.use(hydrate());
-  protectedBot.use(
-    session<SessionData, Context>({
-      initial: (): SessionData => ({}),
-      storage: new SessionStorage(),
-      getSessionKey,
-    }),
-  );
+  protectedBot.use(session());
   protectedBot.use(conversations());
   protectedBot.use(i18n);
   protectedBot.use(userMw());

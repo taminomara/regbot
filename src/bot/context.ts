@@ -10,11 +10,8 @@ import { Context as DefaultContext, SessionFlavor } from "grammy";
 
 import { I18nFlavor } from "#root/_messages.js";
 import { UserLite } from "#root/backend/user.js";
+import { SessionData } from "#root/bot/sessions.js";
 import { Logger } from "#root/logger.js";
-
-export type SessionData = {
-  interviewStep?: number;
-};
 
 type ExtendedContextFlavor = {
   logger: Logger;
