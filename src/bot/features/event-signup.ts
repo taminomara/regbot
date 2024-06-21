@@ -51,36 +51,36 @@ export async function postInterviewSignup(
     user.pendingSignup,
     user,
   );
-  if (event === undefined) return;
-
-  if (event.signup === undefined) {
-    await sendEventMenu(
-      conversation,
-      ctx,
-      user.id,
-      event,
-      i18n.t(
+  if (event !== undefined) {
+    if (event.signup === undefined) {
+      await sendEventMenu(
+        conversation,
+        ctx,
+        user.id,
+        event,
+        i18n.t(
+          user.locale ?? config.DEFAULT_LOCALE,
+          "event_signup.prompt_signup",
+          {
+            name: sanitizeHtmlOrEmpty(event.name),
+            date: toFluentDateTime(event.date),
+          },
+        ),
         user.locale ?? config.DEFAULT_LOCALE,
-        "event_signup.prompt_signup",
-        {
-          name: sanitizeHtmlOrEmpty(event.name),
-          date: toFluentDateTime(event.date),
-        },
-      ),
-      user.locale ?? config.DEFAULT_LOCALE,
-    );
-  } else {
-    await ctx.api.sendMessage(
-      user.id,
-      i18n.t(
-        user.locale ?? config.DEFAULT_LOCALE,
-        "event_signup.already_registered",
-        {
-          name: sanitizeHtmlOrEmpty(event.name),
-          date: toFluentDateTime(event.date),
-        },
-      ),
-    );
+      );
+    } else {
+      await ctx.api.sendMessage(
+        user.id,
+        i18n.t(
+          user.locale ?? config.DEFAULT_LOCALE,
+          "event_signup.already_registered",
+          {
+            name: sanitizeHtmlOrEmpty(event.name),
+            date: toFluentDateTime(event.date),
+          },
+        ),
+      );
+    }
   }
 
   await maybeExternal(conversation, async () =>
