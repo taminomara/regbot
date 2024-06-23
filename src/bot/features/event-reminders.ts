@@ -152,9 +152,9 @@ class BackgroundProcess {
     try {
       let more = signup.event.reminderTextHtml ?? "";
       if (signup.event.payment === EventPayment.Donation) {
-        if (more.length > 0) more += "\n\n";
+        let paymentDetails;
         if (signup.event.price !== null) {
-          more += i18n.t(
+          paymentDetails = i18n.t(
             signup.user.locale ?? config.DEFAULT_LOCALE,
             "event_reminders.payment_details_with_price",
             {
@@ -168,7 +168,7 @@ class BackgroundProcess {
             },
           );
         } else {
-          more += i18n.t(
+          paymentDetails = i18n.t(
             signup.user.locale ?? config.DEFAULT_LOCALE,
             "event_reminders.payment_details",
             {
@@ -181,6 +181,15 @@ class BackgroundProcess {
             },
           );
         }
+
+        if (more.length > 0) more += "\n\n";
+        more += i18n.t(
+          signup.user.locale ?? config.DEFAULT_LOCALE,
+          "event_reminders.donate_reminder",
+          {
+            paymentDetails,
+          },
+        );
       }
 
       await this.bot.api.sendMessage(
