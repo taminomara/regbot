@@ -9,6 +9,8 @@ import {
   SignupStatus,
 } from "#root/backend/entities/event.js";
 import { User as UserObject } from "#root/backend/entities/user.js";
+import { config } from "#root/config.js";
+import { logger } from "#root/logger.js";
 
 export { SignupStatus } from "#root/backend/entities/event.js";
 export type EventSignup = EntityDTO<EventSignupObject>;
@@ -380,15 +382,28 @@ export async function lockEventForSendingReminders(): Promise<{
   event: Event;
   signups: PopulatedEventSignup[];
 } | null> {
+  // Days change at `REMINDER_TIME_HH` hours in this routine.
+  const today = moment
+    .tz(config.TIMEZONE)
+    .subtract({ hours: config.REMINDER_TIME_HH })
+    .startOf("day");
+  // Send reminders for events that will happen between tomorrow 00:00 and...
+  const startDate = today.clone().add({ days: 1 });
+  // ...3:59AM of the day after after tomorrow.
+  const endDate = startDate.clone().add({ days: 1, hours: 3, minutes: 59 });
+
+  logger.debug({
+    msg: "Searching events to send reminders",
+    startDate: startDate.toDate(),
+    endDate: endDate.toDate(),
+  });
+
   return orm.em.transactional(async () => {
     const event = await orm.em.findOne(
       EventObject,
       {
         reminderSent: false,
-        date: {
-          $lte: moment.utc().add({ days: 1 }).toDate(),
-          $gte: moment.utc().add({ hours: 12 }).toDate(),
-        },
+        date: { $gte: startDate.toDate(), $lte: endDate.toDate() },
       },
       {
         lockMode: LockMode.PESSIMISTIC_WRITE,
