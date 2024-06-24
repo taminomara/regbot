@@ -234,6 +234,16 @@ async function getEventForSignup(
     );
     return;
   }
+  if (!event.registrationOpen) {
+    await ctx.api.sendMessage(
+      user.id,
+      i18n.t(
+        user.locale ?? config.DEFAULT_LOCALE,
+        "event_signup.registration_closed",
+      ),
+    );
+    return;
+  }
   if (moment.utc(event.date).isBefore(moment.now())) {
     await ctx.api.sendMessage(
       user.id,

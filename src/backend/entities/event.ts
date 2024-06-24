@@ -48,7 +48,7 @@ export class Event {
   chatPostId: number | null = null;
 
   @Property()
-  registrationOpen: boolean = true; // TODO!
+  registrationOpen: boolean = false;
 
   @Property()
   requireApproval: boolean = false;

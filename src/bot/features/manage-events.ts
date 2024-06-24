@@ -296,6 +296,14 @@ async function switchEventPayment(ctx: Context) {
   }
 }
 
+async function openRegistration(ctx: Context) {
+  const event = await getEventForEditFromMatch(null, ctx);
+  if (event !== undefined) {
+    await updateEvent(event.id, { registrationOpen: true });
+    await updateManageEventMenu(ctx);
+  }
+}
+
 export const enterEditEventOptions = async (ctx: Context) => {
   await ctx.conversation.enter("editEventOptions");
 };
@@ -381,7 +389,7 @@ async function publishEvent(ctx: Context) {
   const event = await getEventForEditFromMatch(null, ctx);
   if (event === undefined || event.published) return;
 
-  await updateEvent(event.id, { published: true });
+  await updateEvent(event.id, { published: true, registrationOpen: true });
   ctx.menu.back();
   await updateManageEventMenu(ctx);
 
@@ -609,6 +617,27 @@ export const manageEventMenu = new Menu<Context>("manageEventMenu")
     );
     range.row();
 
+    if (event.registrationOpen) {
+      range.text(
+        withPayload(
+          i18n.t(config.DEFAULT_LOCALE, "manage_events.registration_open", {
+            registrationOpen: "yes",
+          }),
+        ),
+      );
+    } else {
+      range.submenu(
+        withPayload(
+          i18n.t(config.DEFAULT_LOCALE, "manage_events.registration_open", {
+            registrationOpen: "no",
+          }),
+        ),
+        "openEventRegistrationMenu",
+        updateOpenEventRegistrationMenu,
+      );
+    }
+    range.row();
+
     if (event.published) {
       range.text(
         withPayload(
@@ -694,6 +723,29 @@ async function updateManageEventMenu(ctx: Context) {
   await editMessageTextSafe(ctx, eventDescription, {
     link_preview_options: { is_disabled: true },
   });
+}
+
+export const openEventRegistrationMenu = new Menu<Context>(
+  "openEventRegistrationMenu",
+)
+  .back(
+    withPayload(() =>
+      i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_no"),
+    ),
+    updateManageEventMenu,
+  )
+  .text(
+    withPayload(() =>
+      i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_yes"),
+    ),
+    openRegistration,
+  );
+manageEventMenu.register(openEventRegistrationMenu);
+async function updateOpenEventRegistrationMenu(ctx: Context) {
+  await editMessageTextSafe(
+    ctx,
+    i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_confirm"),
+  );
 }
 
 export const publishEventMenu = new Menu<Context>("publishEventMenu")
