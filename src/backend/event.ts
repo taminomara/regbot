@@ -328,7 +328,7 @@ export async function upcomingEventsWithUserSignup(
 ): Promise<EventWithSignup[]> {
   const events = await orm.em.find(
     EventObject,
-    { date: { $gte: new Date() } },
+    { date: { $gte: new Date() }, registrationOpen: true },
     {
       orderBy: { date: "ASC" },
       populate: ["signups"],
@@ -403,6 +403,7 @@ export async function lockEventForSendingReminders(): Promise<{
       EventObject,
       {
         reminderSent: false,
+        registrationOpen: true,
         date: { $gte: startDate.toDate(), $lte: endDate.toDate() },
       },
       {
