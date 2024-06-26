@@ -15,6 +15,12 @@ import { Context } from "#root/bot/context.js";
 
 const SEALED = Symbol("SEALED");
 
+export type StringOrStringLiteral<T> = T extends string
+  ? string extends T
+    ? string
+    : T
+  : string;
+
 /**
  * Return this from a step handler to repeat it.
  */
@@ -192,6 +198,54 @@ class ConversationBuilder<C extends Context, P, IP> {
     ) => MaybePromise<T | typeof REPEAT | typeof FINISH>,
   ): ConversationBuilder<C, T, IP> {
     return this.wait(DefaultContext.has.filterQuery(query), func);
+  }
+
+  /**
+   * Wait for the user to respond with a specific type of message,
+   * then run a handler.
+   */
+  waitForTextOrCmd<Q extends FilterQuery, Cmd, T>(
+    query: Q,
+    allowedCommands: StringOrStringLiteral<Cmd>[],
+    func: (
+      ctx:
+        | { ctx: Filter<C, "message:text">; command: Cmd }
+        | { ctx: Filter<C, Q>; command: undefined },
+      payload: P,
+    ) => MaybePromise<T | typeof REPEAT | typeof FINISH>,
+  ): ConversationBuilder<C, T, IP> {
+    return this.wait(
+      (ctx): ctx is C =>
+        (ctx.has(query) && ctx.entities("bot_command").length === 0) ||
+        (ctx.has("message:text") &&
+          ctx.entities("bot_command").length === 1 &&
+          allowedCommands.reduce(
+            (prev, cmd) => prev || ctx.hasCommand(cmd),
+            false,
+          )),
+      (ctx, payload) => {
+        if (ctx.entities("bot_command").length > 0) {
+          const { command } = /^\/?(?<command>[^@]*)/u.exec(
+            ctx.entities("bot_command")[0].text,
+          )!.groups!;
+          return func(
+            {
+              ctx: ctx as Filter<C, "message:text">,
+              command: command as Cmd,
+            },
+            payload,
+          );
+        } else {
+          return func(
+            {
+              ctx: ctx as Filter<C, Q>,
+              command: undefined,
+            },
+            payload,
+          );
+        }
+      },
+    );
   }
 
   /**
