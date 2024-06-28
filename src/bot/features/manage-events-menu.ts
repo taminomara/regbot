@@ -328,7 +328,7 @@ const publishEventMenu = new Menu<Context>("publishEventMenu")
     ),
     updateManageEventMenu,
   )
-  .text(
+  .back(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_yes"),
     ),
