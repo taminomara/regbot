@@ -40,6 +40,22 @@ export const composer = new Composer<Context>();
 
 const feature = composer.filter(isApproved);
 
+export async function sendEditProfileMenu(ctx: Context, chatId: number) {
+  const user = await getUserOrFail(ctx.user.id);
+  await ctx.api.sendMessage(
+    chatId,
+    ctx.t("menu.about", {
+      name: sanitizeHtmlOrEmpty(user.name),
+      pronouns: sanitizeHtmlOrEmpty(user.pronouns),
+      gender: sanitizeHtmlOrEmpty(user.gender),
+      sexuality: sanitizeHtmlOrEmpty(user.sexuality),
+    }),
+    {
+      reply_markup: eventsMenu.at("editProfileMenu"),
+    },
+  );
+}
+
 export async function sendEventsMenu(
   conversation: Conversation | null,
   ctx: Context,
@@ -152,16 +168,28 @@ async function updateProfileMenu(ctx: Context) {
 }
 
 const editProfileMenu = new Menu<Context>("editProfileMenu")
-  .text((ctx) => ctx.t("menu.edit_name"), enterEditName)
-  .text((ctx) => ctx.t("menu.edit_pronouns"), enterEditPronouns)
+  .text(
+    (ctx) => ctx.t("menu.edit_name"),
+    async (ctx) => enterEditName(ctx, true),
+  )
+  .text(
+    (ctx) => ctx.t("menu.edit_pronouns"),
+    async (ctx) => enterEditPronouns(ctx, true),
+  )
   .row()
-  .text((ctx) => ctx.t("menu.edit_gender"), enterEditGender)
-  .text((ctx) => ctx.t("menu.edit_sexuality"), enterEditSexuality)
+  .text(
+    (ctx) => ctx.t("menu.edit_gender"),
+    async (ctx) => enterEditGender(ctx, true),
+  )
+  .text(
+    (ctx) => ctx.t("menu.edit_sexuality"),
+    async (ctx) => enterEditSexuality(ctx, true),
+  )
   .row()
   .back((ctx) => ctx.t("menu.back"), updateProfileMenu);
 profileMenu.register(editProfileMenu);
 async function updateEditProfileMenu(ctx: Context) {
-  await editMessageTextSafe(ctx, ctx.t("menu.edit_prompt"));
+  await updateProfileMenu(ctx);
 }
 
 const eventMenu = new Menu<Context>("eventMenu")

@@ -8,21 +8,24 @@ import { composer as editUserComposer } from "./edit-user.js";
 import { composer as eventRemindersComposer } from "./event-reminders.js";
 import { composer as interviewComposer } from "./interview-v2.js";
 import { composer as languageComposer } from "./language.js";
-import { composer as manageEventsComposer } from "./manage-events.js";
+import { composer as manageEventsMenuComposer } from "./manage-events-menu.js";
 import { composer as menuComposer } from "./menu.js";
 import { composer as startComposer } from "./start.js";
 import { composer as unhandledComposer } from "./unhandled.js";
 
 export const composer = new Composer<Context>();
 
-composer.use(editUserComposer);
+// Menus
 composer.use(menuComposer);
 composer.use(adminGroupMenuComposer);
+composer.use(manageEventsMenuComposer);
+// Conversations
 composer.use(interviewComposer);
+// Commands and features
 composer.use(adminGroupComposer);
+composer.use(editUserComposer);
 composer.use(languageComposer);
 composer.use(startComposer);
-composer.use(manageEventsComposer);
 composer.use(eventRemindersComposer);
 
 composer.use(unhandledComposer); // Must be the last composer.

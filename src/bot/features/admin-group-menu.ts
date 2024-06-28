@@ -112,20 +112,20 @@ async function updateAdminGroupUserMenu(ctx: Context) {
 const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_name")),
-    enterEditName,
+    async (ctx) => enterEditName(ctx),
   )
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_pronouns")),
-    enterEditPronouns,
+    async (ctx) => enterEditPronouns(ctx),
   )
   .row()
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_gender")),
-    enterEditGender,
+    async (ctx) => enterEditGender(ctx),
   )
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_sexuality")),
-    enterEditSexuality,
+    async (ctx) => enterEditSexuality(ctx),
   )
   .row()
   .back(

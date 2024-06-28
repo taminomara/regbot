@@ -1,82 +1,49 @@
 import { Composer, Keyboard } from "grammy";
 
 import {
-  getUser,
-  getUserByAdminGroupTopic,
-  getUserOrFail,
   setUserGender,
   setUserName,
   setUserPronouns,
   setUserSexuality,
 } from "#root/backend/user.js";
-import type { Context, Conversation } from "#root/bot/context.js";
-import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
-import {
-  createConversation,
-  waitForSkipCommands,
-} from "#root/bot/helpers/conversations.js";
-import { config } from "#root/config.js";
+import type { Context } from "#root/bot/context.js";
+
+import { conversation } from "../helpers/conversations-v2.js";
+import { sendEditProfileMenu } from "./menu.js";
 
 export const composer = new Composer<Context>();
 
-export async function editName(
-  conversation: Conversation,
-  ctx: Context,
-  inInterview?: boolean,
-) {
-  const user = await conversation.external(async () => {
-    const threadId = ctx.msg?.message_thread_id;
-    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
-      return getUserByAdminGroupTopic(threadId);
-    }
-    return getUser(ctx.user.id);
-  });
-  if (user === null) return;
-
-  await ctx.reply(
-    inInterview ? ctx.t("interview.name") : ctx.t("interview.edit_name"),
-    { message_thread_id: ctx.msg?.message_thread_id },
-  );
-  const { reply, command } = await waitForSkipCommands(
-    conversation,
-    "message:text",
-    inInterview ? [] : ["cancel"],
-  );
-  if (command !== "cancel") {
-    await conversation.external(async () => {
-      await setUserName(user.id, reply.message.text);
+const editName = conversation<{ sendMenu?: boolean }>("editName")
+  .proceed(async (ctx, opts) => {
+    await ctx.reply(ctx.t("interview.edit_name"), {
+      message_thread_id: ctx.msg?.message_thread_id,
     });
-  }
-
-  if (!inInterview) {
-    await sendEditConfirmation(
-      conversation,
-      reply,
-      user.id,
-      command === "cancel",
-    );
+    return opts;
+  })
+  .waitForTextOrCmd(
+    "message:text",
+    ["cancel"],
+    async ({ ctx, command }, opts) => {
+      if (command !== "cancel") {
+        await setUserName(ctx.user.id, ctx.message.text);
+        await sendConfirmation(ctx);
+      } else {
+        await sendCancelled(ctx);
+      }
+      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
+    },
+  )
+  .build();
+composer.use(editName);
+export async function enterEditName(ctx: Context, sendMenu: boolean = false) {
+  if (await checkNoConversations(ctx)) {
+    await editName.enter(ctx, { sendMenu });
   }
 }
 
-export async function editPronouns(
-  conversation: Conversation,
-  ctx: Context,
-  inInterview?: boolean,
-) {
-  const user = await conversation.external(async () => {
-    const threadId = ctx.msg?.message_thread_id;
-    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
-      return getUserByAdminGroupTopic(threadId);
-    }
-    return getUser(ctx.user.id);
-  });
-  if (user === null) return;
-
-  await ctx.reply(
-    inInterview
-      ? ctx.t("interview.pronouns")
-      : ctx.t("interview.edit_pronouns"),
-    {
+const editPronouns = conversation<{ sendMenu?: boolean }>("editPronouns")
+  .proceed(async (ctx, opts) => {
+    await ctx.reply(ctx.t("interview.edit_pronouns"), {
       reply_markup: new Keyboard()
         .text(ctx.t("interview.pronouns_they_them"))
         .text(ctx.t("interview.pronouns_she_her"))
@@ -84,99 +51,72 @@ export async function editPronouns(
         .text(ctx.t("interview.pronouns_he_him"))
         .text(ctx.t("interview.pronouns_it_its"))
         .placeholder(ctx.t("interview.can_use_custom_pronouns"))
-        .resized()
-        .oneTime(),
+        .resized(),
       message_thread_id: ctx.msg?.message_thread_id,
-    },
-  );
-  const { reply, command } = await waitForSkipCommands(
-    conversation,
-    "message:text",
-    inInterview ? [] : ["cancel"],
-  );
-  if (command !== "cancel") {
-    await conversation.external(async () => {
-      await setUserPronouns(user.id, reply.message.text);
     });
-  }
-
-  if (!inInterview) {
-    await sendEditConfirmation(
-      conversation,
-      reply,
-      user.id,
-      command === "cancel",
-    );
+    return opts;
+  })
+  .waitForTextOrCmd(
+    "message:text",
+    ["cancel"],
+    async ({ ctx, command }, opts) => {
+      if (command !== "cancel") {
+        await setUserPronouns(ctx.user.id, ctx.message.text);
+        await sendConfirmation(ctx);
+      } else {
+        await sendCancelled(ctx);
+      }
+      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
+    },
+  )
+  .build();
+composer.use(editPronouns);
+export async function enterEditPronouns(
+  ctx: Context,
+  sendMenu: boolean = false,
+) {
+  if (await checkNoConversations(ctx)) {
+    await editPronouns.enter(ctx, { sendMenu });
   }
 }
 
-export async function editGender(
-  conversation: Conversation,
-  ctx: Context,
-  inInterview?: boolean,
-) {
-  const user = await conversation.external(async () => {
-    const threadId = ctx.msg?.message_thread_id;
-    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
-      return getUserByAdminGroupTopic(threadId);
-    }
-    return getUser(ctx.user.id);
-  });
-  if (user === null) return;
-
-  await ctx.reply(
-    inInterview ? ctx.t("interview.gender") : ctx.t("interview.edit_gender"),
-    {
+const editGender = conversation<{ sendMenu?: boolean }>("editGender")
+  .proceed(async (ctx, opts) => {
+    await ctx.reply(ctx.t("interview.edit_gender"), {
       reply_markup: new Keyboard()
         .text(ctx.t("interview.gender_nonbinary"))
         .text(ctx.t("interview.gender_woman"))
         .text(ctx.t("interview.gender_man"))
         .placeholder(ctx.t("interview.can_use_custom_gender"))
-        .resized()
-        .oneTime(),
+        .resized(),
       message_thread_id: ctx.msg?.message_thread_id,
-    },
-  );
-  const { reply, command } = await waitForSkipCommands(
-    conversation,
-    "message:text",
-    inInterview ? [] : ["cancel"],
-  );
-  if (command !== "cancel") {
-    await conversation.external(async () => {
-      await setUserGender(user.id, reply.message.text);
     });
-  }
-
-  if (!inInterview) {
-    await sendEditConfirmation(
-      conversation,
-      reply,
-      user.id,
-      command === "cancel",
-    );
+    return opts;
+  })
+  .waitForTextOrCmd(
+    "message:text",
+    ["cancel"],
+    async ({ ctx, command }, opts) => {
+      if (command !== "cancel") {
+        await setUserGender(ctx.user.id, ctx.message.text);
+        await sendConfirmation(ctx);
+      } else {
+        await sendCancelled(ctx);
+      }
+      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
+    },
+  )
+  .build();
+composer.use(editGender);
+export async function enterEditGender(ctx: Context, sendMenu: boolean = false) {
+  if (await checkNoConversations(ctx)) {
+    await editGender.enter(ctx, { sendMenu });
   }
 }
 
-export async function editSexuality(
-  conversation: Conversation,
-  ctx: Context,
-  inInterview?: boolean,
-) {
-  const user = await conversation.external(async () => {
-    const threadId = ctx.msg?.message_thread_id;
-    if (threadId !== undefined && ctx.chatId === config.ADMIN_GROUP) {
-      return getUserByAdminGroupTopic(threadId);
-    }
-    return getUser(ctx.user.id);
-  });
-  if (user === null) return;
-
-  await ctx.reply(
-    inInterview
-      ? ctx.t("interview.sexuality")
-      : ctx.t("interview.edit_sexuality"),
-    {
+const editSexuality = conversation<{ sendMenu?: boolean }>("editSexuality")
+  .proceed(async (ctx, opts) => {
+    await ctx.reply(ctx.t("interview.edit_sexuality"), {
       reply_markup: new Keyboard()
         .text(ctx.t("interview.sexuality_pansexual"))
         .text(ctx.t("interview.sexuality_bisexual"))
@@ -184,112 +124,81 @@ export async function editSexuality(
         .text(ctx.t("interview.sexuality_homosexual"))
         .text(ctx.t("interview.sexuality_heterosexual"))
         .placeholder(ctx.t("interview.can_use_custom_sexuality"))
-        .resized()
-        .oneTime(),
+        .resized(),
       message_thread_id: ctx.msg?.message_thread_id,
-    },
-  );
-
-  const { reply, command } = await waitForSkipCommands(
-    conversation,
-    "message:text",
-    inInterview ? [] : ["cancel"],
-  );
-  if (command !== "cancel") {
-    await conversation.external(async () => {
-      await setUserSexuality(user.id, reply.message.text);
     });
-  }
-
-  if (!inInterview) {
-    await sendEditConfirmation(
-      conversation,
-      reply,
-      user.id,
-      command === "cancel",
-    );
-  }
-}
-
-async function sendEditConfirmation(
-  conversation: Conversation,
-  ctx: Context,
-  userId: number,
-  canceled: boolean,
-) {
-  await ctx.reply(
-    ctx.t(canceled ? "interview.edit_cancel" : "interview.edit_success"),
-    {
-      reply_markup: { remove_keyboard: true },
-      message_thread_id: ctx.msg?.message_thread_id,
-      reply_to_message_id: ctx.msgId,
+    return opts;
+  })
+  .waitForTextOrCmd(
+    "message:text",
+    ["cancel"],
+    async ({ ctx, command }, opts) => {
+      if (command !== "cancel") {
+        await setUserSexuality(ctx.user.id, ctx.message.text);
+        await sendConfirmation(ctx);
+      } else {
+        await sendCancelled(ctx);
+      }
+      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
     },
-  );
-  const user = await conversation.external(async () => getUserOrFail(userId));
-  await updateAdminGroupTopicTitle(conversation, ctx, user);
-}
-
-composer.use(createConversation(editName));
-composer.use(createConversation(editPronouns));
-composer.use(createConversation(editGender));
-composer.use(createConversation(editSexuality));
-
-async function enterEditMe(conversationIdent: string, ctx: Context) {
-  if (!(await checkNoConversations(ctx))) {
-    return;
+  )
+  .build();
+composer.use(editSexuality);
+export async function enterEditSexuality(
+  ctx: Context,
+  sendMenu: boolean = false,
+) {
+  if (await checkNoConversations(ctx)) {
+    await editSexuality.enter(ctx, { sendMenu });
   }
-
-  await ctx.conversation.enter(conversationIdent, { overwrite: true });
-}
-
-export async function enterEditName(ctx: Context) {
-  await enterEditMe("editName", ctx);
-}
-
-export async function enterEditPronouns(ctx: Context) {
-  await enterEditMe("editPronouns", ctx);
-}
-
-export async function enterEditGender(ctx: Context) {
-  await enterEditMe("editGender", ctx);
-}
-
-export async function enterEditSexuality(ctx: Context) {
-  await enterEditMe("editSexuality", ctx);
 }
 
 async function checkNoConversations(ctx: Context) {
-  const activeConversations = await ctx.conversation.active();
-  if ("interview" in activeConversations) {
-    await ctx.reply(ctx.t("interview.finish_interview_first"), {
-      message_thread_id: ctx.msg?.message_thread_id,
-    });
-    return false;
+  switch (ctx.session.linearConversation?.name) {
+    case "interview":
+      await ctx.answerCallbackQuery({
+        text: ctx.t("interview.finish_interview_first"),
+        show_alert: true,
+      });
+      return false;
+    case "editName":
+      await ctx.answerCallbackQuery({
+        text: ctx.t("interview.edit_name_first"),
+        show_alert: true,
+      });
+      return false;
+    case "editPronouns":
+      await ctx.answerCallbackQuery({
+        text: ctx.t("interview.edit_pronouns_first"),
+        show_alert: true,
+      });
+      return false;
+    case "editGender":
+      await ctx.answerCallbackQuery({
+        text: ctx.t("interview.edit_gender_first"),
+        show_alert: true,
+      });
+      return false;
+    case "editSexuality":
+      await ctx.answerCallbackQuery({
+        text: ctx.t("interview.edit_sexuality_first"),
+        show_alert: true,
+      });
+      return false;
   }
-  if ("editName" in activeConversations) {
-    await ctx.reply(ctx.t("interview.edit_name_first"), {
-      message_thread_id: ctx.msg?.message_thread_id,
-    });
-    return false;
-  }
-  if ("editPronouns" in activeConversations) {
-    await ctx.reply(ctx.t("interview.edit_pronouns_first"), {
-      message_thread_id: ctx.msg?.message_thread_id,
-    });
-    return false;
-  }
-  if ("editGender" in activeConversations) {
-    await ctx.reply(ctx.t("interview.edit_gender_first"), {
-      message_thread_id: ctx.msg?.message_thread_id,
-    });
-    return false;
-  }
-  if ("editSexuality" in activeConversations) {
-    await ctx.reply(ctx.t("interview.edit_sexuality_first"), {
-      message_thread_id: ctx.msg?.message_thread_id,
-    });
-    return false;
-  }
-
   return true;
+}
+
+async function sendConfirmation(ctx: Context) {
+  await ctx.reply(ctx.t("interview.edit_success"), {
+    reply_markup: { remove_keyboard: true },
+    message_thread_id: ctx.msg?.message_thread_id,
+  });
+}
+
+async function sendCancelled(ctx: Context) {
+  await ctx.reply(ctx.t("interview.edit_cancel"), {
+    reply_markup: { remove_keyboard: true },
+    message_thread_id: ctx.msg?.message_thread_id,
+  });
 }

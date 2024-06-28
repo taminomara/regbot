@@ -3,15 +3,19 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Other } from "@grammyjs/hydrate";
 import {
   Context as DefaultContext,
   Filter,
   FilterQuery,
+  InlineKeyboard,
   MiddlewareFn,
   MiddlewareObj,
 } from "grammy";
 
 import { Context } from "#root/bot/context.js";
+
+import { editMessageTextSafe } from "./edit-text.js";
 
 const SEALED = Symbol("SEALED");
 
@@ -257,35 +261,33 @@ class ConversationBuilder<C extends Context, P, IP> {
   }
 }
 
-class ConversationBuilder1<C extends Context> {
-  readonly name: string;
-
-  constructor(name: string, _: typeof SEALED) {
-    this.name = name;
-  }
-
-  /**
-   * Run a handler immediately after the previous step.
-   * The handler can't repeat itself, because it doesn't wait
-   * for any user input.
-   */
-  proceed<T>(func: {
-    (ctx: C): typeof FINISH | T | Promise<typeof FINISH | T>;
-  }): ConversationBuilder<C, T, undefined>;
-  proceed<P, T>(func: {
-    (ctx: C, payload: P): typeof FINISH | T | Promise<typeof FINISH | T>;
-  }): ConversationBuilder<C, T, P>;
-  proceed<P, T>(func: {
-    (ctx: C, payload: P): typeof FINISH | T | Promise<typeof FINISH | T>;
-  }): ConversationBuilder<C, T, P> {
-    return new ConversationBuilder<C, T, P>(
-      this.name,
-      [{ func: func as any }],
-      SEALED,
-    );
-  }
+export function conversation<P = undefined>(name: string) {
+  return new ConversationBuilder<Context, P, P>(name, [], SEALED);
 }
 
-export function conversation(name: string) {
-  return new ConversationBuilder1(name, SEALED);
+export async function prompt(
+  ctx: Context,
+  prompt: string,
+  editMenu: boolean | undefined = true,
+  other: Other<
+    "editMessageText",
+    | "chat_id"
+    | "message_id"
+    | "message_thread_id"
+    | "inline_message_id"
+    | "text"
+    | "reply_markup"
+  > = {},
+) {
+  if (ctx.menu !== undefined && editMenu) {
+    await editMessageTextSafe(ctx, prompt, {
+      reply_markup: new InlineKeyboard(),
+      ...other,
+    });
+  } else {
+    await ctx.reply(prompt, {
+      message_thread_id: ctx.msg?.message_thread_id,
+      ...other,
+    });
+  }
 }
