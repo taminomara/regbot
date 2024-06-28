@@ -1,5 +1,5 @@
 import { Menu } from "@grammyjs/menu";
-import { Composer, Filter, GrammyError, InlineKeyboard } from "grammy";
+import { Composer, Filter, GrammyError } from "grammy";
 import moment from "moment-timezone";
 
 import { EventPayment } from "#root/backend/entities/event.js";
@@ -23,6 +23,7 @@ import {
   FINISH,
   REPEAT,
   conversation,
+  prompt,
 } from "#root/bot/helpers/conversations-v2.js";
 import { maybeExternal, patchCtx } from "#root/bot/helpers/conversations.js";
 import {
@@ -471,12 +472,6 @@ registerCommandHelp({
   scope: CommandScope.PrivateChat,
   privileges: CommandPrivileges.Admins,
 });
-
-async function prompt(ctx: Context, prompt: string) {
-  await editMessageTextSafe(ctx, prompt, {
-    reply_markup: new InlineKeyboard(),
-  });
-}
 
 const editEventName = conversation("editEventName")
   .proceed(async (ctx) => {
