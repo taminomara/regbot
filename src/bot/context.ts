@@ -1,8 +1,4 @@
 import { AutoChatActionFlavor } from "@grammyjs/auto-chat-action";
-import {
-  ConversationFlavor,
-  Conversation as DefaultConversation,
-} from "@grammyjs/conversations";
 import { HydrateFlavor } from "@grammyjs/hydrate";
 import { MenuFlavor } from "@grammyjs/menu";
 import { ParseModeFlavor } from "@grammyjs/parse-mode";
@@ -25,9 +21,6 @@ export type Context = ParseModeFlavor<
       SessionFlavor<SessionData> &
       I18nFlavor &
       AutoChatActionFlavor &
-      ConversationFlavor &
       MenuFlavor
   >
 >;
-
-export type Conversation = DefaultConversation<Context>;

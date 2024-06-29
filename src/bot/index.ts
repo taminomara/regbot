@@ -1,6 +1,5 @@
 import { autoChatAction } from "@grammyjs/auto-chat-action";
 import { autoRetry } from "@grammyjs/auto-retry";
-import { conversations } from "@grammyjs/conversations";
 import { hydrate } from "@grammyjs/hydrate";
 import { hydrateReply, parseMode } from "@grammyjs/parse-mode";
 import { RequestContext } from "@mikro-orm/core";
@@ -62,7 +61,6 @@ export function createBot(token: string) {
   protectedBot.use(hydrateReply);
   protectedBot.use(hydrate());
   protectedBot.use(session());
-  protectedBot.use(conversations());
   protectedBot.use(i18n);
   protectedBot.use(userMw());
 
