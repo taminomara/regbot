@@ -48,7 +48,9 @@ export async function sendAdminGroupUserMenu(ctx: Context, user: User) {
   );
 }
 
-const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu")
+const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
+  onMenuOutdated: updateAdminGroupUserMenu,
+})
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.update")),
     updateAdminGroupUserMenu,
