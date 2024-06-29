@@ -12,7 +12,7 @@ import {
   upcomingEventsWithSignupStats,
   updateEvent,
 } from "#root/backend/event.js";
-import { Context, Conversation } from "#root/bot/context.js";
+import { Context } from "#root/bot/context.js";
 import {
   CommandPrivileges,
   CommandScope,
@@ -25,7 +25,6 @@ import {
   conversation,
   prompt,
 } from "#root/bot/helpers/conversations-v2.js";
-import { maybeExternal, patchCtx } from "#root/bot/helpers/conversations.js";
 import {
   deleteMessageSafe,
   editMessageTextSafe,
@@ -40,6 +39,8 @@ import {
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
+
+import { patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
 
@@ -56,7 +57,7 @@ async function sendEventMenu(ctx: Context, eventId: number) {
   const event = await getEventWithSignupStats(eventId);
   if (event === null) return;
 
-  await patchCtx(null, ctx, { match: eventId }, async (ctx) => {
+  await patchCtx(ctx, { match: eventId }, async (ctx) => {
     await ctx.reply(formatEventDescription(ctx, event), {
       link_preview_options: { is_disabled: true },
       reply_markup: manageEventsMenu.at("manageEventMenu"),
@@ -127,7 +128,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
   )
   .row()
   .dynamic(async (ctx, range) => {
-    const event = await getEventFromMatch(null, ctx);
+    const event = await getEventFromMatch(ctx);
     if (event === undefined) return;
 
     range.text(
@@ -263,7 +264,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
   );
 manageEventsMenu.register(manageEventMenu);
 async function updateManageEventMenu(ctx: Context) {
-  const event = await getEventFromMatch(null, ctx);
+  const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
   await editMessageTextSafe(ctx, formatEventDescription(ctx, event), {
     link_preview_options: { is_disabled: true },
@@ -374,7 +375,7 @@ const manageEventParticipantsMenu = new Menu<Context>(
   );
 manageEventMenu.register(manageEventParticipantsMenu);
 async function updateManageEventParticipantsMenu(ctx: Context) {
-  const event = await getEventFromMatch(null, ctx);
+  const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
 
   const participants = (await getEventSignups(event.id))
@@ -427,18 +428,13 @@ async function updateManageEventParticipantsMenu(ctx: Context) {
   );
 }
 
-async function getEventFromMatch(
-  conversation: Conversation | null,
-  ctx: Context,
-) {
+async function getEventFromMatch(ctx: Context) {
   const eventId = Number(ctx.match);
   if (!Number.isFinite(eventId)) {
     ctx.logger.error("Can't get event id form match", { match: ctx.match });
     return;
   }
-  const event = await maybeExternal(conversation, async () =>
-    getEventWithSignupStats(eventId),
-  );
+  const event = await getEventWithSignupStats(eventId);
   if (event === null) {
     ctx.logger.error("Can't get event id form match", { match: ctx.match });
     return;
@@ -446,11 +442,8 @@ async function getEventFromMatch(
   return event;
 }
 
-async function getEventForEditFromMatch(
-  conversation: Conversation | null,
-  ctx: Context,
-) {
-  const event = await getEventFromMatch(conversation, ctx);
+async function getEventForEditFromMatch(ctx: Context) {
+  const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
 
   if (moment.utc(event.date).isBefore(moment.now())) {
@@ -475,7 +468,7 @@ registerCommandHelp({
 
 const editEventName = conversation("editEventName")
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(null, ctx);
+    const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
     await prompt(ctx, ctx.t("manage_events.enter_name"));
     return { eventId: event.id };
@@ -495,7 +488,7 @@ feature.use(editEventName);
 
 const editEventDate = conversation("editEventDate")
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(null, ctx);
+    const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
     await prompt(ctx, ctx.t("manage_events.enter_date"));
     return { eventId: event.id };
@@ -536,7 +529,7 @@ feature.use(editEventDate);
 
 const editEventPost = conversation("editEventPost")
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(null, ctx);
+    const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
     await prompt(ctx, ctx.t("manage_events.enter_post"));
     return { eventId: event.id };
@@ -556,7 +549,7 @@ feature.use(editEventPost);
 
 const editEventPrice = conversation("editEventPrice")
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(null, ctx);
+    const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
     await prompt(ctx, ctx.t("manage_events.enter_price"));
     return { eventId: event.id };
@@ -580,7 +573,7 @@ feature.use(editEventPrice);
 
 const editEventPaymentDetails = conversation("editEventPaymentDetails")
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(null, ctx);
+    const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
     await prompt(ctx, ctx.t("manage_events.enter_iban"));
     return { eventId: event.id };
@@ -626,7 +619,7 @@ feature.use(editEventPaymentDetails);
 
 const editEventOptions = conversation("editEventOptions")
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(null, ctx);
+    const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
     await prompt(ctx, ctx.t("manage_events.enter_options"));
     return { eventId: event.id };
@@ -652,7 +645,7 @@ feature.use(editEventOptions);
 
 const editEventReminder = conversation("editEventReminder")
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(null, ctx);
+    const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
     await prompt(ctx, ctx.t("manage_events.enter_reminder"));
     return { eventId: event.id };
@@ -735,7 +728,7 @@ async function editEventPostFromCtx(
 }
 
 async function switchConfirmation(ctx: Context) {
-  const event = await getEventForEditFromMatch(null, ctx);
+  const event = await getEventForEditFromMatch(ctx);
   if (event !== undefined) {
     await updateEvent(event.id, { requireApproval: !event.requireApproval });
     await updateManageEventMenu(ctx);
@@ -743,7 +736,7 @@ async function switchConfirmation(ctx: Context) {
 }
 
 async function switchEventPayment(ctx: Context) {
-  const event = await getEventForEditFromMatch(null, ctx);
+  const event = await getEventForEditFromMatch(ctx);
   if (event !== undefined) {
     switch (event.payment) {
       case EventPayment.Required:
@@ -761,7 +754,7 @@ async function switchEventPayment(ctx: Context) {
 }
 
 async function openRegistration(ctx: Context) {
-  const event = await getEventForEditFromMatch(null, ctx);
+  const event = await getEventForEditFromMatch(ctx);
   if (event !== undefined) {
     await updateEvent(event.id, { registrationOpen: true });
     await updateManageEventMenu(ctx);
@@ -769,7 +762,7 @@ async function openRegistration(ctx: Context) {
 }
 
 async function publishEvent(ctx: Context) {
-  const event = await getEventForEditFromMatch(null, ctx);
+  const event = await getEventForEditFromMatch(ctx);
   if (event === undefined || event.published) return;
 
   await updateEvent(event.id, { published: true, registrationOpen: true });
@@ -810,7 +803,7 @@ async function publishEvent(ctx: Context) {
 }
 
 async function deleteEvent(ctx: Context) {
-  const event = await getEventForEditFromMatch(null, ctx);
+  const event = await getEventForEditFromMatch(ctx);
   if (event === undefined) return;
 
   if (event.chatPostId !== null) {

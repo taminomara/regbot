@@ -24,12 +24,12 @@ feature.command("start", logHandle("command-start"), async (ctx) => {
   if (ctx.user.status === UserStatus.New) {
     await interviewConversation.forceEnter(ctx);
   } else {
-    await ensureHasAdminGroupTopic(null, ctx, ctx.user);
+    await ensureHasAdminGroupTopic(ctx, ctx.user);
 
     if (ctx.user.status === UserStatus.InterviewInProgress) {
       await ctx.reply(ctx.t("welcome.in_progress"));
     } else if (eventId !== undefined) {
-      await postInterviewSignup(null, ctx);
+      await postInterviewSignup(ctx);
     } else {
       await ctx.reply(ctx.t("welcome.all_set"));
     }

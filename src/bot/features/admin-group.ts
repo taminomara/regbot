@@ -13,7 +13,7 @@ import {
   setUserAdminGroupTopicId,
   unbanUser as unbanUserDb,
 } from "#root/backend/user.js";
-import type { Context, Conversation } from "#root/bot/context.js";
+import type { Context } from "#root/bot/context.js";
 import {
   adminPostInterviewMenu,
   sendAdminGroupUserMenu,
@@ -28,7 +28,6 @@ import {
   registerCommandHelp,
 } from "#root/bot/features/help.js";
 import { isAdmin } from "#root/bot/filters/index.js";
-import { maybeExternal } from "#root/bot/helpers/conversations.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
@@ -41,7 +40,6 @@ export const composer = new Composer<Context>();
  * Make sure that there is a topic in the admin forum about the given user.
  */
 export async function ensureHasAdminGroupTopic(
-  conversation: Conversation | null,
   ctx: Context,
   userLite: UserLite,
 ) {
@@ -49,9 +47,7 @@ export async function ensureHasAdminGroupTopic(
     return userLite.adminGroupTopic;
   }
 
-  const user = await maybeExternal(conversation, async () =>
-    getUserOrFail(userLite.id),
-  );
+  const user = await getUserOrFail(userLite.id);
 
   // Account for changes made in DB but not propagated to `ctx.user`.
   if (user.adminGroupTopic !== null) {
@@ -63,11 +59,12 @@ export async function ensureHasAdminGroupTopic(
     formatTopicName(user),
   );
 
-  const userWithTopic = await maybeExternal(conversation, async () =>
-    setUserAdminGroupTopicId(user.id, topic.message_thread_id),
+  const userWithTopic = await setUserAdminGroupTopicId(
+    user.id,
+    topic.message_thread_id,
   );
 
-  await sendAdminGroupUserMenu(conversation, ctx, userWithTopic);
+  await sendAdminGroupUserMenu(ctx, userWithTopic);
 
   return topic.message_thread_id;
 }
@@ -77,17 +74,12 @@ export async function ensureHasAdminGroupTopic(
  * Does nothing if there is no topic for this user.
  */
 export async function updateAdminGroupTopicTitle(
-  conversation: Conversation | null,
   ctx: Context,
   userLite: UserLite,
 ) {
   userLite ??= ctx.user;
 
-  const adminGroupTopic = await ensureHasAdminGroupTopic(
-    conversation,
-    ctx,
-    userLite,
-  );
+  const adminGroupTopic = await ensureHasAdminGroupTopic(ctx, userLite);
 
   try {
     await ctx.api.editForumTopic(config.ADMIN_GROUP, adminGroupTopic, {
@@ -107,27 +99,20 @@ export async function updateAdminGroupTopicTitle(
 }
 
 export async function copyMessageToAdminGroupTopic(
-  conversation: Conversation | null,
   ctx: Filter<Context, "message">,
 ) {
-  const adminGroupTopic = await ensureHasAdminGroupTopic(
-    conversation,
-    ctx,
-    ctx.user,
-  );
-  await copyMessageTo(conversation, ctx, config.ADMIN_GROUP, {
+  const adminGroupTopic = await ensureHasAdminGroupTopic(ctx, ctx.user);
+  await copyMessageTo(ctx, config.ADMIN_GROUP, {
     message_thread_id: adminGroupTopic,
   });
 }
 
 export async function sendInterviewQuestionToAdminGroupTopic(
-  conversation: Conversation | null,
   ctx: Context,
   userLite: UserLite,
   question: string,
 ) {
   await sendMessageToAdminGroupTopic(
-    conversation,
     ctx,
     userLite,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.message_interview_question", {
@@ -138,12 +123,10 @@ export async function sendInterviewQuestionToAdminGroupTopic(
 }
 
 export async function sendInterviewFinishNotificationToAdminGroupTopic(
-  conversation: Conversation | null,
   ctx: Context,
   userLite: UserLite,
 ) {
   await sendMessageToAdminGroupTopic(
-    conversation,
     ctx,
     userLite,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.message_interview_finished"),
@@ -154,17 +137,12 @@ export async function sendInterviewFinishNotificationToAdminGroupTopic(
 }
 
 export async function sendMessageToAdminGroupTopic(
-  conversation: Conversation | null,
   ctx: Context,
   userLite: UserLite,
   message: string,
   other?: Other<"sendMessage", "chat_id" | "text" | "message_thread_id">,
 ) {
-  const adminGroupTopic = await ensureHasAdminGroupTopic(
-    conversation,
-    ctx,
-    userLite,
-  );
+  const adminGroupTopic = await ensureHasAdminGroupTopic(ctx, userLite);
   await ctx.api.sendMessage(config.ADMIN_GROUP, message, {
     ...other,
     message_thread_id: adminGroupTopic,
@@ -228,19 +206,15 @@ export async function getUserForTopic(ctx: Context) {
 }
 
 export async function banUser(
-  conversation: Conversation | null,
   ctx: Context,
   userLite: UserLite,
   banReason: string,
 ) {
   if (userLite.status === UserStatus.Banned) return;
 
-  const bannedUser = await maybeExternal(conversation, async () =>
-    banUserDb(userLite.id, ctx.user.id, banReason),
-  );
+  const bannedUser = await banUserDb(userLite.id, ctx.user.id, banReason);
 
   await sendMessageToAdminGroupTopic(
-    conversation,
     ctx,
     bannedUser,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.message_banned", {
@@ -263,7 +237,6 @@ export async function banUser(
       !channelMember.can_be_edited
     ) {
       await sendMessageToAdminGroupTopic(
-        conversation,
         ctx,
         bannedUser,
         i18n.t(
@@ -305,16 +278,10 @@ export async function banUser(
   }
 }
 
-export async function unbanUser(
-  conversation: Conversation | null,
-  ctx: Context,
-  userLite: UserLite,
-) {
+export async function unbanUser(ctx: Context, userLite: UserLite) {
   if (userLite.status !== UserStatus.Banned) return;
 
-  const unbannedUser = await maybeExternal(conversation, async () =>
-    unbanUserDb(userLite.id, ctx.user.id),
-  );
+  const unbannedUser = await unbanUserDb(userLite.id, ctx.user.id);
 
   for (const chatId of [
     config.MEMBERS_GROUP,
@@ -328,7 +295,6 @@ export async function unbanUser(
   }
 
   await sendMessageToAdminGroupTopic(
-    conversation,
     ctx,
     unbannedUser,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.message_unbanned", {
@@ -348,7 +314,7 @@ feature.command("about", logHandle("admin-about"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user === undefined || user.adminGroupTopic === null) return;
 
-  await sendAdminGroupUserMenu(null, ctx, user);
+  await sendAdminGroupUserMenu(ctx, user);
 });
 registerCommandHelp({
   command: "about",
@@ -362,7 +328,7 @@ feature.command("ban", logHandle("admin-ban"), async (ctx) => {
     const reason =
       /\/ban(?:@[a-zA-Z0-9_]*)?\s*(?<reason>.*)/u.exec(ctx.msg.text)?.groups
         ?.reason ?? "";
-    await banUser(null, ctx, user, reason);
+    await banUser(ctx, user, reason);
   }
 });
 registerCommandHelp({
@@ -374,7 +340,7 @@ registerCommandHelp({
 feature.command("unban", logHandle("admin-unban"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user !== undefined) {
-    await unbanUser(null, ctx, user);
+    await unbanUser(ctx, user);
   }
 });
 registerCommandHelp({
@@ -395,7 +361,7 @@ feature
     );
 
     if (user !== null) {
-      await copyMessageTo(null, ctx, user.id);
+      await copyMessageTo(ctx, user.id);
     }
   });
 

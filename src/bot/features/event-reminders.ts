@@ -251,6 +251,6 @@ feature.callbackQuery(willBeThereData.filter(), async (ctx) => {
 
 feature.callbackQuery(cantMakeItData.filter(), async (ctx) => {
   const { eventId } = cantMakeItData.unpack(ctx.callbackQuery.data);
-  await withdrawSignup(null, ctx, eventId, ctx.user);
+  await withdrawSignup(ctx, eventId, ctx.user);
   await ctx.editMessageReplyMarkup({ reply_markup: new InlineKeyboard() });
 });

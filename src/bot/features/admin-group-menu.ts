@@ -4,7 +4,7 @@ import { Composer, InlineKeyboard } from "grammy";
 import { isAdmin } from "grammy-guard";
 
 import { User, UserStatus, getUser } from "#root/backend/user.js";
-import type { Context, Conversation } from "#root/bot/context.js";
+import type { Context } from "#root/bot/context.js";
 import {
   banUser,
   formatAboutMe,
@@ -23,24 +23,20 @@ import {
   rejectSignup,
 } from "#root/bot/features/event-signup.js";
 import { approve, reject } from "#root/bot/features/interview.js";
-import { patchCtx } from "#root/bot/helpers/conversations.js";
 import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
+import { patchCtx } from "../helpers/menu.js";
+
 export const composer = new Composer<Context>();
 
 const feature = composer.filter(isAdmin);
 
-export async function sendAdminGroupUserMenu(
-  conversation: Conversation | null,
-  ctx: Context,
-  user: User,
-) {
+export async function sendAdminGroupUserMenu(ctx: Context, user: User) {
   await patchCtx(
-    conversation,
     ctx,
     { match: user.id, locale: config.DEFAULT_LOCALE },
     async (ctx) => {
@@ -151,7 +147,7 @@ const adminGroupBanUserMenu = new Menu<Context>("adminGroupBanUserMenu")
       const user = await getUserFromMatch(ctx);
       if (user === undefined) return;
 
-      await banUser(null, ctx, user, ""); // TODO: reason
+      await banUser(ctx, user, ""); // TODO: reason
       await updateAdminGroupUserMenu(ctx);
     },
   );
@@ -180,7 +176,7 @@ const adminGroupUnbanUserMenu = new Menu<Context>("adminGroupUnbanUserMenu")
       const user = await getUserFromMatch(ctx);
       if (user === undefined) return;
 
-      await unbanUser(null, ctx, user);
+      await unbanUser(ctx, user);
       await updateAdminGroupUserMenu(ctx);
     },
   );
@@ -261,7 +257,7 @@ feature.callbackQuery(confirmSignupData.filter(), async (ctx) => {
   const user = await getUser(userId);
   if (user === null) return;
 
-  await confirmSignup(null, ctx, eventId, user);
+  await confirmSignup(ctx, eventId, user);
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });
@@ -273,7 +269,7 @@ feature.callbackQuery(confirmPaymentData.filter(), async (ctx) => {
   const user = await getUser(userId);
   if (user === null) return;
 
-  await confirmPayment(null, ctx, eventId, user);
+  await confirmPayment(ctx, eventId, user);
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });
@@ -285,7 +281,7 @@ feature.callbackQuery(rejectSignupData.filter(), async (ctx) => {
   const user = await getUser(userId);
   if (user === null) return;
 
-  await rejectSignup(null, ctx, eventId, user);
+  await rejectSignup(ctx, eventId, user);
   await ctx.editMessageReplyMarkup({
     reply_markup: new InlineKeyboard(),
   });

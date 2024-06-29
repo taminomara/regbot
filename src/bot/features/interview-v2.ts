@@ -94,12 +94,12 @@ export const interviewConversation = conversation("interview")
       // We're done here.
       ctx.user.status = UserStatus.Approved;
       await updateUser(ctx.user.id, { status: UserStatus.Approved });
-      await ensureHasAdminGroupTopic(null, ctx, ctx.user);
+      await ensureHasAdminGroupTopic(ctx, ctx.user);
       await sendApproveMessage(ctx, ctx.user);
-      await postInterviewSignup(null, ctx);
+      await postInterviewSignup(ctx);
       return FINISH;
     } else {
-      await ensureHasAdminGroupTopic(null, ctx, ctx.user);
+      await ensureHasAdminGroupTopic(ctx, ctx.user);
     }
   })
   .proceed(
@@ -135,7 +135,7 @@ export const interviewConversation = conversation("interview")
   .proceed(async (ctx) => {
     await ctx.replyWithChatAction("typing");
     await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
-    await sendInterviewFinishNotificationToAdminGroupTopic(null, ctx, ctx.user);
+    await sendInterviewFinishNotificationToAdminGroupTopic(ctx, ctx.user);
     await ctx.reply(ctx.t("interview.interview_replies_saved"));
   })
   .build();
@@ -150,12 +150,12 @@ function handleQuestion(
       reply_markup:
         markup !== undefined ? markup(ctx) : { remove_keyboard: true },
     });
-    await sendInterviewQuestionToAdminGroupTopic(null, ctx, ctx.user, question);
+    await sendInterviewQuestionToAdminGroupTopic(ctx, ctx.user, question);
   };
 }
 
 async function handleResponse(ctx: Filter<Context, "message">) {
-  await copyMessageToAdminGroupTopic(null, ctx);
+  await copyMessageToAdminGroupTopic(ctx);
 }
 
 composer.chatType("private").use(interviewConversation);
