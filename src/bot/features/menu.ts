@@ -10,7 +10,7 @@ import {
   upcomingEventsWithUserSignup,
 } from "#root/backend/event.js";
 import { getUserOrFail } from "#root/backend/user.js";
-import { Context, Conversation } from "#root/bot/context.js";
+import { Context } from "#root/bot/context.js";
 import {
   enterEditGender,
   enterEditName,
@@ -27,7 +27,6 @@ import {
   registerCommandHelp,
 } from "#root/bot/features/help.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
-import { patchCtx } from "#root/bot/helpers/conversations.js";
 import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import {
@@ -35,6 +34,8 @@ import {
   sanitizeHtmlOrEmpty,
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
+
+import { patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
 
@@ -57,14 +58,13 @@ export async function sendEditProfileMenu(ctx: Context, chatId: number) {
 }
 
 export async function sendEventsMenu(
-  conversation: Conversation | null,
   ctx: Context,
   chatId: number,
   text?: string,
   locale?: string,
   other?: Other<"sendMessage", "chat_id" | "text" | "reply_markup">,
 ) {
-  await patchCtx(conversation, ctx, { locale }, async (ctx) => {
+  await patchCtx(ctx, { locale }, async (ctx) => {
     await ctx.api.sendMessage(chatId, text ?? ctx.t("menu.events"), {
       ...other,
       reply_markup: eventsMenu,
@@ -73,7 +73,6 @@ export async function sendEventsMenu(
 }
 
 export async function sendEventMenu(
-  conversation: Conversation | null,
   ctx: Context,
   chatId: number,
   event: Event,
@@ -84,28 +83,23 @@ export async function sendEventMenu(
     "chat_id" | "text" | "reply_markup" | "link_preview_options"
   >,
 ) {
-  await patchCtx(
-    conversation,
-    ctx,
-    { match: event.id, locale },
-    async (ctx) => {
-      await ctx.api.sendMessage(
-        chatId,
-        text ??
-          event.announceTextHtml ??
-          ctx.t("menu.event", {
-            name: sanitizeHtmlOrEmpty(event.name),
-            date: toFluentDateTime(event.date),
-            price: sanitizeHtmlOrEmpty(event.price),
-          }),
-        {
-          ...other,
-          link_preview_options: { is_disabled: true },
-          reply_markup: eventsMenu.at("eventMenu"),
-        },
-      );
-    },
-  );
+  await patchCtx(ctx, { match: event.id, locale }, async (ctx) => {
+    await ctx.api.sendMessage(
+      chatId,
+      text ??
+        event.announceTextHtml ??
+        ctx.t("menu.event", {
+          name: sanitizeHtmlOrEmpty(event.name),
+          date: toFluentDateTime(event.date),
+          price: sanitizeHtmlOrEmpty(event.price),
+        }),
+      {
+        ...other,
+        link_preview_options: { is_disabled: true },
+        reply_markup: eventsMenu.at("eventMenu"),
+      },
+    );
+  });
 }
 
 const eventsMenu = new Menu<Context>("eventsMenu")
@@ -227,7 +221,7 @@ const eventMenu = new Menu<Context>("eventMenu")
           }),
         ),
         async (ctx) => {
-          await signupForEvent(null, ctx, event.id, ctx.user, null);
+          await signupForEvent(ctx, event.id, ctx.user, null);
           await updateEventMenu(ctx);
         },
       );
@@ -345,7 +339,7 @@ export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu")
       const event = await getEventFromMatch(ctx);
       if (event === undefined) return;
 
-      await withdrawSignup(null, ctx, event.id, ctx.user);
+      await withdrawSignup(ctx, event.id, ctx.user);
       await updateEventMenu(ctx);
     },
   );
@@ -402,7 +396,7 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
         }
       }
 
-      await signupForEvent(null, ctx, event.id, ctx.user, chosenOptions);
+      await signupForEvent(ctx, event.id, ctx.user, chosenOptions);
       await updateEventMenu(ctx);
     },
   );
@@ -468,7 +462,7 @@ async function getEventFromMatch(ctx: Context) {
 }
 
 feature.chatType("private").command("menu", async (ctx) => {
-  await sendEventsMenu(null, ctx, ctx.chatId);
+  await sendEventsMenu(ctx, ctx.chatId);
 });
 
 registerCommandHelp({

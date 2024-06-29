@@ -18,7 +18,7 @@ import {
   getUserLite,
   updateUser,
 } from "#root/backend/user.js";
-import { Context, Conversation } from "#root/bot/context.js";
+import { Context } from "#root/bot/context.js";
 import {
   createConfirmPaymentKeyboard,
   createConfirmSignupKeyboard,
@@ -26,35 +26,22 @@ import {
 import { sendMessageToAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { sendEventMenu } from "#root/bot/features/menu.js";
 import { isApproved } from "#root/bot/filters/is-approved.js";
-import { maybeExternal } from "#root/bot/helpers/conversations.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
-export async function postInterviewSignup(
-  conversation: Conversation | null,
-  ctx: Context,
-  user?: User,
-) {
+export async function postInterviewSignup(ctx: Context, user?: User) {
   if (user === undefined) {
-    user =
-      (await maybeExternal(conversation, async () => getUser(ctx.user.id))) ??
-      undefined;
+    user = (await getUser(ctx.user.id)) ?? undefined;
   }
 
   if (user === undefined || user.pendingSignup === null) return;
 
-  const event = await getEventForSignup(
-    conversation,
-    ctx,
-    user.pendingSignup,
-    user,
-  );
+  const event = await getEventForSignup(ctx, user.pendingSignup, user);
   if (event !== undefined) {
     if (event.signup === undefined) {
       await sendEventMenu(
-        conversation,
         ctx,
         user.id,
         event,
@@ -83,101 +70,98 @@ export async function postInterviewSignup(
     }
   }
 
-  await maybeExternal(conversation, async () =>
-    updateUser(user.id, { pendingSignup: null }),
-  );
+  await updateUser(user.id, { pendingSignup: null });
 }
 
 export async function signupForEvent(
-  conversation: Conversation | null,
   ctx: Context,
   eventId: number,
   user: UserLite,
   participationOptions: string[] | null,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId, user);
+  const event = await getEventForSignup(ctx, eventId, user);
   if (event === undefined) return;
 
-  const { signup, signupPerformed } = await maybeExternal(
-    conversation,
-    async () =>
-      signupForEventDb(event, user.id, ctx.me.id, participationOptions),
+  const { signup, signupPerformed } = await signupForEventDb(
+    event,
+    user.id,
+    ctx.me.id,
+    participationOptions,
   );
 
   if (!signupPerformed) return;
 
-  await sendConfirmation(conversation, ctx, event, signup, user);
+  await sendConfirmation(ctx, event, signup, user);
 }
 
 export async function confirmSignup(
-  conversation: Conversation | null,
   ctx: Context,
   eventId: number,
   user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId, user);
+  const event = await getEventForSignup(ctx, eventId, user);
   if (event === undefined) return;
 
-  const { signup, confirmPerformed } = await maybeExternal(
-    conversation,
-    async () => confirmSignupDb(event, user.id, ctx.user.id),
+  const { signup, confirmPerformed } = await confirmSignupDb(
+    event,
+    user.id,
+    ctx.user.id,
   );
 
   if (!confirmPerformed) return;
 
-  await sendConfirmation(conversation, ctx, event, signup, user);
+  await sendConfirmation(ctx, event, signup, user);
 }
 
 export async function confirmPayment(
-  conversation: Conversation | null,
   ctx: Context,
   eventId: number,
   user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId, user);
+  const event = await getEventForSignup(ctx, eventId, user);
   if (event === undefined) return;
 
-  const { signup, confirmPerformed } = await maybeExternal(
-    conversation,
-    async () => confirmPaymentDb(event, user.id, ctx.user.id),
+  const { signup, confirmPerformed } = await confirmPaymentDb(
+    event,
+    user.id,
+    ctx.user.id,
   );
 
   if (!confirmPerformed) return;
 
-  await sendConfirmation(conversation, ctx, event, signup, user);
+  await sendConfirmation(ctx, event, signup, user);
 }
 
 export async function rejectSignup(
-  conversation: Conversation | null,
   ctx: Context,
   eventId: number,
   user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId, user);
+  const event = await getEventForSignup(ctx, eventId, user);
   if (event === undefined) return;
 
-  const { signup, rejectPerformed, requireRefund } = await maybeExternal(
-    conversation,
-    async () => rejectSignupDb(event, user.id, ctx.user.id),
+  const { signup, rejectPerformed, requireRefund } = await rejectSignupDb(
+    event,
+    user.id,
+    ctx.user.id,
   );
 
   if (!rejectPerformed) return;
 
-  await sendConfirmation(conversation, ctx, event, signup, user, requireRefund);
+  await sendConfirmation(ctx, event, signup, user, requireRefund);
 }
 
 export async function withdrawSignup(
-  conversation: Conversation | null,
   ctx: Context,
   eventId: number,
   user: UserLite,
 ) {
-  const event = await getEventForSignup(conversation, ctx, eventId, user);
+  const event = await getEventForSignup(ctx, eventId, user);
   if (event === undefined) return;
 
-  const { requireRefund, withdrawPerformed } = await maybeExternal(
-    conversation,
-    async () => withdrawSignupDb(event, user.id),
+  const { requireRefund, withdrawPerformed } = await withdrawSignupDb(
+    event,
+    user.id,
   );
 
   if (!withdrawPerformed) return;
@@ -196,7 +180,6 @@ export async function withdrawSignup(
     ),
   );
   await sendMessageToAdminGroupTopic(
-    conversation,
     ctx,
     user,
     i18n.t(
@@ -213,16 +196,13 @@ export async function withdrawSignup(
 }
 
 async function getEventForSignup(
-  conversation: Conversation | null,
   ctx: Context,
   eventId: number,
   user: UserLite,
 ) {
   if (!(await isApproved(ctx))) return;
 
-  const event = await maybeExternal(conversation, async () =>
-    getEventWithUserSignup(eventId, user.id),
-  );
+  const event = await getEventWithUserSignup(eventId, user.id);
   if (event === null) {
     ctx.logger.warn({ msg: "Unknown event", eventId });
     await ctx.api.sendMessage(
@@ -259,16 +239,16 @@ async function getEventForSignup(
 }
 
 async function sendConfirmation(
-  conversation: Conversation | null,
   ctx: Context,
   event: Event,
   signup: EventSignup,
   user: UserLite,
   requireRefund?: boolean,
 ) {
-  const admin = await maybeExternal(conversation, async () =>
-    signup.approvedBy === null ? undefined : getUserLite(signup.approvedBy),
-  );
+  const admin =
+    signup.approvedBy === null
+      ? undefined
+      : await getUserLite(signup.approvedBy);
 
   const options =
     event.participationOptions === null
@@ -289,7 +269,6 @@ async function sendConfirmation(
         ),
       );
       await sendMessageToAdminGroupTopic(
-        conversation,
         ctx,
         user,
         i18n.t(
@@ -323,7 +302,6 @@ async function sendConfirmation(
         ),
       );
       await sendMessageToAdminGroupTopic(
-        conversation,
         ctx,
         user,
         i18n.t(
@@ -354,7 +332,6 @@ async function sendConfirmation(
         ),
       );
       await sendMessageToAdminGroupTopic(
-        conversation,
         ctx,
         user,
         i18n.t(config.DEFAULT_LOCALE, "event_signup.admin_message_registered", {
@@ -383,7 +360,6 @@ async function sendConfirmation(
         ),
       );
       await sendMessageToAdminGroupTopic(
-        conversation,
         ctx,
         user,
         i18n.t(

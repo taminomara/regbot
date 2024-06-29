@@ -25,7 +25,7 @@ export function user(): Middleware<Context> {
       ctx.user.username = ctx.from?.username ?? null;
       await updateUser(ctx.user.id, { username: ctx.user.username });
       if (ctx.user.adminGroupTopic !== null) {
-        await updateAdminGroupTopicTitle(null, ctx, ctx.user);
+        await updateAdminGroupTopicTitle(ctx, ctx.user);
       }
     }
 

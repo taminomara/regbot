@@ -22,7 +22,6 @@ export async function approve(ctx: Context) {
   const approvedUser = await approveUser(user.id, ctx.user.id);
 
   await sendMessageToAdminGroupTopic(
-    null,
     ctx,
     approvedUser,
     i18n.t(config.DEFAULT_LOCALE, "interview.admin_message_approved", {
@@ -33,7 +32,7 @@ export async function approve(ctx: Context) {
   );
 
   await sendApproveMessage(ctx, approvedUser);
-  await postInterviewSignup(null, ctx, approvedUser);
+  await postInterviewSignup(ctx, approvedUser);
 }
 
 export async function sendApproveMessage(ctx: Context, approvedUser: UserLite) {
@@ -61,7 +60,6 @@ export async function reject(ctx: Context) {
   const rejectedUser = await rejectUser(user.id, ctx.user.id);
 
   await sendMessageToAdminGroupTopic(
-    null,
     ctx,
     rejectedUser,
     i18n.t(config.DEFAULT_LOCALE, "interview.admin_message_rejected", {
