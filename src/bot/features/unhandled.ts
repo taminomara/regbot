@@ -2,7 +2,10 @@ import { Composer } from "grammy";
 
 import type { Context } from "#root/bot/context.js";
 import { copyMessageToAdminGroupTopic } from "#root/bot/features/admin-group.js";
-import { handleMessageEdit } from "#root/bot/features/edit-cache.js";
+import {
+  handleMessageEdit,
+  handleMessageReaction,
+} from "#root/bot/features/edit-cache.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 
 export const composer = new Composer<Context>();
@@ -20,13 +23,23 @@ feature.on(
 );
 feature.on(
   "edited_message",
-  logHandle("unhandled-edited-message"),
+  logHandle("unhandled-message-edit"),
   handleMessageEdit,
 );
-feature.on("message", logHandle("unhandled-message"), async (ctx) =>
-  copyMessageToAdminGroupTopic(ctx),
+feature.on(
+  "message_reaction",
+  logHandle("unhandled-message-reaction"),
+  handleMessageReaction,
 );
-
-feature.on("callback_query", logHandle("unhandled-callback-query"), (ctx) => {
-  return ctx.answerCallbackQuery();
-});
+feature.on(
+  "message",
+  logHandle("unhandled-message"),
+  copyMessageToAdminGroupTopic,
+);
+feature.on(
+  "callback_query",
+  logHandle("unhandled-callback-query"),
+  async (ctx) => {
+    await ctx.answerCallbackQuery();
+  },
+);
