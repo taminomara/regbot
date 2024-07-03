@@ -1,5 +1,5 @@
 /**
- * Simple linear conversations, finite state-machine style.
+ * Simple linear conversations, finite state machine style.
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -41,25 +41,51 @@ type Step<C> = {
   func: (ctx: C, payload: any) => MaybePromise<any>;
 };
 
+/**
+ * Conversation object.
+ *
+ * Use this object as a middleware in your composer or a bot. Then in your handlers,
+ * call `enter` or `forceEnter` to start a conversation.
+ *
+ * @example
+ *
+ * Build a conversation and `use` it in your bot:
+ *
+ * ```ts
+ * const composer = new Composer();
+ *
+ * const myConversation = conversation("myConversation")
+ *  // ... build conversation steps
+ *  .build();
+ * composer.use(myConversation);
+ * ```
+ *
+ * Then start a conversation from somewhere else:
+ *
+ * ```
+ * composer.command("my_command", async (ctx) => {
+ *   await myConversation.enter(ctx);
+ * });
+ * ```
+ */
 export class Conversation<IP> implements MiddlewareObj<Context> {
+  /**
+   * Unique name of this conversation.
+   */
   readonly name: string;
+
   private readonly steps: Step<Context>[];
 
+  /** @private */
   constructor(name: string, steps: Step<Context>[], _: typeof SEALED) {
     this.name = name;
     this.steps = steps;
   }
 
-  middleware(): MiddlewareFn<Context> {
-    return async (ctx, next) => {
-      if (await this.filter(ctx)) {
-        return this.run(ctx);
-      } else {
-        return next();
-      }
-    };
-  }
-
+  /**
+   * Start this conversation. If another conversation is currently running,
+   * force-stop it.
+   */
   async forceEnter(
     ctx: Context,
     ...args: IP extends undefined ? [payload?: IP] : [payload: IP]
@@ -68,6 +94,10 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
     await this.enter(ctx, ...args);
   }
 
+  /**
+   * Start this conversation. If another conversation is currently running,
+   * raise an error.
+   */
   async enter(
     ctx: Context,
     ...args: IP extends undefined ? [payload?: IP] : [payload: IP]
@@ -145,15 +175,30 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
       }
     }
 
-    // Interview is finished.
+    // Conversation is finished.
     ctx.session.linearConversation = undefined;
+  }
+
+  middleware(): MiddlewareFn<Context> {
+    return async (ctx, next) => {
+      if (await this.filter(ctx)) {
+        return this.run(ctx);
+      } else {
+        return next();
+      }
+    };
   }
 }
 
 class ConversationBuilder<C extends Context, P, IP> {
+  /**
+   * Unique name of this conversation.
+   */
   readonly name: string;
+
   private readonly steps: Step<Context>[];
 
+  /** @private */
   constructor(name: string, steps: Step<Context>[], _: typeof SEALED) {
     this.name = name;
     this.steps = steps;
@@ -201,14 +246,16 @@ class ConversationBuilder<C extends Context, P, IP> {
   }
 
   /**
-   * Wait for the user to respond with a specific type of message,
+   * Wait for the user to respond with a specific type of message or a command,
    * then run a handler.
+   *
+   * Useful for implementing commands like `/cancel`.
    */
   waitForTextOrCmd<Q extends FilterQuery, Cmd, T>(
     query: Q,
     allowedCommands: StringOrStringLiteral<Cmd>[],
     func: (
-      ctx:
+      reply:
         | { ctx: Filter<C, "message:text">; command: Cmd }
         | { ctx: Filter<C, Q>; command: undefined },
       payload: P,
@@ -257,6 +304,9 @@ class ConversationBuilder<C extends Context, P, IP> {
   }
 }
 
+/**
+ * Create a new conversation builder. Name of the conversation should be unique.
+ */
 export function conversation<P = undefined>(name: string) {
   return new ConversationBuilder<Context, P, P>(name, [], SEALED);
 }
