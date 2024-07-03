@@ -23,7 +23,6 @@ import {
   FINISH,
   REPEAT,
   conversation,
-  prompt,
 } from "#root/bot/helpers/conversations-v2.js";
 import {
   deleteMessageSafe,
@@ -474,7 +473,7 @@ const editEventName = conversation("editEventName")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
-    await prompt(ctx, ctx.t("manage_events.enter_name"));
+    await ctx.reply(ctx.t("manage_events.enter_name"));
     return { eventId: event.id };
   })
   .waitForTextOrCmd(
@@ -494,7 +493,7 @@ const editEventDate = conversation("editEventDate")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
-    await prompt(ctx, ctx.t("manage_events.enter_date"));
+    await ctx.reply(ctx.t("manage_events.enter_date"));
     return { eventId: event.id };
   })
   .waitForTextOrCmd(
@@ -535,7 +534,7 @@ const editEventPost = conversation("editEventPost")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
-    await prompt(ctx, ctx.t("manage_events.enter_post"));
+    await ctx.reply(ctx.t("manage_events.enter_post"));
     return { eventId: event.id };
   })
   .waitForTextOrCmd(
@@ -555,7 +554,7 @@ const editEventPrice = conversation("editEventPrice")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
-    await prompt(ctx, ctx.t("manage_events.enter_price"));
+    await ctx.reply(ctx.t("manage_events.enter_price"));
     return { eventId: event.id };
   })
   .waitForTextOrCmd(
@@ -579,7 +578,7 @@ const editEventPaymentDetails = conversation("editEventPaymentDetails")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
-    await prompt(ctx, ctx.t("manage_events.enter_iban"));
+    await ctx.reply(ctx.t("manage_events.enter_iban"));
     return { eventId: event.id };
   })
   .waitForTextOrCmd(
@@ -625,7 +624,7 @@ const editEventOptions = conversation("editEventOptions")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
-    await prompt(ctx, ctx.t("manage_events.enter_options"));
+    await ctx.reply(ctx.t("manage_events.enter_options"));
     return { eventId: event.id };
   })
   .waitForTextOrCmd(
@@ -651,7 +650,7 @@ const editEventReminder = conversation("editEventReminder")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return FINISH;
-    await prompt(ctx, ctx.t("manage_events.enter_reminder"));
+    await ctx.reply(ctx.t("manage_events.enter_reminder"));
     return { eventId: event.id };
   })
   .waitForTextOrCmd(
@@ -825,7 +824,7 @@ async function deleteEvent(ctx: Context) {
 
 const createEvent = conversation("createEvent")
   .proceed(async (ctx) => {
-    await prompt(ctx, ctx.t("manage_events.enter_name"));
+    await ctx.reply(ctx.t("manage_events.enter_name"));
   })
   .waitForTextOrCmd("message:text", ["cancel"], async ({ ctx, command }) => {
     if (command === "cancel") {
