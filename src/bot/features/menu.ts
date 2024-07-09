@@ -164,20 +164,20 @@ async function updateProfileMenu(ctx: Context) {
 const editProfileMenu = new Menu<Context>("editProfileMenu")
   .text(
     (ctx) => ctx.t("menu.edit_name"),
-    async (ctx) => enterEditName(ctx, true),
+    async (ctx) => enterEditName(ctx, ctx.user.id, true),
   )
   .text(
     (ctx) => ctx.t("menu.edit_pronouns"),
-    async (ctx) => enterEditPronouns(ctx, true),
+    async (ctx) => enterEditPronouns(ctx, ctx.user.id, true),
   )
   .row()
   .text(
     (ctx) => ctx.t("menu.edit_gender"),
-    async (ctx) => enterEditGender(ctx, true),
+    async (ctx) => enterEditGender(ctx, ctx.user.id, true),
   )
   .text(
     (ctx) => ctx.t("menu.edit_sexuality"),
-    async (ctx) => enterEditSexuality(ctx, true),
+    async (ctx) => enterEditSexuality(ctx, ctx.user.id, true),
   )
   .row()
   .back((ctx) => ctx.t("menu.back"), updateProfileMenu);

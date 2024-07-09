@@ -108,24 +108,30 @@ async function updateAdminGroupUserMenu(ctx: Context) {
 }
 
 const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")
-  .text(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_name")),
-    async (ctx) => enterEditName(ctx),
-  )
-  .text(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_pronouns")),
-    async (ctx) => enterEditPronouns(ctx),
-  )
-  .row()
-  .text(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_gender")),
-    async (ctx) => enterEditGender(ctx),
-  )
-  .text(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_sexuality")),
-    async (ctx) => enterEditSexuality(ctx),
-  )
-  .row()
+  .dynamic(async (ctx, range) => {
+    const user = await getUserFromMatch(ctx);
+    if (user === undefined) return;
+
+    range
+      .text(
+        withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_name")),
+        async (ctx) => enterEditName(ctx, user.id),
+      )
+      .text(
+        withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_pronouns")),
+        async (ctx) => enterEditPronouns(ctx, user.id),
+      )
+      .row()
+      .text(
+        withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_gender")),
+        async (ctx) => enterEditGender(ctx, user.id),
+      )
+      .text(
+        withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_sexuality")),
+        async (ctx) => enterEditSexuality(ctx, user.id),
+      )
+      .row();
+  })
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.back")),
     updateAdminGroupUserMenu,
