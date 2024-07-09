@@ -8,7 +8,8 @@ import {
   EventSignup as EventSignupObject,
   SignupStatus,
 } from "#root/backend/entities/event.js";
-import { User as UserObject } from "#root/backend/entities/user.js";
+import { User as UserObject, UserStatus } from "#root/backend/entities/user.js";
+import { getUserLite } from "#root/backend/user.js";
 import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
 
@@ -45,7 +46,13 @@ export async function signupForEvent(
   userId: number,
   adminId: number,
   participationOptions: string[] | null,
-): Promise<{ signup: EventSignup; signupPerformed: boolean }> {
+): Promise<
+  | { signup?: EventSignup; signupPerformed: false }
+  | { signup: EventSignup; signupPerformed: true }
+> {
+  const user = await getUserLite(userId);
+  if (user.status !== UserStatus.Approved) return { signupPerformed: false };
+
   const oldSignup = await orm.em.findOne(EventSignupObject, {
     event: event.id,
     user: userId,
@@ -112,14 +119,8 @@ export async function confirmSignup(
   userId: number,
   adminId: number,
 ): Promise<
-  | {
-      signup?: EventSignup;
-      confirmPerformed: false;
-    }
-  | {
-      signup: EventSignup;
-      confirmPerformed: true;
-    }
+  | { signup?: EventSignup; confirmPerformed: false }
+  | { signup: EventSignup; confirmPerformed: true }
 > {
   return doConfirmSignup(event, userId, adminId, SignupStatus.PendingApproval);
 }
@@ -129,14 +130,8 @@ export async function confirmPayment(
   userId: number,
   adminId: number,
 ): Promise<
-  | {
-      signup?: EventSignup;
-      confirmPerformed: false;
-    }
-  | {
-      signup: EventSignup;
-      confirmPerformed: true;
-    }
+  | { signup?: EventSignup; confirmPerformed: false }
+  | { signup: EventSignup; confirmPerformed: true }
 > {
   return doConfirmSignup(event, userId, adminId, SignupStatus.PendingPayment);
 }
@@ -147,14 +142,8 @@ async function doConfirmSignup(
   adminId: number,
   expectedStatus: SignupStatus,
 ): Promise<
-  | {
-      signup?: EventSignup;
-      confirmPerformed: false;
-    }
-  | {
-      signup: EventSignup;
-      confirmPerformed: true;
-    }
+  | { signup?: EventSignup; confirmPerformed: false }
+  | { signup: EventSignup; confirmPerformed: true }
 > {
   return orm.em.transactional(async () => {
     const signup = await orm.em.findOne(
