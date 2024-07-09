@@ -52,7 +52,7 @@ export async function handleMessageEdit(
   if (ctx.editedMessage?.message_id === undefined) return;
 
   const copiedMessages = await findCopiedMessagesByOriginId(
-    ctx.editedMessage.message_id,
+    ctx.editedMessage?.message_id,
     ctx.chat.id,
   );
 
@@ -111,25 +111,6 @@ export async function handleMessageEdit(
         );
       }
     }
-  }
-}
-
-export async function handleMessageReaction(
-  ctx: Filter<Context, "message_reaction">,
-) {
-  if (ctx.messageReaction?.message_id === undefined) return;
-
-  const copiedMessages = await findCopiedMessagesByOriginId(
-    ctx.messageReaction.message_id,
-    ctx.chat.id,
-  );
-
-  for (const copiedMessage of copiedMessages) {
-    await ctx.api.setMessageReaction(
-      copiedMessage.destinationChatId,
-      copiedMessage.destinationId,
-      ctx.messageReaction.new_reaction
-    );
   }
 }
 
