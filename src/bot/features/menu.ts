@@ -39,8 +39,6 @@ import { patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
 
-const feature = composer.filter(isApproved);
-
 export async function sendEditProfileMenu(ctx: Context, chatId: number) {
   const user = await getUserOrFail(ctx.user.id);
   await ctx.api.sendMessage(
@@ -107,6 +105,8 @@ const eventsMenu = new Menu<Context>("eventsMenu")
   .submenu((ctx) => ctx.t("menu.profile"), "profileMenu", updateProfileMenu)
   .row()
   .dynamic(async (ctx, range) => {
+    if (!(await isApproved(ctx))) return;
+
     const events = await upcomingEventsWithUserSignup(ctx.user.id);
     for (const event of events) {
       range
@@ -133,7 +133,7 @@ const eventsMenu = new Menu<Context>("eventsMenu")
         .row();
     }
   });
-feature.use(eventsMenu);
+composer.use(eventsMenu);
 async function updateEventsMenu(ctx: Context) {
   await editMessageTextSafe(ctx, ctx.t("menu.events"));
 }
@@ -188,6 +188,8 @@ async function updateEditProfileMenu(ctx: Context) {
 
 const eventMenu = new Menu<Context>("eventMenu")
   .dynamic(async (ctx, range) => {
+    if (!(await isApproved(ctx))) return;
+
     const event = await getEventFromMatch(ctx);
     if (event === undefined) return;
 
@@ -255,6 +257,8 @@ const eventMenu = new Menu<Context>("eventMenu")
   );
 eventsMenu.register(eventMenu);
 async function updateEventMenu(ctx: Context) {
+  if (!(await isApproved(ctx))) return;
+
   const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
   // TODO: default template?
@@ -283,6 +287,8 @@ const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu")
   );
 eventMenu.register(eventParticipantsMenu);
 async function updateEventParticipantsMenu(ctx: Context) {
+  if (!(await isApproved(ctx))) return;
+
   const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
 
@@ -352,6 +358,8 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
   fingerprint: async (ctx) =>
     (await getEventFromMatch(ctx))?.participationOptions?.join("\n") ?? "",
 }).dynamic(async (ctx, range) => {
+  if (!(await isApproved(ctx))) return;
+
   const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
 
@@ -461,9 +469,12 @@ async function getEventFromMatch(ctx: Context) {
   return event;
 }
 
-feature.chatType("private").command("menu", async (ctx) => {
-  await sendEventsMenu(ctx, ctx.chatId);
-});
+composer
+  .chatType("private")
+  .filter(isApproved)
+  .command("menu", async (ctx) => {
+    await sendEventsMenu(ctx, ctx.chatId);
+  });
 
 registerCommandHelp({
   command: "menu",
