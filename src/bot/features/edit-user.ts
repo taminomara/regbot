@@ -13,7 +13,9 @@ import { sendEditProfileMenu } from "./menu.js";
 
 export const composer = new Composer<Context>();
 
-const editName = conversation<{ sendMenu?: boolean }>("editName")
+const editName = conversation<{ userId: number; sendMenu?: boolean }>(
+  "editName",
+)
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_name"), {
       message_thread_id: ctx.msg?.message_thread_id,
@@ -25,7 +27,7 @@ const editName = conversation<{ sendMenu?: boolean }>("editName")
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserName(ctx.user.id, ctx.message.text);
+        await setUserName(opts.userId, ctx.message.text);
         await sendConfirmation(ctx);
       } else {
         await sendCancelled(ctx);
@@ -35,13 +37,19 @@ const editName = conversation<{ sendMenu?: boolean }>("editName")
   )
   .build();
 composer.use(editName);
-export async function enterEditName(ctx: Context, sendMenu: boolean = false) {
+export async function enterEditName(
+  ctx: Context,
+  userId: number,
+  sendMenu: boolean = false,
+) {
   if (await checkNoConversations(ctx)) {
-    await editName.enter(ctx, { sendMenu });
+    await editName.enter(ctx, { userId, sendMenu });
   }
 }
 
-const editPronouns = conversation<{ sendMenu?: boolean }>("editPronouns")
+const editPronouns = conversation<{ userId: number; sendMenu?: boolean }>(
+  "editPronouns",
+)
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_pronouns"), {
       reply_markup: new Keyboard()
@@ -61,7 +69,7 @@ const editPronouns = conversation<{ sendMenu?: boolean }>("editPronouns")
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserPronouns(ctx.user.id, ctx.message.text);
+        await setUserPronouns(opts.userId, ctx.message.text);
         await sendConfirmation(ctx);
       } else {
         await sendCancelled(ctx);
@@ -73,14 +81,17 @@ const editPronouns = conversation<{ sendMenu?: boolean }>("editPronouns")
 composer.use(editPronouns);
 export async function enterEditPronouns(
   ctx: Context,
+  userId: number,
   sendMenu: boolean = false,
 ) {
   if (await checkNoConversations(ctx)) {
-    await editPronouns.enter(ctx, { sendMenu });
+    await editPronouns.enter(ctx, { userId, sendMenu });
   }
 }
 
-const editGender = conversation<{ sendMenu?: boolean }>("editGender")
+const editGender = conversation<{ userId: number; sendMenu?: boolean }>(
+  "editGender",
+)
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_gender"), {
       reply_markup: new Keyboard()
@@ -98,7 +109,7 @@ const editGender = conversation<{ sendMenu?: boolean }>("editGender")
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserGender(ctx.user.id, ctx.message.text);
+        await setUserGender(opts.userId, ctx.message.text);
         await sendConfirmation(ctx);
       } else {
         await sendCancelled(ctx);
@@ -108,13 +119,19 @@ const editGender = conversation<{ sendMenu?: boolean }>("editGender")
   )
   .build();
 composer.use(editGender);
-export async function enterEditGender(ctx: Context, sendMenu: boolean = false) {
+export async function enterEditGender(
+  ctx: Context,
+  userId: number,
+  sendMenu: boolean = false,
+) {
   if (await checkNoConversations(ctx)) {
-    await editGender.enter(ctx, { sendMenu });
+    await editGender.enter(ctx, { userId, sendMenu });
   }
 }
 
-const editSexuality = conversation<{ sendMenu?: boolean }>("editSexuality")
+const editSexuality = conversation<{ userId: number; sendMenu?: boolean }>(
+  "editSexuality",
+)
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_sexuality"), {
       reply_markup: new Keyboard()
@@ -134,7 +151,7 @@ const editSexuality = conversation<{ sendMenu?: boolean }>("editSexuality")
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserSexuality(ctx.user.id, ctx.message.text);
+        await setUserSexuality(opts.userId, ctx.message.text);
         await sendConfirmation(ctx);
       } else {
         await sendCancelled(ctx);
@@ -146,10 +163,11 @@ const editSexuality = conversation<{ sendMenu?: boolean }>("editSexuality")
 composer.use(editSexuality);
 export async function enterEditSexuality(
   ctx: Context,
+  userId: number,
   sendMenu: boolean = false,
 ) {
   if (await checkNoConversations(ctx)) {
-    await editSexuality.enter(ctx, { sendMenu });
+    await editSexuality.enter(ctx, { userId, sendMenu });
   }
 }
 

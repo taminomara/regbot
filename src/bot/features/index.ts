@@ -21,9 +21,9 @@ composer.use(adminGroupMenuComposer);
 composer.use(manageEventsMenuComposer);
 // Conversations
 composer.use(interviewComposer);
+composer.use(editUserComposer);
 // Commands and features
 composer.use(adminGroupComposer);
-composer.use(editUserComposer);
 composer.use(languageComposer);
 composer.use(startComposer);
 composer.use(eventRemindersComposer);
