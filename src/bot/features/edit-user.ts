@@ -7,6 +7,7 @@ import {
   setUserSexuality,
 } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
+import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
 
 import { conversation } from "../helpers/conversations-v2.js";
 import { sendEditProfileMenu } from "./menu.js";
@@ -27,7 +28,8 @@ const editName = conversation<{ userId: number; sendMenu?: boolean }>(
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserName(opts.userId, ctx.message.text);
+        const user = await setUserName(opts.userId, ctx.message.text);
+        await updateAdminGroupTopicTitle(ctx, user);
         await sendConfirmation(ctx);
       } else {
         await sendCancelled(ctx);
@@ -69,8 +71,9 @@ const editPronouns = conversation<{ userId: number; sendMenu?: boolean }>(
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserPronouns(opts.userId, ctx.message.text);
+        const user = await setUserPronouns(opts.userId, ctx.message.text);
         await sendConfirmation(ctx);
+        await updateAdminGroupTopicTitle(ctx, user);
       } else {
         await sendCancelled(ctx);
       }
@@ -109,7 +112,8 @@ const editGender = conversation<{ userId: number; sendMenu?: boolean }>(
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserGender(opts.userId, ctx.message.text);
+        const user = await setUserGender(opts.userId, ctx.message.text);
+        await updateAdminGroupTopicTitle(ctx, user);
         await sendConfirmation(ctx);
       } else {
         await sendCancelled(ctx);
@@ -151,7 +155,8 @@ const editSexuality = conversation<{ userId: number; sendMenu?: boolean }>(
     ["cancel"],
     async ({ ctx, command }, opts) => {
       if (command !== "cancel") {
-        await setUserSexuality(opts.userId, ctx.message.text);
+        const user = await setUserSexuality(opts.userId, ctx.message.text);
+        await updateAdminGroupTopicTitle(ctx, user);
         await sendConfirmation(ctx);
       } else {
         await sendCancelled(ctx);
