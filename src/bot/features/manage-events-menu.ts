@@ -2,7 +2,7 @@ import { Menu } from "@grammyjs/menu";
 import { Composer, Filter, GrammyError } from "grammy";
 import moment from "moment-timezone";
 
-import { EventPayment } from "#root/backend/entities/event.js";
+import { EventPayment, SignupStatus } from "#root/backend/entities/event.js";
 import {
   Event,
   createEvent as createDbEvent,
@@ -13,6 +13,7 @@ import {
   updateEvent,
 } from "#root/backend/event.js";
 import { Context } from "#root/bot/context.js";
+import { copyMessageTo } from "#root/bot/features/edit-cache.js";
 import {
   CommandPrivileges,
   CommandScope,
@@ -368,13 +369,21 @@ async function updateDeleteEventMenu(ctx: Context) {
 const manageEventParticipantsMenu = new Menu<Context>(
   "manageEventParticipantsMenu",
 )
-  .back(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
-    updateManageEventMenu,
-  )
   .text(
     withPayload((ctx) => ctx.t("manage_events.update")),
     updateManageEventParticipantsMenu,
+  )
+  .row()
+  .text(
+    withPayload(() =>
+      i18n.t(config.DEFAULT_LOCALE, "manage_events.message_participants"),
+    ),
+    async (ctx) => messageEventParticipants.enter(ctx),
+  )
+  .row()
+  .back(
+    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
+    updateManageEventMenu,
   );
 manageEventMenu.register(manageEventParticipantsMenu);
 async function updateManageEventParticipantsMenu(ctx: Context) {
@@ -876,3 +885,29 @@ const createEvent = conversation("createEvent")
   })
   .build();
 feature.use(createEvent);
+
+const messageEventParticipants = conversation("messageEventParticipants")
+  .proceed(async (ctx) => {
+    const event = await getEventForEditFromMatch(ctx);
+    if (event === undefined) return FINISH;
+    await ctx.reply(
+      ctx.t("manage_events.enter_message_for_event_participants"),
+    );
+    return { eventId: event.id };
+  })
+  .waitForTextOrCmd(
+    "message:text",
+    ["cancel"],
+    async ({ ctx, command }, { eventId }) => {
+      if (command !== "cancel") {
+        const signups = await getEventSignups(eventId);
+        const promises = signups
+          .filter((signup) => signup.status === SignupStatus.Approved)
+          .map(async (signup) => copyMessageTo(ctx, signup.user.id));
+        await Promise.all(promises);
+      }
+      await sendEventMenu(ctx, eventId);
+    },
+  )
+  .build();
+feature.use(messageEventParticipants);

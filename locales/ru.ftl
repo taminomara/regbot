@@ -334,11 +334,11 @@ manage_events =
     .edit_price = ✏️ Стоимость
     .edit_payment_details = ✏️ Данные оплаты
     .edit_reminder = ✏️ Напоминание перед событием
-
     .edit_options =  ✏️ Опции
 
     .manage_participants = 👯‍♀️ Участники ({$participants})
     .manage_participants_with_pending = 👯‍♀️ Участники ({$participants}+{$pending}⏳)
+    .message_participants = ✉️ Отправить сообщение участникам
 
     .delete = 🗑️ Удалить событие
     .delete_confirm =
@@ -383,6 +383,9 @@ manage_events =
     }
     .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}{$options}
     .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}{$options}
+
+    .enter_message_for_event_participants =
+        Введите сообщение, которое будет разослано участникам, или отправьте /cancel для отмены.
 
 event_signup =
     .event_in_past = Событие уже прошло.
