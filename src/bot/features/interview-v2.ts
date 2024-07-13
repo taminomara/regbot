@@ -20,12 +20,15 @@ import {
 } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import { sendApproveMessage } from "#root/bot/features/interview.js";
-import { FINISH, conversation } from "#root/bot/helpers/conversations-v2.js";
+import {
+  conversation,
+  finishConversation,
+} from "#root/bot/helpers/conversations-v2.js";
 import { config } from "#root/config.js";
 
 export const composer = new Composer<Context>();
 
-export const interviewConversation = conversation("interview")
+export const interviewConversation = conversation<Context>("interview")
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("welcome"));
     if (ctx.user.status === UserStatus.Approved) {
@@ -37,7 +40,7 @@ export const interviewConversation = conversation("interview")
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("interview.name"));
   })
-  .waitFor("message:text", async (ctx) => {
+  .waitFilterQuery("message:text", async (ctx) => {
     await setUserName(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -52,7 +55,7 @@ export const interviewConversation = conversation("interview")
         .resized(),
     });
   })
-  .waitFor("message:text", async (ctx) => {
+  .waitFilterQuery("message:text", async (ctx) => {
     await setUserPronouns(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -65,7 +68,7 @@ export const interviewConversation = conversation("interview")
         .resized(),
     });
   })
-  .waitFor("message:text", async (ctx) => {
+  .waitFilterQuery("message:text", async (ctx) => {
     await setUserGender(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -80,7 +83,7 @@ export const interviewConversation = conversation("interview")
         .resized(),
     });
   })
-  .waitFor("message:text", async (ctx) => {
+  .waitFilterQuery("message:text", async (ctx) => {
     await setUserSexuality(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -97,7 +100,7 @@ export const interviewConversation = conversation("interview")
       await ensureHasAdminGroupTopic(ctx, ctx.user);
       await sendApproveMessage(ctx, ctx.user);
       await postInterviewSignup(ctx);
-      return FINISH;
+      return finishConversation();
     } else {
       await ensureHasAdminGroupTopic(ctx, ctx.user);
     }
@@ -110,7 +113,7 @@ export const interviewConversation = conversation("interview")
         .resized(),
     ),
   )
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(
     handleQuestion("interview.rules", (ctx) =>
       new Keyboard()
@@ -119,19 +122,19 @@ export const interviewConversation = conversation("interview")
         .resized(),
     ),
   )
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(handleQuestion("interview.experience"))
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(handleQuestion("interview.how_do_you_know_us"))
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(handleQuestion("interview.active_consent"))
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(handleQuestion("interview.lgbt_check"))
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(handleQuestion("interview.transgender_check"))
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(handleQuestion("interview.personal_borders"))
-  .waitFor("message", handleResponse)
+  .waitFilterQuery("message", handleResponse)
   .proceed(async (ctx) => {
     await ctx.replyWithChatAction("typing");
     await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
