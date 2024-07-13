@@ -386,6 +386,9 @@ manage_events =
 
     .enter_message_for_event_participants =
         Введите сообщение, которое будет разослано участникам, или отправьте /cancel для отмены.
+    .include_approved_participants = Зарегистрированным
+    .include_pending_participants = Ожидающим регистрации
+    .include_rejected_participants = Отклонённым
 
 event_signup =
     .event_in_past = Событие уже прошло.

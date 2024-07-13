@@ -1,5 +1,6 @@
 import { Menu } from "@grammyjs/menu";
-import { Composer, Filter, GrammyError } from "grammy";
+import { createCallbackData } from "callback-data";
+import { Composer, Filter, GrammyError, InlineKeyboard } from "grammy";
 import moment from "moment-timezone";
 
 import { EventPayment, SignupStatus } from "#root/backend/entities/event.js";
@@ -895,29 +896,111 @@ const createEvent = conversation<Context>("createEvent")
   .build();
 feature.use(createEvent);
 
+const messageEventParticipantsData = createCallbackData(
+  "messageEventParticipants",
+  {
+    includeApproved: Boolean,
+    includePending: Boolean,
+    includeRejected: Boolean,
+  },
+);
+function makeMessageEventParticipantsKeyboard(
+  ctx: Context,
+  data: {
+    includeApproved: boolean;
+    includePending: boolean;
+    includeRejected: boolean;
+  },
+) {
+  return new InlineKeyboard()
+    .text(
+      (data.includeApproved ? "☑️ " : "➖ ") +
+        ctx.t("manage_events.include_approved_participants"),
+      messageEventParticipantsData.pack({
+        ...data,
+        includeApproved: !data.includeApproved,
+      }),
+    )
+    .row()
+    .text(
+      (data.includePending ? "☑️ " : "➖ ") +
+        ctx.t("manage_events.include_pending_participants"),
+      messageEventParticipantsData.pack({
+        ...data,
+        includePending: !data.includePending,
+      }),
+    )
+    .row()
+    .text(
+      (data.includeRejected ? "☑️ " : "➖ ") +
+        ctx.t("manage_events.include_rejected_participants"),
+      messageEventParticipantsData.pack({
+        ...data,
+        includeRejected: !data.includeRejected,
+      }),
+    );
+}
 const messageEventParticipants = conversation<Context>(
   "messageEventParticipants",
 )
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
+    const params = {
+      includeApproved: true,
+      includePending: false,
+      includeRejected: false,
+    };
+
     await ctx.reply(
       ctx.t("manage_events.enter_message_for_event_participants"),
+      { reply_markup: makeMessageEventParticipantsKeyboard(ctx, params) },
     );
-    return { eventId: event.id };
+
+    return { eventId: event.id, ...params };
   })
   .either()
   .waitCommand("cancel", async (ctx, { eventId }) => {
     return { eventId };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
-    const signups = await getEventSignups(eventId);
-    const promises = signups
-      .filter((signup) => signup.status === SignupStatus.Approved)
-      .map(async (signup) => copyMessageTo(ctx, signup.user.id));
-    await Promise.all(promises);
-    return { eventId };
-  })
+  .waitCallbackQuery(
+    messageEventParticipantsData.filter(),
+    async (ctx, { eventId }) => {
+      const params = messageEventParticipantsData.unpack(
+        ctx.callbackQuery.data,
+      );
+      await ctx.editMessageReplyMarkup({
+        reply_markup: makeMessageEventParticipantsKeyboard(ctx, params),
+      });
+      return repeatConversationStep({ eventId, ...params });
+    },
+  )
+  .waitFilterQuery(
+    "message:text",
+    async (
+      ctx,
+      { eventId, includeApproved, includePending, includeRejected },
+    ) => {
+      ctx.logger.info({ includeApproved, includePending, includeRejected });
+      const signups = await getEventSignups(eventId);
+      const promises = signups
+        .filter((signup) => {
+          switch (signup.status) {
+            case SignupStatus.Approved:
+              return includeApproved;
+            case SignupStatus.Rejected:
+              return includeRejected;
+            case SignupStatus.PendingApproval:
+            case SignupStatus.PendingPayment:
+              return includePending;
+          }
+          return false;
+        })
+        .map(async (signup) => copyMessageTo(ctx, signup.user.id));
+      await Promise.all(promises);
+      return { eventId };
+    },
+  )
   .done()
   .proceed(async (ctx, { eventId }) => {
     await sendEventMenu(ctx, eventId);
