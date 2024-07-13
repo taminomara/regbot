@@ -4,13 +4,9 @@ import { Context } from "#root/bot/context.js";
 import { SessionStorage } from "#root/bot/helpers/session-storage.js";
 import { config } from "#root/config.js";
 
-export type SessionData = {
-  linearConversation?: {
-    name: string;
-    step: number;
-    payload: unknown;
-  };
-};
+import { LinearConversationSessionData } from "./helpers/conversations-v2.js";
+
+export type SessionData = LinearConversationSessionData;
 
 export function getSessionKey(ctx: Omit<Context, "session">) {
   return ctx.chatId === config.ADMIN_GROUP

@@ -21,9 +21,9 @@ import {
 } from "#root/bot/features/help.js";
 import { isAdmin } from "#root/bot/filters/index.js";
 import {
-  FINISH,
-  REPEAT,
   conversation,
+  finishConversation,
+  repeatConversationStep,
 } from "#root/bot/helpers/conversations-v2.js";
 import {
   deleteMessageSafe,
@@ -478,150 +478,154 @@ registerCommandHelp({
   privileges: CommandPrivileges.Admins,
 });
 
-const editEventName = conversation("editEventName")
+const editEventName = conversation<Context>("editEventName")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_name"));
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command !== "cancel") {
-        await updateEvent(eventId, { name: ctx.message.text });
-      }
-      await sendEventMenu(ctx, eventId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    return { eventId };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    await updateEvent(eventId, { name: ctx.message.text });
+    return { eventId };
+  })
+  .done()
+  .proceed(async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+  })
   .build();
 feature.use(editEventName);
 
-const editEventDate = conversation("editEventDate")
+const editEventDate = conversation<Context>("editEventDate")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_date"));
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command !== "cancel") {
-        const date = moment.tz(
-          ctx.message.text,
-          "YYYY-MM-DD HH:mm",
-          true,
-          config.TIMEZONE,
-        );
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    return { eventId };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    const date = moment.tz(
+      ctx.message.text,
+      "YYYY-MM-DD HH:mm",
+      true,
+      config.TIMEZONE,
+    );
 
-        if (!date.isValid()) {
-          await ctx.reply(ctx.t("manage_events.date_invalid"), {
-            reply_to_message_id: ctx.message.message_id,
-          });
-          return REPEAT;
-        }
+    if (!date.isValid()) {
+      await ctx.reply(ctx.t("manage_events.date_invalid"), {
+        reply_to_message_id: ctx.message.message_id,
+      });
+      return repeatConversationStep({ eventId });
+    }
 
-        if (date.isBefore(moment.now())) {
-          await ctx.reply(ctx.t("manage_events.date_in_past"), {
-            reply_to_message_id: ctx.message.message_id,
-          });
-          return REPEAT;
-        }
+    if (date.isBefore(moment.now())) {
+      await ctx.reply(ctx.t("manage_events.date_in_past"), {
+        reply_to_message_id: ctx.message.message_id,
+      });
+      return repeatConversationStep({ eventId });
+    }
 
-        await updateEvent(eventId, { date: date.toDate() });
-      }
-      await sendEventMenu(ctx, eventId);
-    },
-  )
+    await updateEvent(eventId, { date: date.toDate() });
+    return { eventId };
+  })
+  .done()
+  .proceed(async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+  })
   .build();
 feature.use(editEventDate);
 
-const editEventPost = conversation("editEventPost")
+const editEventPost = conversation<Context>("editEventPost")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_post"));
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command !== "cancel") {
-        await editEventPostFromCtx(ctx, eventId);
-      }
-      await sendEventMenu(ctx, eventId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    return { eventId };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    await editEventPostFromCtx(ctx, eventId);
+    return { eventId };
+  })
+  .done()
+  .proceed(async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+  })
   .build();
 feature.use(editEventPost);
 
-const editEventPrice = conversation("editEventPrice")
+const editEventPrice = conversation<Context>("editEventPrice")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_price"));
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel", "empty"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command !== "cancel") {
-        if (command === "empty") {
-          await updateEvent(eventId, { price: null });
-        } else {
-          await updateEvent(eventId, { price: ctx.message.text });
-        }
-      }
-      await sendEventMenu(ctx, eventId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    return { eventId };
+  })
+  .waitCommand("empty", async (ctx, { eventId }) => {
+    await updateEvent(eventId, { price: null });
+    return { eventId };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    await updateEvent(eventId, { price: ctx.message.text });
+    return { eventId };
+  })
+  .done()
+  .proceed(async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+  })
   .build();
 feature.use(editEventPrice);
 
-const editEventPaymentDetails = conversation("editEventPaymentDetails")
+const editEventPaymentDetails = conversation<Context>("editEventPaymentDetails")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_iban"));
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel", "empty"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command === "cancel") {
-        await sendEventMenu(ctx, eventId);
-        return FINISH;
-      } else if (command === "empty") {
-        return { eventId, iban: null };
-      } else {
-        return { eventId, iban: ctx.message.text };
-      }
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+    return finishConversation();
+  })
+  .waitCommand("empty", async (ctx, { eventId }) => {
+    return { eventId, iban: null };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    return { eventId, iban: ctx.message.text };
+  })
+  .done()
   .proceed(async (ctx, { eventId, iban }) => {
     await ctx.reply(ctx.t("manage_events.enter_recipient"));
     return { eventId, iban };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel", "empty"],
-    async ({ ctx, command }, { eventId, iban }) => {
-      if (command === "cancel") {
-        await sendEventMenu(ctx, eventId);
-        return FINISH;
-      } else if (command === "empty") {
-        return { eventId, iban, recipient: null };
-      } else {
-        return { eventId, iban, recipient: ctx.message.text };
-      }
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+    return finishConversation();
+  })
+  .waitCommand("empty", async (ctx, { eventId, iban }) => {
+    return { eventId, iban, recipient: null };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId, iban }) => {
+    return { eventId, iban, recipient: ctx.message.text };
+  })
+  .done()
   .proceed(async (ctx, { eventId, iban, recipient }) => {
     await updateEvent(eventId, { iban, recipient });
     await sendEventMenu(ctx, eventId);
@@ -629,56 +633,62 @@ const editEventPaymentDetails = conversation("editEventPaymentDetails")
   .build();
 feature.use(editEventPaymentDetails);
 
-const editEventOptions = conversation("editEventOptions")
+const editEventOptions = conversation<Context>("editEventOptions")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_options"));
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel", "empty"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command !== "cancel") {
-        if (command === "empty") {
-          await updateEvent(eventId, { participationOptions: null });
-        } else {
-          await updateEvent(eventId, {
-            participationOptions: ctx.message.text.split("\n").filter((x) => x),
-          });
-        }
-      }
-      await sendEventMenu(ctx, eventId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    return { eventId };
+  })
+  .waitCommand("empty", async (ctx, { eventId }) => {
+    await updateEvent(eventId, { participationOptions: null });
+    return { eventId };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    await updateEvent(eventId, {
+      participationOptions: ctx.message.text.split("\n").filter((x) => x),
+    });
+    return { eventId };
+  })
+  .done()
+  .proceed(async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+  })
   .build();
 feature.use(editEventOptions);
 
-const editEventReminder = conversation("editEventReminder")
+const editEventReminder = conversation<Context>("editEventReminder")
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_reminder"));
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel", "empty"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command === "empty") {
-        await updateEvent(eventId, { reminderTextHtml: null });
-      } else {
-        await updateEvent(eventId, {
-          reminderTextHtml: parseTelegramEntities(
-            ctx.msg.text ?? ctx.msg.caption ?? "",
-            ctx.msg.entities ?? ctx.msg.caption_entities ?? [],
-          ),
-        });
-      }
-      await sendEventMenu(ctx, eventId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    return { eventId };
+  })
+  .waitCommand("empty", async (ctx, { eventId }) => {
+    await updateEvent(eventId, { reminderTextHtml: null });
+    return { eventId };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    await updateEvent(eventId, {
+      reminderTextHtml: parseTelegramEntities(
+        ctx.msg.text ?? ctx.msg.caption ?? "",
+        ctx.msg.entities ?? ctx.msg.caption_entities ?? [],
+      ),
+    });
+    return { eventId };
+  })
+  .done()
+  .proceed(async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+  })
   .build();
 feature.use(editEventReminder);
 
@@ -831,54 +841,53 @@ async function deleteEvent(ctx: Context) {
   await updateManageEventsMenu(ctx);
 }
 
-const createEvent = conversation("createEvent")
+const createEvent = conversation<Context>("createEvent")
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("manage_events.enter_name"));
   })
-  .waitForTextOrCmd("message:text", ["cancel"], async ({ ctx, command }) => {
-    if (command === "cancel") {
-      await sendEventsMenu(ctx);
-      return FINISH;
-    }
+  .either()
+  .waitCommand("cancel", async (ctx) => {
+    await sendEventsMenu(ctx);
+    return finishConversation();
+  })
+  .waitFilterQuery("message:text", async (ctx) => {
     return { name: ctx.message.text };
   })
+  .done()
   .proceed(async (ctx, { name }) => {
     await ctx.reply(ctx.t("manage_events.enter_date"));
     return { name };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, { name }) => {
-      if (command === "cancel") {
-        await sendEventsMenu(ctx);
-        return FINISH;
-      }
+  .either()
+  .waitCommand("cancel", async (ctx) => {
+    await sendEventsMenu(ctx);
+    return finishConversation();
+  })
+  .waitFilterQuery("message:text", async (ctx, { name }) => {
+    const date = moment.tz(
+      ctx.message.text,
+      "YYYY-MM-DD HH:mm",
+      true,
+      config.TIMEZONE,
+    );
 
-      const date = moment.tz(
-        ctx.message.text,
-        "YYYY-MM-DD HH:mm",
-        true,
-        config.TIMEZONE,
-      );
+    if (!date.isValid()) {
+      await ctx.reply(ctx.t("manage_events.date_invalid"), {
+        reply_to_message_id: ctx.message.message_id,
+      });
+      return repeatConversationStep({ name });
+    }
 
-      if (!date.isValid()) {
-        await ctx.reply(ctx.t("manage_events.date_invalid"), {
-          reply_to_message_id: ctx.message.message_id,
-        });
-        return REPEAT;
-      }
+    if (date.isBefore(moment.now())) {
+      await ctx.reply(ctx.t("manage_events.date_in_past"), {
+        reply_to_message_id: ctx.message.message_id,
+      });
+      return repeatConversationStep({ name });
+    }
 
-      if (date.isBefore(moment.now())) {
-        await ctx.reply(ctx.t("manage_events.date_in_past"), {
-          reply_to_message_id: ctx.message.message_id,
-        });
-        return REPEAT;
-      }
-
-      return { name, date: date.toDate() };
-    },
-  )
+    return { name, date: date.toDate() };
+  })
+  .done()
   .proceed(async (ctx, { name, date }) => {
     const event = await createDbEvent(name, date);
     await sendEventMenu(ctx, event.id);
@@ -886,28 +895,32 @@ const createEvent = conversation("createEvent")
   .build();
 feature.use(createEvent);
 
-const messageEventParticipants = conversation("messageEventParticipants")
+const messageEventParticipants = conversation<Context>(
+  "messageEventParticipants",
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
-    if (event === undefined) return FINISH;
+    if (event === undefined) return finishConversation();
     await ctx.reply(
       ctx.t("manage_events.enter_message_for_event_participants"),
     );
     return { eventId: event.id };
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, { eventId }) => {
-      if (command !== "cancel") {
-        const signups = await getEventSignups(eventId);
-        const promises = signups
-          .filter((signup) => signup.status === SignupStatus.Approved)
-          .map(async (signup) => copyMessageTo(ctx, signup.user.id));
-        await Promise.all(promises);
-      }
-      await sendEventMenu(ctx, eventId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    return { eventId };
+  })
+  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+    const signups = await getEventSignups(eventId);
+    const promises = signups
+      .filter((signup) => signup.status === SignupStatus.Approved)
+      .map(async (signup) => copyMessageTo(ctx, signup.user.id));
+    await Promise.all(promises);
+    return { eventId };
+  })
+  .done()
+  .proceed(async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+  })
   .build();
 feature.use(messageEventParticipants);

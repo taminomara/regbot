@@ -14,7 +14,7 @@ import { sendEditProfileMenu } from "./menu.js";
 
 export const composer = new Composer<Context>();
 
-const editName = conversation<{ userId: number; sendMenu?: boolean }>(
+const editName = conversation<Context, { userId: number; sendMenu?: boolean }>(
   "editName",
 )
   .proceed(async (ctx, opts) => {
@@ -23,20 +23,21 @@ const editName = conversation<{ userId: number; sendMenu?: boolean }>(
     });
     return opts;
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, opts) => {
-      if (command !== "cancel") {
-        const user = await setUserName(opts.userId, ctx.message.text);
-        await updateAdminGroupTopicTitle(ctx, user);
-        await sendConfirmation(ctx);
-      } else {
-        await sendCancelled(ctx);
-      }
-      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, opts) => {
+    await sendCancelled(ctx);
+    return opts;
+  })
+  .waitFilterQuery("message:text", async (ctx, opts) => {
+    const user = await setUserName(opts.userId, ctx.message.text);
+    await updateAdminGroupTopicTitle(ctx, user);
+    await sendConfirmation(ctx);
+    return opts;
+  })
+  .done()
+  .proceed(async (ctx, opts) => {
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+  })
   .build();
 composer.use(editName);
 export async function enterEditName(
@@ -49,9 +50,10 @@ export async function enterEditName(
   }
 }
 
-const editPronouns = conversation<{ userId: number; sendMenu?: boolean }>(
-  "editPronouns",
-)
+const editPronouns = conversation<
+  Context,
+  { userId: number; sendMenu?: boolean }
+>("editPronouns")
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_pronouns"), {
       reply_markup: new Keyboard()
@@ -66,20 +68,21 @@ const editPronouns = conversation<{ userId: number; sendMenu?: boolean }>(
     });
     return opts;
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, opts) => {
-      if (command !== "cancel") {
-        const user = await setUserPronouns(opts.userId, ctx.message.text);
-        await sendConfirmation(ctx);
-        await updateAdminGroupTopicTitle(ctx, user);
-      } else {
-        await sendCancelled(ctx);
-      }
-      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, opts) => {
+    await sendCancelled(ctx);
+    return opts;
+  })
+  .waitFilterQuery("message:text", async (ctx, opts) => {
+    const user = await setUserPronouns(opts.userId, ctx.message.text);
+    await updateAdminGroupTopicTitle(ctx, user);
+    await sendConfirmation(ctx);
+    return opts;
+  })
+  .done()
+  .proceed(async (ctx, opts) => {
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+  })
   .build();
 composer.use(editPronouns);
 export async function enterEditPronouns(
@@ -92,9 +95,10 @@ export async function enterEditPronouns(
   }
 }
 
-const editGender = conversation<{ userId: number; sendMenu?: boolean }>(
-  "editGender",
-)
+const editGender = conversation<
+  Context,
+  { userId: number; sendMenu?: boolean }
+>("editGender")
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_gender"), {
       reply_markup: new Keyboard()
@@ -107,20 +111,21 @@ const editGender = conversation<{ userId: number; sendMenu?: boolean }>(
     });
     return opts;
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, opts) => {
-      if (command !== "cancel") {
-        const user = await setUserGender(opts.userId, ctx.message.text);
-        await updateAdminGroupTopicTitle(ctx, user);
-        await sendConfirmation(ctx);
-      } else {
-        await sendCancelled(ctx);
-      }
-      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, opts) => {
+    await sendCancelled(ctx);
+    return opts;
+  })
+  .waitFilterQuery("message:text", async (ctx, opts) => {
+    const user = await setUserGender(opts.userId, ctx.message.text);
+    await updateAdminGroupTopicTitle(ctx, user);
+    await sendConfirmation(ctx);
+    return opts;
+  })
+  .done()
+  .proceed(async (ctx, opts) => {
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+  })
   .build();
 composer.use(editGender);
 export async function enterEditGender(
@@ -133,9 +138,10 @@ export async function enterEditGender(
   }
 }
 
-const editSexuality = conversation<{ userId: number; sendMenu?: boolean }>(
-  "editSexuality",
-)
+const editSexuality = conversation<
+  Context,
+  { userId: number; sendMenu?: boolean }
+>("editSexuality")
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_sexuality"), {
       reply_markup: new Keyboard()
@@ -150,20 +156,21 @@ const editSexuality = conversation<{ userId: number; sendMenu?: boolean }>(
     });
     return opts;
   })
-  .waitForTextOrCmd(
-    "message:text",
-    ["cancel"],
-    async ({ ctx, command }, opts) => {
-      if (command !== "cancel") {
-        const user = await setUserSexuality(opts.userId, ctx.message.text);
-        await updateAdminGroupTopicTitle(ctx, user);
-        await sendConfirmation(ctx);
-      } else {
-        await sendCancelled(ctx);
-      }
-      if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId);
-    },
-  )
+  .either()
+  .waitCommand("cancel", async (ctx, opts) => {
+    await sendCancelled(ctx);
+    return opts;
+  })
+  .waitFilterQuery("message:text", async (ctx, opts) => {
+    const user = await setUserSexuality(opts.userId, ctx.message.text);
+    await updateAdminGroupTopicTitle(ctx, user);
+    await sendConfirmation(ctx);
+    return opts;
+  })
+  .done()
+  .proceed(async (ctx, opts) => {
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+  })
   .build();
 composer.use(editSexuality);
 export async function enterEditSexuality(

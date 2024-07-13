@@ -4,41 +4,65 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  Context as DefaultContext,
+  CallbackQueryContext,
+  CommandContext,
+  Context,
   Filter,
   FilterQuery,
+  HearsContext,
   MiddlewareFn,
   MiddlewareObj,
+  SessionFlavor,
 } from "grammy";
 
-import { Context } from "#root/bot/context.js";
+export type LinearConversationSessionData = {
+  linearConversation?: {
+    name: string;
+    step: number;
+    payload: unknown;
+  };
+};
+type LinearConversationContext = Context &
+  SessionFlavor<LinearConversationSessionData>;
 
 const SEALED = Symbol("SEALED");
 
-export type StringOrStringLiteral<T> = T extends string
-  ? string extends T
-    ? string
-    : T
-  : string;
+const REPEAT = Symbol("REPEAT");
+type Repeat<P> = { __conversationAction: typeof REPEAT; payload: P };
+function isRepeat(t: any): t is Repeat<any> {
+  return t?.__conversationAction === REPEAT;
+}
 
 /**
  * Return this from a step handler to repeat it.
  */
-export const REPEAT = Symbol("REPEAT");
+export function repeatConversationStep(): Repeat<undefined>;
+export function repeatConversationStep<P>(payload: P): Repeat<P>;
+export function repeatConversationStep<P>(payload?: P): Repeat<P | undefined> {
+  return { __conversationAction: REPEAT, payload };
+}
+
+const FINISH = Symbol("FINISH");
+type Finish = { __conversationAction: typeof FINISH };
+function isFinish(t: any): t is Finish {
+  return t?.__conversationAction === FINISH;
+}
 
 /**
  * Return this from a step handler to finish the conversation.
  */
-export const FINISH = Symbol("FINISH");
+export function finishConversation(): Finish {
+  return { __conversationAction: FINISH };
+}
 
-/**
- * I mean... yeah!
- */
+type Next<T> = T extends Finish ? never : T extends Repeat<any> ? never : T;
+
 export type MaybePromise<T> = T | Promise<T>;
+export type MaybeArray<T> = T | T[];
 
 type Step<C> = {
   filter?: (ctx: C, payload: any) => MaybePromise<boolean>;
-  func: (ctx: C, payload: any) => MaybePromise<any>;
+  func: (ctx: C, payload: any) => MaybePromise<any | Repeat<any> | Finish>;
 };
 
 /**
@@ -68,16 +92,18 @@ type Step<C> = {
  * });
  * ```
  */
-export class Conversation<IP> implements MiddlewareObj<Context> {
+export class Conversation<C extends LinearConversationContext, IP>
+  implements MiddlewareObj<C>
+{
   /**
    * Unique name of this conversation.
    */
   readonly name: string;
 
-  private readonly steps: Step<Context>[];
+  private readonly steps: Step<C>[];
 
   /** @private */
-  constructor(name: string, steps: Step<Context>[], _: typeof SEALED) {
+  constructor(name: string, steps: Step<C>[], _: typeof SEALED) {
     this.name = name;
     this.steps = steps;
   }
@@ -87,7 +113,7 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
    * force-stop it.
    */
   async forceEnter(
-    ctx: Context,
+    ctx: C,
     ...args: IP extends undefined ? [payload?: IP] : [payload: IP]
   ) {
     ctx.session.linearConversation = undefined;
@@ -99,7 +125,7 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
    * raise an error.
    */
   async enter(
-    ctx: Context,
+    ctx: C,
     ...args: IP extends undefined ? [payload?: IP] : [payload: IP]
   ) {
     if (ctx.session.linearConversation !== undefined) {
@@ -118,7 +144,7 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
     return this.run(ctx);
   }
 
-  private async filter(ctx: Context) {
+  private async filter(ctx: C) {
     if (ctx.session.linearConversation === undefined) return false;
 
     const { name, step, payload } = ctx.session.linearConversation;
@@ -134,7 +160,7 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
     return filter === undefined || filter(ctx, payload);
   }
 
-  private async run(ctx: Context) {
+  private async run(ctx: C) {
     if (ctx.session.linearConversation === undefined) return false;
 
     if (ctx.session.linearConversation.name !== this.name) return false;
@@ -147,30 +173,25 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
     while (ctx.session.linearConversation.step < this.steps.length) {
       const { func } = this.steps[ctx.session.linearConversation.step];
       const result = await func(ctx, ctx.session.linearConversation.payload);
-      switch (result) {
-        case REPEAT: {
-          // Repeat the same step after user gives their answer.
+      if (isRepeat(result)) {
+        // Repeat the same step after user gives their answer.
+        ctx.session.linearConversation.payload = result.payload;
+        return;
+      } else if (isFinish(result)) {
+        // Finish the conversation early, i.e. break out of this cycle.
+        break;
+      } else {
+        // Move to next step.
+        ctx.session.linearConversation.step += 1;
+        ctx.session.linearConversation.payload = result;
+        if (
+          this.steps[ctx.session.linearConversation.step]?.filter !== undefined
+        ) {
+          // This is a 'wait' step, so we wait for the next message from user.
           return;
-        }
-        case FINISH: {
-          // Finish the conversation early, i.e. break out of this cycle.
-          ctx.session.linearConversation.step = this.steps.length;
-          break;
-        }
-        default: {
-          // Move to next step.
-          ctx.session.linearConversation.step += 1;
-          ctx.session.linearConversation.payload = result;
-          if (
-            this.steps[ctx.session.linearConversation.step]?.filter !==
-            undefined
-          ) {
-            // This is a 'wait' step, so we wait for the next message from user.
-            return;
-          } else {
-            // This is a 'proceed' step, it runs immediately.
-            // Continue the cycle.
-          }
+        } else {
+          // This is a 'proceed' step, it runs immediately.
+          continue;
         }
       }
     }
@@ -179,7 +200,7 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
     ctx.session.linearConversation = undefined;
   }
 
-  middleware(): MiddlewareFn<Context> {
+  middleware(): MiddlewareFn<C> {
     return async (ctx, next) => {
       if (await this.filter(ctx)) {
         return this.run(ctx);
@@ -190,16 +211,20 @@ export class Conversation<IP> implements MiddlewareObj<Context> {
   }
 }
 
-class ConversationBuilder<C extends Context, P, IP> {
+class ConversationBuilder<C extends LinearConversationContext, P, IP> {
   /**
    * Unique name of this conversation.
    */
   readonly name: string;
 
-  private readonly steps: Step<Context>[];
+  private readonly steps: Step<LinearConversationContext>[];
 
   /** @private */
-  constructor(name: string, steps: Step<Context>[], _: typeof SEALED) {
+  constructor(
+    name: string,
+    steps: Step<LinearConversationContext>[],
+    _: typeof SEALED,
+  ) {
     this.name = name;
     this.steps = steps;
   }
@@ -209,9 +234,13 @@ class ConversationBuilder<C extends Context, P, IP> {
    * The handler can't repeat itself, because it doesn't wait
    * for any user input.
    */
+  proceed(
+    func: (ctx: C, payload: P) => MaybePromise<Finish>,
+  ): ConversationBuilder<C, never, IP>;
   proceed<T>(
-    func: (ctx: C, payload: P) => MaybePromise<T | typeof FINISH>,
-  ): ConversationBuilder<C, T, IP> {
+    func: (ctx: C, payload: P) => MaybePromise<Next<T> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  proceed<T>(func: (ctx: C, payload: P) => MaybePromise<Next<T> | Finish>) {
     this.steps.push({ func: func as any });
     return this as unknown as ConversationBuilder<C, T, IP>;
   }
@@ -220,93 +249,275 @@ class ConversationBuilder<C extends Context, P, IP> {
    * Wait for the user to respond with a specific type of message,
    * then run a handler.
    */
+  wait<F extends C>(
+    filter: (ctx: C, payload: P) => ctx is F,
+    func: (ctx: F, payload: P) => MaybePromise<Repeat<P> | Finish>,
+  ): ConversationBuilder<C, never, IP>;
   wait<F extends C, T>(
     filter: (ctx: C, payload: P) => ctx is F,
-    func: (
-      ctx: F,
-      payload: P,
-    ) => MaybePromise<T | typeof REPEAT | typeof FINISH>,
-  ): ConversationBuilder<C, T, IP> {
+    func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  wait<F extends C, T>(
+    filter: (ctx: C, payload: P) => ctx is F,
+    func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
     this.steps.push({ filter: filter as any, func: func as any });
     return this as unknown as ConversationBuilder<C, T, IP>;
   }
 
-  /**
-   * Wait for the user to respond with a specific type of message,
-   * then run a handler.
-   */
-  waitFor<Q extends FilterQuery, T>(
-    query: Q,
+  waitFilterQuery<Q extends FilterQuery>(
+    filter: Q | Q[],
+    func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
+  ): ConversationBuilder<C, never, IP>;
+  waitFilterQuery<Q extends FilterQuery, T>(
+    filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
       payload: P,
-    ) => MaybePromise<T | typeof REPEAT | typeof FINISH>,
-  ): ConversationBuilder<C, T, IP> {
-    return this.wait(DefaultContext.has.filterQuery(query), func);
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  waitFilterQuery<Q extends FilterQuery, T>(
+    filter: Q | Q[],
+    func: (
+      ctx: Filter<C, Q>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.filterQuery(filter), func);
   }
 
-  /**
-   * Wait for the user to respond with a specific type of message or a command,
-   * then run a handler.
-   *
-   * Useful for implementing commands like `/cancel`.
-   */
-  waitForTextOrCmd<Q extends FilterQuery, Cmd, T>(
-    query: Q,
-    allowedCommands: StringOrStringLiteral<Cmd>[],
+  waitText(
+    trigger: MaybeArray<string | RegExp>,
     func: (
-      reply:
-        | { ctx: Filter<C, "message:text">; command: Cmd }
-        | { ctx: Filter<C, Q>; command: undefined },
+      ctx: HearsContext<C>,
       payload: P,
-    ) => MaybePromise<T | typeof REPEAT | typeof FINISH>,
-  ): ConversationBuilder<C, T, IP> {
-    return this.wait(
-      (ctx): ctx is C =>
-        (ctx.has(query) && ctx.entities("bot_command").length === 0) ||
-        (ctx.has("message:text") &&
-          ctx.entities("bot_command").length === 1 &&
-          allowedCommands.reduce(
-            (prev, cmd) => prev || ctx.hasCommand(cmd),
-            false,
-          )),
-      (ctx, payload) => {
-        if (ctx.entities("bot_command").length > 0) {
-          const { command } = /^\/?(?<command>[^@]*)/u.exec(
-            ctx.entities("bot_command")[0].text,
-          )!.groups!;
-          return func(
-            {
-              ctx: ctx as Filter<C, "message:text">,
-              command: command as Cmd,
-            },
-            payload,
-          );
-        } else {
-          return func(
-            {
-              ctx: ctx as Filter<C, Q>,
-              command: undefined,
-            },
-            payload,
-          );
-        }
-      },
-    );
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): ConversationBuilder<C, never, IP>;
+  waitText<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  waitText<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.text(trigger), func);
+  }
+
+  waitCommand(
+    command: MaybeArray<string>,
+    func: (
+      ctx: CommandContext<C>,
+      payload: P,
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): ConversationBuilder<C, never, IP>;
+  waitCommand<T>(
+    command: MaybeArray<string>,
+    func: (
+      ctx: CommandContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  waitCommand<T>(
+    command: MaybeArray<string>,
+    func: (
+      ctx: CommandContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.command(command), func);
+  }
+
+  waitCallbackQuery(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: CallbackQueryContext<C>,
+      payload: P,
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): ConversationBuilder<C, never, IP>;
+  waitCallbackQuery<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: CallbackQueryContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  waitCallbackQuery<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: CallbackQueryContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.callbackQuery(trigger), func);
+  }
+
+  either(): EitherBuilder<C, P, IP> {
+    return new EitherBuilder(this, SEALED);
   }
 
   /**
    * Strip away all type information about the previous conversation step
    * and return a simple conversation object that can be user as a middleware.
    */
-  build(): Conversation<IP> {
+  build(): Conversation<C, IP> {
     return new Conversation(this.name, this.steps, SEALED);
+  }
+}
+
+class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
+  private readonly builder: ConversationBuilder<C, P, IP>;
+  private readonly options: Step<C>[];
+
+  /** @private */
+  constructor(builder: ConversationBuilder<C, P, IP>, _: typeof SEALED) {
+    this.builder = builder;
+    this.options = [];
+  }
+
+  wait<F extends C>(
+    filter: (ctx: C, payload: P) => ctx is F,
+    func: (ctx: F, payload: P) => MaybePromise<Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP>;
+  wait<F extends C, T>(
+    filter: (ctx: C, payload: P) => ctx is F,
+    func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP | T>;
+  wait<F extends C, T>(
+    filter: (ctx: C, payload: P) => ctx is F,
+    func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    this.options.push({ filter: filter as any, func: func as any });
+    return this as unknown as EitherBuilder<C, P, IP, RP | T>;
+  }
+
+  waitFilterQuery<Q extends FilterQuery>(
+    filter: Q | Q[],
+    func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP>;
+  waitFilterQuery<Q extends FilterQuery, T>(
+    filter: Q | Q[],
+    func: (
+      ctx: Filter<C, Q>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP | T>;
+  waitFilterQuery<Q extends FilterQuery, T>(
+    filter: Q | Q[],
+    func: (
+      ctx: Filter<C, Q>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.filterQuery(filter), func);
+  }
+
+  waitText(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP>;
+  waitText<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP | T>;
+  waitText<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.text(trigger), func);
+  }
+
+  waitCommand(
+    command: MaybeArray<string>,
+    func: (
+      ctx: CommandContext<C>,
+      payload: P,
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP>;
+  waitCommand<T>(
+    command: MaybeArray<string>,
+    func: (
+      ctx: CommandContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP | T>;
+  waitCommand<T>(
+    command: MaybeArray<string>,
+    func: (
+      ctx: CommandContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.command(command), func);
+  }
+
+  waitCallbackQuery(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: CallbackQueryContext<C>,
+      payload: P,
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP>;
+  waitCallbackQuery<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: CallbackQueryContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP | T>;
+  waitCallbackQuery<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: CallbackQueryContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(Context.has.callbackQuery(trigger), func);
+  }
+
+  done() {
+    return this.builder.wait(
+      (ctx: C, payload: P): ctx is C => {
+        for (const { filter } of this.options) {
+          if (filter === undefined || filter(ctx, payload)) {
+            return true;
+          }
+        }
+        return false;
+      },
+      (ctx: C, payload: P): Next<RP> | Repeat<P> | Finish => {
+        for (const { filter, func } of this.options) {
+          if (filter === undefined || filter(ctx, payload)) {
+            return func(ctx, payload);
+          }
+        }
+        throw new Error("non-deterministic filter");
+      },
+    );
   }
 }
 
 /**
  * Create a new conversation builder. Name of the conversation should be unique.
  */
-export function conversation<P = undefined>(name: string) {
-  return new ConversationBuilder<Context, P, P>(name, [], SEALED);
+export function conversation<
+  C extends LinearConversationContext,
+  P = undefined,
+>(name: string) {
+  return new ConversationBuilder<C, P, P>(name, [], SEALED);
 }
