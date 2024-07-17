@@ -197,12 +197,14 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
     range.row();
 
     if (event.registrationOpen) {
-      range.text(
+      range.submenu(
         withPayload(
           i18n.t(config.DEFAULT_LOCALE, "manage_events.registration_open", {
             registrationOpen: "yes",
           }),
         ),
+        "closeEventRegistrationMenu",
+        updateCloseEventRegistrationMenu,
       );
     } else {
       range.submenu(
@@ -313,7 +315,7 @@ const openEventRegistrationMenu = new Menu<Context>("openEventRegistrationMenu")
     ),
     updateManageEventMenu,
   )
-  .text(
+  .back(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_yes"),
     ),
@@ -324,6 +326,27 @@ async function updateOpenEventRegistrationMenu(ctx: Context) {
   await editMessageTextSafe(
     ctx,
     i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_confirm"),
+  );
+}
+
+const closeEventRegistrationMenu = new Menu<Context>("closeEventRegistrationMenu")
+  .back(
+    withPayload(() =>
+      i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_no"),
+    ),
+    updateManageEventMenu,
+  )
+  .back(
+    withPayload(() =>
+      i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_yes"),
+    ),
+    closeRegistration,
+  );
+manageEventMenu.register(closeEventRegistrationMenu);
+async function updateCloseEventRegistrationMenu(ctx: Context) {
+  await editMessageTextSafe(
+    ctx,
+    i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_confirm"),
   );
 }
 
@@ -780,6 +803,14 @@ async function openRegistration(ctx: Context) {
   const event = await getEventForEditFromMatch(ctx);
   if (event !== undefined) {
     await updateEvent(event.id, { registrationOpen: true });
+    await updateManageEventMenu(ctx);
+  }
+}
+
+async function closeRegistration(ctx: Context) {
+  const event = await getEventForEditFromMatch(ctx);
+  if (event !== undefined) {
+    await updateEvent(event.id, { registrationOpen: false });
     await updateManageEventMenu(ctx);
   }
 }
