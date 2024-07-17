@@ -329,7 +329,9 @@ async function updateOpenEventRegistrationMenu(ctx: Context) {
   );
 }
 
-const closeEventRegistrationMenu = new Menu<Context>("closeEventRegistrationMenu")
+const closeEventRegistrationMenu = new Menu<Context>(
+  "closeEventRegistrationMenu",
+)
   .back(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_no"),
