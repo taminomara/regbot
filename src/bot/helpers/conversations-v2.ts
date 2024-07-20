@@ -209,7 +209,8 @@ export class Conversation<C extends LinearConversationContext, IP>
   }
 
   middleware(): MiddlewareFn<C> {
-    const composer = new Composer<C>()
+    const composer = new Composer<C>();
+    composer
       .filter(async (ctx) => this.filter(ctx))
       .use(...this.middlewares)
       .use(async (ctx) => this.run(ctx));
