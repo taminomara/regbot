@@ -16,6 +16,8 @@ const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
       .default("info"),
+    LOG_FILE: z.string().optional(),
+    PID_FILE: z.string().optional(),
     BOT_TOKEN: z.string(),
     BOT_ADMINS: z.array(z.number()).default([]),
     DATABASE: z.string(),
