@@ -11,7 +11,7 @@ const feature = composer.chatType("private");
 
 feature.on(
   "message::bot_command",
-  logHandle("unhandled-command"),
+  logHandle("unhandled:command"),
   async (ctx) => {
     await ctx.reply(ctx.t("unhandled"), {
       reply_to_message_id: ctx.msgId,
@@ -20,13 +20,13 @@ feature.on(
 );
 feature.on(
   "edited_message",
-  logHandle("unhandled-edited-message"),
+  logHandle("unhandled:edited-message"),
   handleMessageEdit,
 );
-feature.on("message", logHandle("unhandled-message"), async (ctx) =>
+feature.on("message", logHandle("unhandled:message"), async (ctx) =>
   copyMessageToAdminGroupTopic(ctx),
 );
 
-feature.on("callback_query", logHandle("unhandled-callback-query"), (ctx) => {
+feature.on("callback_query", logHandle("unhandled:callback-query"), (ctx) => {
   return ctx.answerCallbackQuery();
 });

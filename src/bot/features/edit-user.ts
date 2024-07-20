@@ -10,12 +10,14 @@ import type { Context } from "#root/bot/context.js";
 import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
 
 import { conversation } from "../helpers/conversations-v2.js";
+import { logHandle } from "../helpers/logging.js";
 import { sendEditProfileMenu } from "./menu.js";
 
 export const composer = new Composer<Context>();
 
 const editName = conversation<Context, { userId: number; sendMenu?: boolean }>(
   "editName",
+  logHandle("conversation:editName"),
 )
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_name"), {
@@ -53,7 +55,7 @@ export async function enterEditName(
 const editPronouns = conversation<
   Context,
   { userId: number; sendMenu?: boolean }
->("editPronouns")
+>("editPronouns", logHandle("conversation:editPronouns"))
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_pronouns"), {
       reply_markup: new Keyboard()
@@ -98,7 +100,7 @@ export async function enterEditPronouns(
 const editGender = conversation<
   Context,
   { userId: number; sendMenu?: boolean }
->("editGender")
+>("editGender", logHandle("conversation:editGender"))
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_gender"), {
       reply_markup: new Keyboard()
@@ -141,7 +143,7 @@ export async function enterEditGender(
 const editSexuality = conversation<
   Context,
   { userId: number; sendMenu?: boolean }
->("editSexuality")
+>("editSexuality", logHandle("conversation:editSexuality"))
   .proceed(async (ctx, opts) => {
     await ctx.reply(ctx.t("interview.edit_sexuality"), {
       reply_markup: new Keyboard()

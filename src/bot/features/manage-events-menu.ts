@@ -69,10 +69,12 @@ async function sendEventMenu(ctx: Context, eventId: number) {
 const manageEventsMenu = new Menu<Context>("manageEventsMenu")
   .text(
     () => i18n.t(config.DEFAULT_LOCALE, "manage_events.update"),
+    logHandle("menu:manageEventsMenu:update"),
     updateManageEventsMenu,
   )
   .text(
     () => i18n.t(config.DEFAULT_LOCALE, "manage_events.create"),
+    logHandle("menu:manageEventsMenu:create"),
     async (ctx) => createEvent.enter(ctx),
   )
   .row()
@@ -113,6 +115,7 @@ const manageEventsMenu = new Menu<Context>("manageEventsMenu")
             payload: String(event.id),
           },
           "manageEventMenu",
+          logHandle("menu:manageEventsMenu:manage-event"),
           updateManageEventMenu,
         )
         .row();
@@ -129,6 +132,7 @@ async function updateManageEventsMenu(ctx: Context) {
 const manageEventMenu = new Menu<Context>("manageEventMenu")
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.update")),
+    logHandle("menu:manageEventMenu:update"),
     updateManageEventMenu,
   )
   .row()
@@ -138,42 +142,50 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
 
     range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_name")),
+      logHandle("menu:manageEventMenu:edit-name"),
       (ctx) => editEventName.enter(ctx),
     );
     range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_date")),
+      logHandle("menu:manageEventMenu:edit-date"),
       (ctx) => editEventDate.enter(ctx),
     );
     range.row();
     if (event.announceTextHtml === null) {
       range.text(
         withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.add_post")),
+        logHandle("menu:manageEventMenu:add-post"),
         (ctx) => editEventPost.enter(ctx),
       );
     } else {
       range.text(
         withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_post")),
+        logHandle("menu:manageEventMenu:edit-post"),
         (ctx) => editEventPost.enter(ctx),
       );
     }
     range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_options")),
+      logHandle("menu:manageEventMenu:edit-options"),
       (ctx) => editEventOptions.enter(ctx),
     );
     range.row();
     range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_price")),
+      logHandle("menu:manageEventMenu:edit-price"),
       (ctx) => editEventPrice.enter(ctx),
     );
     range.text(
       withPayload(
         i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_payment_details"),
       ),
+      logHandle("menu:manageEventMenu:edit-payment-details"),
       (ctx) => editEventPaymentDetails.enter(ctx),
     );
     range.row();
     range.text(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_reminder")),
+      logHandle("menu:manageEventMenu:edit-reminder"),
       (ctx) => editEventReminder.enter(ctx),
     );
     range.row();
@@ -183,6 +195,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
           required: event.requireApproval ? "yes" : "no",
         }),
       ),
+      logHandle("menu:manageEventMenu:switch-confirmation"),
       switchConfirmation,
     );
     range.row();
@@ -192,6 +205,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
           payment: event.payment,
         }),
       ),
+      logHandle("menu:manageEventMenu:switch-event-payment"),
       switchEventPayment,
     );
     range.row();
@@ -204,6 +218,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
           }),
         ),
         "closeEventRegistrationMenu",
+        logHandle("menu:manageEventMenu:close-registration"),
         updateCloseEventRegistrationMenu,
       );
     } else {
@@ -214,6 +229,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
           }),
         ),
         "openEventRegistrationMenu",
+        logHandle("menu:manageEventMenu:open-registration"),
         updateOpenEventRegistrationMenu,
       );
     }
@@ -226,6 +242,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
             published: "yes",
           }),
         ),
+        logHandle("menu:manageEventMenu:unpublish"),
       );
     } else {
       range.submenu(
@@ -235,6 +252,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
           }),
         ),
         "publishEventMenu",
+        logHandle("menu:manageEventMenu:publish"),
         updatePublishEventMenu,
       );
     }
@@ -254,6 +272,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
         ),
       ),
       "manageEventParticipantsMenu",
+      logHandle("menu:manageEventMenu:manage-participants"),
       updateManageEventParticipantsMenu,
     );
     range.row();
@@ -261,12 +280,14 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
     range.submenu(
       withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.delete")),
       "deleteEventMenu",
+      logHandle("menu:manageEventMenu:delete-event"),
       updateDeleteEventMenu,
     );
     range.row();
   })
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
+    logHandle("menu:manageEventMenu:back"),
     updateManageEventsMenu,
   );
 manageEventsMenu.register(manageEventMenu);
@@ -313,12 +334,14 @@ const openEventRegistrationMenu = new Menu<Context>("openEventRegistrationMenu")
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_no"),
     ),
+    logHandle("menu:openEventRegistrationMenu:back"),
     updateManageEventMenu,
   )
   .back(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_yes"),
     ),
+    logHandle("menu:openEventRegistrationMenu:open-registration"),
     openRegistration,
   );
 manageEventMenu.register(openEventRegistrationMenu);
@@ -336,12 +359,14 @@ const closeEventRegistrationMenu = new Menu<Context>(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_no"),
     ),
+    logHandle("menu:closeEventRegistrationMenu:back"),
     updateManageEventMenu,
   )
   .back(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_yes"),
     ),
+    logHandle("menu:closeEventRegistrationMenu:close-registration"),
     closeRegistration,
   );
 manageEventMenu.register(closeEventRegistrationMenu);
@@ -357,12 +382,14 @@ const publishEventMenu = new Menu<Context>("publishEventMenu")
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_no"),
     ),
+    logHandle("menu:publishEventMenu:back"),
     updateManageEventMenu,
   )
   .back(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_yes"),
     ),
+    logHandle("menu:publishEventMenu:publish"),
     publishEvent,
   );
 manageEventMenu.register(publishEventMenu);
@@ -376,12 +403,14 @@ async function updatePublishEventMenu(ctx: Context) {
 const deleteEventMenu = new Menu<Context>("deleteEventMenu")
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_no")),
+    logHandle("menu:deleteEventMenu:back"),
     updateManageEventMenu,
   )
   .text(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_yes"),
     ),
+    logHandle("menu:deleteEventMenu:delete"),
     deleteEvent,
   );
 manageEventMenu.register(deleteEventMenu);
@@ -397,6 +426,7 @@ const manageEventParticipantsMenu = new Menu<Context>(
 )
   .text(
     withPayload((ctx) => ctx.t("manage_events.update")),
+    logHandle("menu:manageEventParticipantsMenu:update"),
     updateManageEventParticipantsMenu,
   )
   .row()
@@ -404,11 +434,13 @@ const manageEventParticipantsMenu = new Menu<Context>(
     withPayload(() =>
       i18n.t(config.DEFAULT_LOCALE, "manage_events.message_participants"),
     ),
+    logHandle("menu:manageEventParticipantsMenu:message-participants"),
     async (ctx) => messageEventParticipants.enter(ctx),
   )
   .row()
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
+    logHandle("menu:manageEventParticipantsMenu:back"),
     updateManageEventMenu,
   );
 manageEventMenu.register(manageEventParticipantsMenu);
@@ -496,7 +528,7 @@ async function getEventForEditFromMatch(ctx: Context) {
 
 feature
   .chatType("private")
-  .command("manage_events", logHandle("manage_events"), sendEventsMenu);
+  .command("manage_events", logHandle("command:manage_events"), sendEventsMenu);
 
 registerCommandHelp({
   command: "manage_events",
@@ -504,7 +536,10 @@ registerCommandHelp({
   privileges: CommandPrivileges.Admins,
 });
 
-const editEventName = conversation<Context>("editEventName")
+const editEventName = conversation<Context>(
+  "editEventName",
+  logHandle("conversation:editEventName"),
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
@@ -526,7 +561,10 @@ const editEventName = conversation<Context>("editEventName")
   .build();
 feature.use(editEventName);
 
-const editEventDate = conversation<Context>("editEventDate")
+const editEventDate = conversation<Context>(
+  "editEventDate",
+  logHandle("conversation:editEventDate"),
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
@@ -569,7 +607,10 @@ const editEventDate = conversation<Context>("editEventDate")
   .build();
 feature.use(editEventDate);
 
-const editEventPost = conversation<Context>("editEventPost")
+const editEventPost = conversation<Context>(
+  "editEventPost",
+  logHandle("conversation:editEventPost"),
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
@@ -591,7 +632,10 @@ const editEventPost = conversation<Context>("editEventPost")
   .build();
 feature.use(editEventPost);
 
-const editEventPrice = conversation<Context>("editEventPrice")
+const editEventPrice = conversation<Context>(
+  "editEventPrice",
+  logHandle("conversation:editEventPrice"),
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
@@ -617,7 +661,10 @@ const editEventPrice = conversation<Context>("editEventPrice")
   .build();
 feature.use(editEventPrice);
 
-const editEventPaymentDetails = conversation<Context>("editEventPaymentDetails")
+const editEventPaymentDetails = conversation<Context>(
+  "editEventPaymentDetails",
+  logHandle("conversation:editEventPaymentDetails"),
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
@@ -659,7 +706,10 @@ const editEventPaymentDetails = conversation<Context>("editEventPaymentDetails")
   .build();
 feature.use(editEventPaymentDetails);
 
-const editEventOptions = conversation<Context>("editEventOptions")
+const editEventOptions = conversation<Context>(
+  "editEventOptions",
+  logHandle("conversation:editEventOptions"),
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
@@ -687,7 +737,10 @@ const editEventOptions = conversation<Context>("editEventOptions")
   .build();
 feature.use(editEventOptions);
 
-const editEventReminder = conversation<Context>("editEventReminder")
+const editEventReminder = conversation<Context>(
+  "editEventReminder",
+  logHandle("conversation:editEventReminder"),
+)
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
@@ -875,7 +928,10 @@ async function deleteEvent(ctx: Context) {
   await updateManageEventsMenu(ctx);
 }
 
-const createEvent = conversation<Context>("createEvent")
+const createEvent = conversation<Context>(
+  "createEvent",
+  logHandle("conversation:createEvent"),
+)
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("manage_events.enter_name"));
   })
@@ -975,6 +1031,7 @@ function makeMessageEventParticipantsKeyboard(
 }
 const messageEventParticipants = conversation<Context>(
   "messageEventParticipants",
+  logHandle("conversation:messageEventParticipants"),
 )
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);

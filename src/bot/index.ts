@@ -27,7 +27,7 @@ import { logger } from "#root/logger.js";
 
 const metrics = {
   errors: new Counter({
-    name: "errors",
+    name: "tg_updates_processing_errors_count",
     help: "Number of update processing errors",
   }),
 };

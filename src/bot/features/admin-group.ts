@@ -310,7 +310,7 @@ const feature = composer
   .filter(isAdmin)
   .filter((ctx) => ctx.chatId === config.ADMIN_GROUP);
 
-feature.command("about", logHandle("admin-about"), async (ctx) => {
+feature.command("about", logHandle("command:about"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user === undefined || user.adminGroupTopic === null) return;
 
@@ -322,7 +322,7 @@ registerCommandHelp({
   privileges: CommandPrivileges.Admins,
 });
 
-feature.command("ban", logHandle("admin-ban"), async (ctx) => {
+feature.command("ban", logHandle("command:ban"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user !== undefined) {
     const reason =
@@ -337,7 +337,7 @@ registerCommandHelp({
   privileges: CommandPrivileges.Admins,
 });
 
-feature.command("unban", logHandle("admin-unban"), async (ctx) => {
+feature.command("unban", logHandle("command:unban"), async (ctx) => {
   const user = await getUserForTopic(ctx);
   if (user !== undefined) {
     await unbanUser(ctx, user);
@@ -351,7 +351,7 @@ registerCommandHelp({
 
 feature
   .drop((ctx) => ctx.entities("bot_command").length > 0)
-  .on("message", logHandle("admin-to-user"), async (ctx) => {
+  .on("message", logHandle("message-to-user"), async (ctx) => {
     if (ctx.message.message_thread_id === undefined) {
       return;
     }
@@ -367,6 +367,6 @@ feature
 
 feature.on(
   "edited_message",
-  logHandle("admin-to-user-edit"),
+  logHandle("message-to-user-edit"),
   handleMessageEdit,
 );
