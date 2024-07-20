@@ -1,4 +1,6 @@
 #!/usr/bin/env tsx
+import fs from "fs/promises";
+
 import {
   runMigrations,
   shutDownConnection,
@@ -6,7 +8,7 @@ import {
 import { stopBackgroundProcess } from "#root/bot/features/event-reminders.js";
 import { createBot, onStart } from "#root/bot/index.js";
 import { config } from "#root/config.js";
-import { logger } from "#root/logger.js";
+import { logFile, logger } from "#root/logger.js";
 import { metricsServer } from "#root/metrics.js";
 
 function onShutdown(cleanUp: () => Promise<void>) {
@@ -20,6 +22,10 @@ function onShutdown(cleanUp: () => Promise<void>) {
   process.on("SIGINT", handleShutdown);
   process.on("SIGTERM", handleShutdown);
 }
+
+process.on("SIGHUP", () => {
+  if (logFile) logFile.reopen();
+});
 
 async function startPolling() {
   const bot = createBot(config.BOT_TOKEN);
@@ -39,7 +45,14 @@ async function startPolling() {
   await bot.start({ onStart: async () => onStart(bot) });
 }
 
+async function createPidFile() {
+  if (config.PID_FILE) {
+    await fs.writeFile(config.PID_FILE, String(process.pid));
+  }
+}
+
 try {
+  await createPidFile();
   await runMigrations();
   await startPolling();
 } catch (error) {
