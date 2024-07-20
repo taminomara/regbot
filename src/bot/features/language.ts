@@ -18,7 +18,7 @@ export const composer = new Composer<Context>();
 
 const feature = composer.chatType("private");
 
-feature.command("language", logHandle("command-language"), async (ctx) => {
+feature.command("language", logHandle("command:language"), async (ctx) => {
   return ctx.reply(ctx.t("language.select"), {
     reply_markup: await createChangeLanguageKeyboard(ctx),
   });
@@ -52,7 +52,7 @@ async function createChangeLanguageKeyboard(ctx: Context) {
 
 feature.callbackQuery(
   changeLanguageData.filter(),
-  logHandle("keyboard-language-select"),
+  logHandle("callback:language"),
   async (ctx) => {
     const { code: languageCode } = changeLanguageData.unpack(
       ctx.callbackQuery.data,

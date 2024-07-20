@@ -9,24 +9,34 @@ import { logger } from "#root/logger.js";
 
 const metrics = {
   updatesStarted: new Counter({
-    name: "updatesStarted",
+    name: "tg_updates_started_count",
     help: "Number of updates that started processing",
   }),
   updatesFinished: new Counter({
-    name: "updatesFinished",
+    name: "tg_updates_finished_count",
     help: "Number of updates that finished processing",
   }),
   updatesInFlight: new Gauge({
-    name: "updatesInFlight",
+    name: "tg_updates_inflight",
     help: "Number of updates that are currently in flight",
   }),
   updatesProcessingTimeMs: new Histogram({
-    name: "updatesProcessingTimeMs",
+    name: "tg_updates_processing_time_ms",
     help: "Time it took to process an update, in milliseconds.",
     buckets: exponentialBuckets(10, 2, 11),
   }),
-  telegramApiCalls: new Counter({
-    name: "telegramApiCalls",
+  telegramApiCallsStarted: new Counter({
+    name: "tg_api_calls_started_count",
+    help: "Number of times we've called the Telegram API",
+    labelNames: ["method"] as const,
+  }),
+  telegramApiCallsFinished: new Counter({
+    name: "tg_api_calls_finished_count",
+    help: "Number of times we've called the Telegram API",
+    labelNames: ["method"] as const,
+  }),
+  telegramApiCallsInflight: new Gauge({
+    name: "tg_api_calls_inflight",
     help: "Number of times we've called the Telegram API",
     labelNames: ["method"] as const,
   }),
@@ -62,14 +72,20 @@ export function updateLogger(): Middleware<Context> {
 }
 
 export function apiLogger(): Transformer {
-  return (previous, method, payload, signal) => {
-    metrics.telegramApiCalls.inc({ method });
+  return async (previous, method, payload, signal) => {
+    metrics.telegramApiCallsStarted.inc({ method });
+    metrics.telegramApiCallsInflight.inc({ method });
     logger.debug({
       msg: "Bot API call",
       method,
       payload,
     });
 
-    return previous(method, payload, signal);
+    try {
+      return await previous(method, payload, signal);
+    } finally {
+      metrics.telegramApiCallsInflight.dec({ method });
+      metrics.telegramApiCallsFinished.inc({ method });
+    }
   };
 }

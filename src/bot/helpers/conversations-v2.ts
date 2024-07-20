@@ -6,10 +6,12 @@
 import {
   CallbackQueryContext,
   CommandContext,
+  Composer,
   Context,
   Filter,
   FilterQuery,
   HearsContext,
+  Middleware,
   MiddlewareFn,
   MiddlewareObj,
   SessionFlavor,
@@ -101,11 +103,18 @@ export class Conversation<C extends LinearConversationContext, IP>
   readonly name: string;
 
   private readonly steps: Step<C>[];
+  private readonly middlewares: Middleware<C>[];
 
   /** @private */
-  constructor(name: string, steps: Step<C>[], _: typeof SEALED) {
+  constructor(
+    name: string,
+    steps: Step<C>[],
+    middlewares: Middleware<C>[],
+    _: typeof SEALED,
+  ) {
     this.name = name;
     this.steps = steps;
+    this.middlewares = middlewares;
   }
 
   /**
@@ -161,9 +170,8 @@ export class Conversation<C extends LinearConversationContext, IP>
   }
 
   private async run(ctx: C) {
-    if (ctx.session.linearConversation === undefined) return false;
-
-    if (ctx.session.linearConversation.name !== this.name) return false;
+    if (ctx.session.linearConversation === undefined) return;
+    if (ctx.session.linearConversation.name !== this.name) return;
 
     // When we enter this cycle, the context is already filtered
     // by the current step's filter. This cycle repeats for
@@ -201,13 +209,11 @@ export class Conversation<C extends LinearConversationContext, IP>
   }
 
   middleware(): MiddlewareFn<C> {
-    return async (ctx, next) => {
-      if (await this.filter(ctx)) {
-        return this.run(ctx);
-      } else {
-        return next();
-      }
-    };
+    const composer = new Composer<C>()
+      .filter(async (ctx) => this.filter(ctx))
+      .use(...this.middlewares)
+      .use(async (ctx) => this.run(ctx));
+    return composer.middleware();
   }
 }
 
@@ -218,15 +224,18 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
   readonly name: string;
 
   private readonly steps: Step<LinearConversationContext>[];
+  private readonly middlewares: Middleware<C>[];
 
   /** @private */
   constructor(
     name: string,
     steps: Step<LinearConversationContext>[],
+    middlewares: Middleware<C>[],
     _: typeof SEALED,
   ) {
     this.name = name;
     this.steps = steps;
+    this.middlewares = middlewares;
   }
 
   /**
@@ -367,7 +376,7 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
    * and return a simple conversation object that can be user as a middleware.
    */
   build(): Conversation<C, IP> {
-    return new Conversation(this.name, this.steps, SEALED);
+    return new Conversation(this.name, this.steps, this.middlewares, SEALED);
   }
 }
 
@@ -518,6 +527,6 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
 export function conversation<
   C extends LinearConversationContext,
   P = undefined,
->(name: string) {
-  return new ConversationBuilder<C, P, P>(name, [], SEALED);
+>(name: string, ...args: Middleware<C>[]) {
+  return new ConversationBuilder<C, P, P>(name, [], args, SEALED);
 }

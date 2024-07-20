@@ -35,6 +35,7 @@ import {
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 
+import { logHandle } from "../helpers/logging.js";
 import { patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
@@ -101,8 +102,17 @@ export async function sendEventMenu(
 }
 
 const eventsMenu = new Menu<Context>("eventsMenu")
-  .text((ctx) => ctx.t("menu.update"), updateEventsMenu)
-  .submenu((ctx) => ctx.t("menu.profile"), "profileMenu", updateProfileMenu)
+  .text(
+    (ctx) => ctx.t("menu.update"),
+    logHandle("menu:eventsMenu:update"),
+    updateEventsMenu,
+  )
+  .submenu(
+    (ctx) => ctx.t("menu.profile"),
+    "profileMenu",
+    logHandle("menu:eventsMenu:profile"),
+    updateProfileMenu,
+  )
   .row()
   .dynamic(async (ctx, range) => {
     if (!(await isApproved(ctx))) return;
@@ -128,6 +138,7 @@ const eventsMenu = new Menu<Context>("eventsMenu")
             payload: String(event.id),
           },
           "eventMenu",
+          logHandle("menu:eventsMenu:event"),
           updateEventMenu,
         )
         .row();
@@ -139,14 +150,23 @@ async function updateEventsMenu(ctx: Context) {
 }
 
 const profileMenu = new Menu<Context>("profileMenu")
-  .text((ctx) => ctx.t("menu.update"), updateProfileMenu)
+  .text(
+    (ctx) => ctx.t("menu.update"),
+    logHandle("menu:profileMenu:update"),
+    updateProfileMenu,
+  )
   .submenu(
     (ctx) => ctx.t("menu.edit"),
     "editProfileMenu",
+    logHandle("menu:profileMenu:edit"),
     updateEditProfileMenu,
   )
   .row()
-  .back((ctx) => ctx.t("menu.back"), updateEventsMenu);
+  .back(
+    (ctx) => ctx.t("menu.back"),
+    logHandle("menu:profileMenu:back"),
+    updateEventsMenu,
+  );
 eventsMenu.register(profileMenu);
 async function updateProfileMenu(ctx: Context) {
   const user = await getUserOrFail(ctx.user.id);
@@ -164,23 +184,31 @@ async function updateProfileMenu(ctx: Context) {
 const editProfileMenu = new Menu<Context>("editProfileMenu")
   .text(
     (ctx) => ctx.t("menu.edit_name"),
+    logHandle("menu:editProfileMenu:edit-name"),
     async (ctx) => enterEditName(ctx, ctx.user.id, true),
   )
   .text(
     (ctx) => ctx.t("menu.edit_pronouns"),
+    logHandle("menu:editProfileMenu:edit-pronouns"),
     async (ctx) => enterEditPronouns(ctx, ctx.user.id, true),
   )
   .row()
   .text(
     (ctx) => ctx.t("menu.edit_gender"),
+    logHandle("menu:editProfileMenu:edit-gender"),
     async (ctx) => enterEditGender(ctx, ctx.user.id, true),
   )
   .text(
     (ctx) => ctx.t("menu.edit_sexuality"),
+    logHandle("menu:editProfileMenu:edit-sexuality"),
     async (ctx) => enterEditSexuality(ctx, ctx.user.id, true),
   )
   .row()
-  .back((ctx) => ctx.t("menu.back"), updateProfileMenu);
+  .back(
+    (ctx) => ctx.t("menu.back"),
+    logHandle("menu:editProfileMenu:back"),
+    updateProfileMenu,
+  );
 profileMenu.register(editProfileMenu);
 async function updateEditProfileMenu(ctx: Context) {
   await updateProfileMenu(ctx);
@@ -203,6 +231,7 @@ const eventMenu = new Menu<Context>("eventMenu")
           }),
         ),
         "optionsMenu",
+        logHandle("menu:eventMenu:signup-options"),
         updateOptionsMenu,
       );
     } else {
@@ -222,6 +251,7 @@ const eventMenu = new Menu<Context>("eventMenu")
                   }[event.signup.status],
           }),
         ),
+        logHandle("menu:eventMenu:signup"),
         async (ctx) => {
           await signupForEvent(ctx, event.id, ctx.user, null);
           await updateEventMenu(ctx);
@@ -240,6 +270,7 @@ const eventMenu = new Menu<Context>("eventMenu")
       range.submenu(
         withPayload(ctx.t("menu.cancel_signup_button")),
         "cancelSignupMenu",
+        logHandle("menu:eventMenu:cancel-signup"),
         updateCancelSignupMenu,
       );
     }
@@ -247,12 +278,14 @@ const eventMenu = new Menu<Context>("eventMenu")
     range.submenu(
       withPayload(ctx.t("menu.who_else_coming_button")),
       "eventParticipantsMenu",
+      logHandle("menu:eventMenu:who-else-coming"),
       updateEventParticipantsMenu,
     );
   })
   .row()
   .back(
     withPayload((ctx) => ctx.t("menu.back")),
+    logHandle("menu:eventMenu:back"),
     updateEventsMenu,
   );
 eventsMenu.register(eventMenu);
@@ -279,10 +312,12 @@ async function updateEventMenu(ctx: Context) {
 const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu")
   .back(
     withPayload((ctx) => ctx.t("menu.back")),
+    logHandle("menu:eventParticipantsMenu:back"),
     updateEventMenu,
   )
   .text(
     withPayload((ctx) => ctx.t("menu.update")),
+    logHandle("menu:eventParticipantsMenu:update"),
     updateEventParticipantsMenu,
   );
 eventMenu.register(eventParticipantsMenu);
@@ -337,10 +372,12 @@ async function updateEventParticipantsMenu(ctx: Context) {
 export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu")
   .back(
     withPayload((ctx) => ctx.t("menu.cancel_signup_button_no")),
+    logHandle("menu:cancelSignupMenu:back"),
     updateEventMenu,
   )
   .back(
     withPayload((ctx) => ctx.t("menu.cancel_signup_button_yes")),
+    logHandle("menu:cancelSignupMenu:cancel"),
     async (ctx) => {
       const event = await getEventFromMatch(ctx);
       if (event === undefined) return;
@@ -374,6 +411,7 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
         text: (selected ? "☑️ " : "➖ ") + participationOptions[i],
         payload: packMatch(eventId ?? NaN, [...options]),
       },
+      logHandle("menu:optionsMenu:toggle-option"),
       updateOptionsMenu,
     );
     range.row();
@@ -385,6 +423,7 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
       text: (ctx) => ctx.t("menu.back"),
       payload: (ctx) => String(unpackMatch(ctx.match).eventId),
     },
+    logHandle("menu:optionsMenu:back"),
     updateEventMenu,
   );
 
@@ -396,6 +435,7 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
         signedUp: "no",
       }),
     ),
+    logHandle("menu:optionsMenu:signup"),
     async (ctx) => {
       const chosenOptions = [];
       for (let i = 0; i < participationOptions.length; i += 1) {
@@ -472,7 +512,7 @@ async function getEventFromMatch(ctx: Context) {
 composer
   .chatType("private")
   .filter(isApproved)
-  .command("menu", async (ctx) => {
+  .command("menu", logHandle("command:menu"), async (ctx) => {
     await sendEventsMenu(ctx, ctx.chatId);
   });
 

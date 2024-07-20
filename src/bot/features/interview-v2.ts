@@ -26,9 +26,14 @@ import {
 } from "#root/bot/helpers/conversations-v2.js";
 import { config } from "#root/config.js";
 
+import { logHandle } from "../helpers/logging.js";
+
 export const composer = new Composer<Context>();
 
-export const interviewConversation = conversation<Context>("interview")
+export const interviewConversation = conversation<Context>(
+  "interview",
+  logHandle("conversation:interview"),
+)
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("welcome"));
     if (ctx.user.status === UserStatus.Approved) {

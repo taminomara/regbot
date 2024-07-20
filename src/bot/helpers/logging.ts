@@ -21,7 +21,7 @@ export function getUpdateInfo(ctx: Context): Omit<Update, "update_id"> {
  * ```ts
  * feature.command(
  *     "start",
- *     logHandle("command-start"),
+ *     logHandle("command:start"),
  *     // ...other handles
  * );
  * ```
@@ -29,11 +29,7 @@ export function getUpdateInfo(ctx: Context): Omit<Update, "update_id"> {
  * */
 export function logHandle(id: string): Middleware<Context> {
   return (ctx, next) => {
-    ctx.logger.info({
-      msg: `Handle "${id}"`,
-      ...(id.startsWith("unhandled") ? { update: getUpdateInfo(ctx) } : {}),
-    });
-
+    ctx.logger.info(`Handle "${id}"`);
     return next();
   };
 }

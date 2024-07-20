@@ -1,5 +1,6 @@
 import { createCallbackData } from "callback-data";
 import { Bot, Composer, InlineKeyboard } from "grammy";
+import { Counter, Gauge } from "prom-client";
 
 import { EventPayment } from "#root/backend/entities/event.js";
 import {
@@ -26,6 +27,29 @@ async function delay(timeMs: number) {
     setTimeout(resolve, timeMs);
   });
 }
+
+const metrics = {
+  eventRemindersProcessingStarted: new Counter({
+    name: "event_reminders_processing_started_count",
+    help: "Number of background checks for event reminders started",
+  }),
+  eventRemindersProcessingFinished: new Counter({
+    name: "event_reminders_processing_finished_count",
+    help: "Number of background checks for event reminders finished",
+  }),
+  eventRemindersProcessingInFlight: new Gauge({
+    name: "event_reminders_processing_inflight",
+    help: "Number of background checks for event reminders inflight",
+  }),
+  eventRemindersProcessingErrors: new Counter({
+    name: "event_reminders_processing_errors_count",
+    help: "Number of errors during background checks for event reminders",
+  }),
+  eventRemindersProcessed: new Counter({
+    name: "event_reminders_processed_count",
+    help: "Number of events with pending reminders processed",
+  }),
+};
 
 let process: BackgroundProcess | undefined;
 
@@ -95,11 +119,17 @@ class BackgroundProcess {
 
     let hasErrors = false;
 
+    metrics.eventRemindersProcessingStarted.inc();
+    metrics.eventRemindersProcessingInFlight.inc();
     try {
       await this.processEventReminders();
     } catch (error) {
       logger.error(error, "Error when sending event reminders");
       hasErrors = true;
+      metrics.eventRemindersProcessingErrors.inc();
+    } finally {
+      metrics.eventRemindersProcessingInFlight.dec();
+      metrics.eventRemindersProcessingFinished.inc();
     }
 
     if (this.aborting) {
@@ -122,6 +152,7 @@ class BackgroundProcess {
         eventId: event.id,
         numSignups: signups.length,
       });
+      metrics.eventRemindersProcessed.inc();
 
       await this.sendEventReminder(event);
       await Promise.all(
