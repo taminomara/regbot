@@ -8,7 +8,7 @@ import {
 import { stopBackgroundProcess } from "#root/bot/features/event-reminders.js";
 import { createBot, onStart } from "#root/bot/index.js";
 import { config } from "#root/config.js";
-import { logFile, logger } from "#root/logger.js";
+import { logger, reopenLogFile } from "#root/logger.js";
 import { metricsServer } from "#root/metrics.js";
 
 function onShutdown(cleanUp: () => Promise<void>) {
@@ -23,9 +23,7 @@ function onShutdown(cleanUp: () => Promise<void>) {
   process.on("SIGTERM", handleShutdown);
 }
 
-process.on("SIGHUP", () => {
-  if (logFile) logFile.reopen();
-});
+process.on("SIGHUP", reopenLogFile);
 
 async function startPolling() {
   const bot = createBot(config.BOT_TOKEN);
