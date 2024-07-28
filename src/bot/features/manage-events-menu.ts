@@ -621,7 +621,7 @@ const editEventPost = conversation<Context>(
   .waitCommand("cancel", async (ctx, { eventId }) => {
     return { eventId };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+  .waitFilterQuery("message", async (ctx, { eventId }) => {
     await editEventPostFromCtx(ctx, eventId);
     return { eventId };
   })
