@@ -5,7 +5,7 @@ collectDefaultMetrics({ register });
 
 const startTime = new Date().getTime();
 const _uptimeMs = new Gauge({
-  name: "uptimeMs",
+  name: "uptime_ms",
   help: "Number of milliseconds passed since server start",
   collect() {
     const curTime = new Date().getTime();
