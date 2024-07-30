@@ -550,7 +550,7 @@ const editEventName = conversation<Context>(
   .waitCommand("cancel", async (ctx, { eventId }) => {
     return { eventId };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
     await updateEvent(eventId, { name: ctx.message.text });
     return { eventId };
   })
@@ -575,7 +575,7 @@ const editEventDate = conversation<Context>(
   .waitCommand("cancel", async (ctx, { eventId }) => {
     return { eventId };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
     const date = moment.tz(
       ctx.message.text,
       "YYYY-MM-DD HH:mm",
@@ -621,7 +621,7 @@ const editEventPost = conversation<Context>(
   .waitCommand("cancel", async (ctx, { eventId }) => {
     return { eventId };
   })
-  .waitFilterQuery("message", async (ctx, { eventId }) => {
+  .waitFilterQueryIgnoreCmd("message", async (ctx, { eventId }) => {
     await editEventPostFromCtx(ctx, eventId);
     return { eventId };
   })
@@ -650,7 +650,7 @@ const editEventPrice = conversation<Context>(
     await updateEvent(eventId, { price: null });
     return { eventId };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
     await updateEvent(eventId, { price: ctx.message.text });
     return { eventId };
   })
@@ -679,7 +679,7 @@ const editEventPaymentDetails = conversation<Context>(
   .waitCommand("empty", async (ctx, { eventId }) => {
     return { eventId, iban: null };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
     return { eventId, iban: ctx.message.text };
   })
   .done()
@@ -695,7 +695,7 @@ const editEventPaymentDetails = conversation<Context>(
   .waitCommand("empty", async (ctx, { eventId, iban }) => {
     return { eventId, iban, recipient: null };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId, iban }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId, iban }) => {
     return { eventId, iban, recipient: ctx.message.text };
   })
   .done()
@@ -724,7 +724,7 @@ const editEventOptions = conversation<Context>(
     await updateEvent(eventId, { participationOptions: null });
     return { eventId };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
     await updateEvent(eventId, {
       participationOptions: ctx.message.text.split("\n").filter((x) => x),
     });
@@ -755,7 +755,7 @@ const editEventReminder = conversation<Context>(
     await updateEvent(eventId, { reminderTextHtml: null });
     return { eventId };
   })
-  .waitFilterQuery("message:text", async (ctx, { eventId }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
     await updateEvent(eventId, {
       reminderTextHtml: parseTelegramEntities(
         ctx.msg.text ?? ctx.msg.caption ?? "",
@@ -940,7 +940,7 @@ const createEvent = conversation<Context>(
     await sendEventsMenu(ctx);
     return finishConversation();
   })
-  .waitFilterQuery("message:text", async (ctx) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
     return { name: ctx.message.text };
   })
   .done()
@@ -953,7 +953,7 @@ const createEvent = conversation<Context>(
     await sendEventsMenu(ctx);
     return finishConversation();
   })
-  .waitFilterQuery("message:text", async (ctx, { name }) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { name }) => {
     const date = moment.tz(
       ctx.message.text,
       "YYYY-MM-DD HH:mm",
@@ -1065,7 +1065,7 @@ const messageEventParticipants = conversation<Context>(
       return repeatConversationStep({ eventId, ...params });
     },
   )
-  .waitFilterQuery(
+  .waitFilterQueryIgnoreCmd(
     "message:text",
     async (
       ctx,

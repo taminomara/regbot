@@ -45,7 +45,7 @@ export const interviewConversation = conversation<Context>(
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("interview.name"));
   })
-  .waitFilterQuery("message:text", async (ctx) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
     await setUserName(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -60,7 +60,7 @@ export const interviewConversation = conversation<Context>(
         .resized(),
     });
   })
-  .waitFilterQuery("message:text", async (ctx) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
     await setUserPronouns(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -73,7 +73,7 @@ export const interviewConversation = conversation<Context>(
         .resized(),
     });
   })
-  .waitFilterQuery("message:text", async (ctx) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
     await setUserGender(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -88,7 +88,7 @@ export const interviewConversation = conversation<Context>(
         .resized(),
     });
   })
-  .waitFilterQuery("message:text", async (ctx) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
     await setUserSexuality(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -118,7 +118,7 @@ export const interviewConversation = conversation<Context>(
         .resized(),
     ),
   )
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(
     handleQuestion("interview.rules", (ctx) =>
       new Keyboard()
@@ -127,19 +127,19 @@ export const interviewConversation = conversation<Context>(
         .resized(),
     ),
   )
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(handleQuestion("interview.experience"))
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(handleQuestion("interview.how_do_you_know_us"))
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(handleQuestion("interview.active_consent"))
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(handleQuestion("interview.lgbt_check"))
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(handleQuestion("interview.transgender_check"))
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(handleQuestion("interview.personal_borders"))
-  .waitFilterQuery("message", handleResponse)
+  .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(async (ctx) => {
     await ctx.replyWithChatAction("typing");
     await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
