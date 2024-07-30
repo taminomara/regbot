@@ -30,7 +30,7 @@ const editName = conversation<Context, { userId: number; sendMenu?: boolean }>(
     await sendCancelled(ctx);
     return opts;
   })
-  .waitFilterQuery("message:text", async (ctx, opts) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserName(opts.userId, ctx.message.text);
     await updateAdminGroupTopicTitle(ctx, user);
     await sendConfirmation(ctx);
@@ -75,7 +75,7 @@ const editPronouns = conversation<
     await sendCancelled(ctx);
     return opts;
   })
-  .waitFilterQuery("message:text", async (ctx, opts) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserPronouns(opts.userId, ctx.message.text);
     await updateAdminGroupTopicTitle(ctx, user);
     await sendConfirmation(ctx);
@@ -118,7 +118,7 @@ const editGender = conversation<
     await sendCancelled(ctx);
     return opts;
   })
-  .waitFilterQuery("message:text", async (ctx, opts) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserGender(opts.userId, ctx.message.text);
     await updateAdminGroupTopicTitle(ctx, user);
     await sendConfirmation(ctx);
@@ -163,7 +163,7 @@ const editSexuality = conversation<
     await sendCancelled(ctx);
     return opts;
   })
-  .waitFilterQuery("message:text", async (ctx, opts) => {
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserSexuality(opts.userId, ctx.message.text);
     await updateAdminGroupTopicTitle(ctx, user);
     await sendConfirmation(ctx);

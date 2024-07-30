@@ -296,6 +296,30 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
     return this.wait(Context.has.filterQuery(filter), func);
   }
 
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery>(
+    filter: Q | Q[],
+    func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
+  ): ConversationBuilder<C, never, IP>;
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+    filter: Q | Q[],
+    func: (
+      ctx: Filter<C, Q>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+    filter: Q | Q[],
+    func: (
+      ctx: Filter<C, Q>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(
+      (ctx): ctx is Filter<C, Q> => ctx.has(filter) && !ctx.has("::bot_command"),
+      func
+    );
+  }
+
   waitText(
     trigger: MaybeArray<string | RegExp>,
     func: (
@@ -318,6 +342,33 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
     return this.wait(Context.has.text(trigger), func);
+  }
+
+  waitTextIgnoreCommand(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): ConversationBuilder<C, never, IP>;
+  waitTextIgnoreCommand<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): ConversationBuilder<C, T, IP>;
+  waitTextIgnoreCommand<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(
+      (ctx): ctx is HearsContext<C> => ctx.hasText(trigger) && !ctx.has("::bot_command"),
+      func
+    );
   }
 
   waitCommand(
@@ -428,6 +479,30 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
     return this.wait(Context.has.filterQuery(filter), func);
   }
 
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery>(
+    filter: Q | Q[],
+    func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP>;
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+    filter: Q | Q[],
+    func: (
+      ctx: Filter<C, Q>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP | T>;
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+    filter: Q | Q[],
+    func: (
+      ctx: Filter<C, Q>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(
+      (ctx): ctx is Filter<C, Q> => ctx.has(filter) && !ctx.has("::bot_command"),
+      func
+    );
+  }
+
   waitText(
     trigger: MaybeArray<string | RegExp>,
     func: (
@@ -450,6 +525,33 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
     return this.wait(Context.has.text(trigger), func);
+  }
+
+  waitTextIgnoreCommand(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP>;
+  waitTextIgnoreCommand<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ): EitherBuilder<C, P, IP, RP | T>;
+  waitTextIgnoreCommand<T>(
+    trigger: MaybeArray<string | RegExp>,
+    func: (
+      ctx: HearsContext<C>,
+      payload: P,
+    ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
+  ) {
+    return this.wait(
+      (ctx): ctx is HearsContext<C> => ctx.hasText(trigger) && !ctx.has("::bot_command"),
+      func
+    );
   }
 
   waitCommand(
