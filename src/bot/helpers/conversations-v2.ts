@@ -315,8 +315,9 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
     return this.wait(
-      (ctx): ctx is Filter<C, Q> => ctx.has(filter) && !ctx.has("::bot_command"),
-      func
+      (ctx): ctx is Filter<C, Q> =>
+        ctx.has(filter) && !ctx.has("::bot_command"),
+      func,
     );
   }
 
@@ -366,8 +367,9 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
     return this.wait(
-      (ctx): ctx is HearsContext<C> => ctx.hasText(trigger) && !ctx.has("::bot_command"),
-      func
+      (ctx): ctx is HearsContext<C> =>
+        ctx.hasText(trigger) && !ctx.has("::bot_command"),
+      func,
     );
   }
 
@@ -498,8 +500,9 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
     return this.wait(
-      (ctx): ctx is Filter<C, Q> => ctx.has(filter) && !ctx.has("::bot_command"),
-      func
+      (ctx): ctx is Filter<C, Q> =>
+        ctx.has(filter) && !ctx.has("::bot_command"),
+      func,
     );
   }
 
@@ -549,8 +552,9 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
     return this.wait(
-      (ctx): ctx is HearsContext<C> => ctx.hasText(trigger) && !ctx.has("::bot_command"),
-      func
+      (ctx): ctx is HearsContext<C> =>
+        ctx.hasText(trigger) && !ctx.has("::bot_command"),
+      func,
     );
   }
 
