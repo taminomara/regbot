@@ -14,7 +14,9 @@ import { composer as featuresComposer } from "#root/bot/features/index.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
 import { i18n } from "#root/bot/i18n.js";
 import {
+  autoRetry as autoRetryMw,
   dataSource as dataSourceMw,
+  errorReporter as errorReporterMw,
   logger as loggerMw,
   updateLogger as updateLoggerMw,
   user as userMw,
@@ -22,8 +24,6 @@ import {
 import { session } from "#root/bot/sessions.js";
 import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
-
-import { autoRetry } from "./middlewares/auto-retry.js";
 
 const metrics = {
   errors: new Counter({
@@ -44,15 +44,16 @@ const errorHandler: ErrorHandler<Context> = (error) => {
 export function createBot(token: string) {
   const bot = new TelegramBot<Context>(token);
 
-  bot.use(loggerMw());
-  bot.use(updateLoggerMw());
-  bot.api.config.use(autoRetry({ maxRetryAttempts: 100 }));
+  bot.api.config.use(autoRetryMw({ maxRetryAttempts: 100 }));
   bot.api.config.use(parseMode("HTML"));
 
   const protectedBot = bot.errorBoundary(errorHandler);
 
   // Middlewares
 
+  protectedBot.use(errorReporterMw());
+  protectedBot.use(loggerMw());
+  protectedBot.use(updateLoggerMw());
   protectedBot.use(dataSourceMw());
   protectedBot.use(autoChatAction(bot.api));
   protectedBot.use(hydrateReply);

@@ -9,11 +9,7 @@ export function dataSource(): Middleware<Context> {
     await RequestContext.create(
       orm.em,
       async () => {
-        try {
-          await next();
-        } finally {
-          await orm.em.flush();
-        }
+        await orm.em.transactional(next);
       },
       {
         loggerContext: {

@@ -261,13 +261,6 @@ async function sendConfirmation(
 
   switch (signup.status) {
     case SignupStatus.PendingApproval: {
-      await ctx.api.sendMessage(
-        user.id,
-        i18n.t(
-          user.locale ?? config.DEFAULT_LOCALE,
-          "event_signup.pending_approval",
-        ),
-      );
       await sendMessageToAdminGroupTopic(
         ctx,
         user,
@@ -284,23 +277,16 @@ async function sendConfirmation(
           reply_markup: createConfirmSignupKeyboard(event.id, user.id),
         },
       );
-      break;
-    }
-    case SignupStatus.PendingPayment: {
       await ctx.api.sendMessage(
         user.id,
         i18n.t(
           user.locale ?? config.DEFAULT_LOCALE,
-          "event_signup.pending_payment",
-          {
-            price: sanitizeHtmlOrEmpty(event.price),
-            iban: sanitizeHtmlOrEmpty(event.iban ?? config.PAYMENT_IBAN),
-            recipient: sanitizeHtmlOrEmpty(
-              event.recipient ?? config.PAYMENT_RECIPIENT,
-            ),
-          },
+          "event_signup.pending_approval",
         ),
       );
+      break;
+    }
+    case SignupStatus.PendingPayment: {
       await sendMessageToAdminGroupTopic(
         ctx,
         user,
@@ -317,20 +303,23 @@ async function sendConfirmation(
           reply_markup: createConfirmPaymentKeyboard(event.id, user.id),
         },
       );
-      break;
-    }
-    case SignupStatus.Approved: {
       await ctx.api.sendMessage(
         user.id,
         i18n.t(
           user.locale ?? config.DEFAULT_LOCALE,
-          "event_signup.registered",
+          "event_signup.pending_payment",
           {
-            name: sanitizeHtmlOrEmpty(event.name),
-            date: toFluentDateTime(event.date),
+            price: sanitizeHtmlOrEmpty(event.price),
+            iban: sanitizeHtmlOrEmpty(event.iban ?? config.PAYMENT_IBAN),
+            recipient: sanitizeHtmlOrEmpty(
+              event.recipient ?? config.PAYMENT_RECIPIENT,
+            ),
           },
         ),
       );
+      break;
+    }
+    case SignupStatus.Approved: {
       await sendMessageToAdminGroupTopic(
         ctx,
         user,
@@ -343,22 +332,20 @@ async function sendConfirmation(
           options,
         }),
       );
-      break;
-    }
-    case SignupStatus.Rejected: {
       await ctx.api.sendMessage(
         user.id,
         i18n.t(
           user.locale ?? config.DEFAULT_LOCALE,
-          requireRefund
-            ? "event_signup.rejected_with_refund"
-            : "event_signup.rejected",
+          "event_signup.registered",
           {
             name: sanitizeHtmlOrEmpty(event.name),
             date: toFluentDateTime(event.date),
           },
         ),
       );
+      break;
+    }
+    case SignupStatus.Rejected: {
       await sendMessageToAdminGroupTopic(
         ctx,
         user,
@@ -373,6 +360,19 @@ async function sendConfirmation(
             adminId: String(admin?.id),
             adminName: sanitizeHtmlOrEmpty(admin?.name),
             rejectDate: toFluentDateTime(signup.approvedAt ?? new Date(0)),
+          },
+        ),
+      );
+      await ctx.api.sendMessage(
+        user.id,
+        i18n.t(
+          user.locale ?? config.DEFAULT_LOCALE,
+          requireRefund
+            ? "event_signup.rejected_with_refund"
+            : "event_signup.rejected",
+          {
+            name: sanitizeHtmlOrEmpty(event.name),
+            date: toFluentDateTime(event.date),
           },
         ),
       );
