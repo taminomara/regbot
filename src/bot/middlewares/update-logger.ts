@@ -1,11 +1,10 @@
-import { Middleware, Transformer } from "grammy";
+import { Middleware } from "grammy";
 import { performance } from "node:perf_hooks";
 import { Counter, Gauge, Histogram, exponentialBuckets } from "prom-client";
 
 import type { Context } from "#root/bot/context.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
 import { config } from "#root/config.js";
-import { logger } from "#root/logger.js";
 
 const metrics = {
   updatesStarted: new Counter({
@@ -24,21 +23,6 @@ const metrics = {
     name: "tg_updates_processing_time_ms",
     help: "Time it took to process an update, in milliseconds.",
     buckets: exponentialBuckets(10, 2, 11),
-  }),
-  telegramApiCallsStarted: new Counter({
-    name: "tg_api_calls_started_count",
-    help: "Number of times we've called the Telegram API",
-    labelNames: ["method"] as const,
-  }),
-  telegramApiCallsFinished: new Counter({
-    name: "tg_api_calls_finished_count",
-    help: "Number of times we've called the Telegram API",
-    labelNames: ["method"] as const,
-  }),
-  telegramApiCallsInflight: new Gauge({
-    name: "tg_api_calls_inflight",
-    help: "Number of times we've called the Telegram API",
-    labelNames: ["method"] as const,
   }),
 };
 
@@ -67,25 +51,6 @@ export function updateLogger(): Middleware<Context> {
         msg: "Update processed",
         elapsed,
       });
-    }
-  };
-}
-
-export function apiLogger(): Transformer {
-  return async (previous, method, payload, signal) => {
-    metrics.telegramApiCallsStarted.inc({ method });
-    metrics.telegramApiCallsInflight.inc({ method });
-    logger.debug({
-      msg: "Bot API call",
-      method,
-      payload,
-    });
-
-    try {
-      return await previous(method, payload, signal);
-    } finally {
-      metrics.telegramApiCallsInflight.dec({ method });
-      metrics.telegramApiCallsFinished.inc({ method });
     }
   };
 }
