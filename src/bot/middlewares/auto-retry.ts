@@ -51,6 +51,9 @@ const metrics = {
   }),
 };
 
+// Initialize this metric so we can see it in grafana.
+metrics.telegramApiCallsRetries.inc({ method: "__total__" }, 0);
+
 /**
  * Options that can be specified when creating an auto retry transformer
  * function.
@@ -161,6 +164,7 @@ export function autoRetry(options?: Partial<AutoRetryOptions>): Transformer {
               err: e,
             });
             metrics.telegramApiCallsRetries.inc({ method });
+            metrics.telegramApiCallsRetries.inc({ method: "__total__" });
           } else {
             throw e;
           }
@@ -191,6 +195,7 @@ export function autoRetry(options?: Partial<AutoRetryOptions>): Transformer {
           delay: result.parameters.retry_after,
         });
         metrics.telegramApiCallsRetries.inc({ method });
+        metrics.telegramApiCallsRetries.inc({ method: "__total__" });
         await pause(result.parameters.retry_after, signal);
         nextDelay = INITIAL_LAST_DELAY;
         retry = true;
@@ -201,6 +206,7 @@ export function autoRetry(options?: Partial<AutoRetryOptions>): Transformer {
           delay: result.parameters.retry_after,
         });
         metrics.telegramApiCallsRetries.inc({ method });
+        metrics.telegramApiCallsRetries.inc({ method: "__total__" });
         await backoff();
         retry = true;
       }
