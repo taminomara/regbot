@@ -1,5 +1,4 @@
 import { autoChatAction } from "@grammyjs/auto-chat-action";
-import { autoRetry } from "@grammyjs/auto-retry";
 import { hydrate } from "@grammyjs/hydrate";
 import { hydrateReply, parseMode } from "@grammyjs/parse-mode";
 import { RequestContext } from "@mikro-orm/core";
@@ -15,7 +14,6 @@ import { composer as featuresComposer } from "#root/bot/features/index.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
 import { i18n } from "#root/bot/i18n.js";
 import {
-  apiLogger as apiLoggerMw,
   dataSource as dataSourceMw,
   logger as loggerMw,
   updateLogger as updateLoggerMw,
@@ -24,6 +22,8 @@ import {
 import { session } from "#root/bot/sessions.js";
 import { config } from "#root/config.js";
 import { logger } from "#root/logger.js";
+
+import { autoRetry } from "./middlewares/auto-retry.js";
 
 const metrics = {
   errors: new Counter({
@@ -46,10 +46,7 @@ export function createBot(token: string) {
 
   bot.use(loggerMw());
   bot.use(updateLoggerMw());
-  bot.api.config.use(apiLoggerMw());
-  if (config.isProd) {
-    bot.api.config.use(autoRetry());
-  }
+  bot.api.config.use(autoRetry({ maxRetryAttempts: 100 }));
   bot.api.config.use(parseMode("HTML"));
 
   const protectedBot = bot.errorBoundary(errorHandler);
