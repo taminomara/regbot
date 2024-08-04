@@ -355,6 +355,16 @@ manage_events =
     .enter_date = Введите дату и время события:
     .date_invalid = Введите дату и время в формате <code>YYYY-MM-DD HH:MM</code>:'
     .date_in_past = Дата и время события не должны быть в прошлом.
+    .enter_date_change_reason =
+        Новая дата: <b>{DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.</b>
+        Введите причину изменения события, она будет разослана участникам и отправлена в канал.
+        Отправьте /empty, чтобы не публиковать изменение даты.
+    .date_change_post =
+        <b>⚠️ Перенос {$name}</b>
+
+        {$reasonTextHtml}
+
+        Новая дата: <b>{DATETIME($date, dateStyle: "short", timeStyle: "short")}</b>
     .event_in_past = Событие уже прошло.
     .enter_post =
         Введите текст поста с анонсом события.

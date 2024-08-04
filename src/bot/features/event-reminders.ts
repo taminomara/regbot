@@ -254,7 +254,7 @@ const cantMakeItData = createCallbackData("cantMakeIt", {
   eventId: Number,
 });
 
-function makeSignupReminderKeyboard(
+export function makeSignupReminderKeyboard(
   eventId: number,
   locale: string,
 ): InlineKeyboard {
