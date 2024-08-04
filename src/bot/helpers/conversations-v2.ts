@@ -17,11 +17,13 @@ import {
   SessionFlavor,
 } from "grammy";
 
+import { Payload } from "./session-storage.js";
+
 export type LinearConversationSessionData = {
   linearConversation?: {
     name: string;
     step: number;
-    payload: unknown;
+    payload: Payload;
   };
 };
 type LinearConversationContext = Context &
@@ -30,7 +32,10 @@ type LinearConversationContext = Context &
 const SEALED = Symbol("SEALED");
 
 const REPEAT = Symbol("REPEAT");
-type Repeat<P> = { __conversationAction: typeof REPEAT; payload: P };
+type Repeat<P extends Payload> = {
+  __conversationAction: typeof REPEAT;
+  payload: P;
+};
 function isRepeat(t: any): t is Repeat<any> {
   return t?.__conversationAction === REPEAT;
 }
@@ -39,8 +44,12 @@ function isRepeat(t: any): t is Repeat<any> {
  * Return this from a step handler to repeat it.
  */
 export function repeatConversationStep(): Repeat<undefined>;
-export function repeatConversationStep<P>(payload: P): Repeat<P>;
-export function repeatConversationStep<P>(payload?: P): Repeat<P | undefined> {
+export function repeatConversationStep<P extends Payload>(
+  payload: P,
+): Repeat<P>;
+export function repeatConversationStep<P extends Payload>(
+  payload?: P,
+): Repeat<P | undefined> {
   return { __conversationAction: REPEAT, payload };
 }
 
@@ -94,8 +103,10 @@ type Step<C> = {
  * });
  * ```
  */
-export class Conversation<C extends LinearConversationContext, IP>
-  implements MiddlewareObj<C>
+export class Conversation<
+  C extends LinearConversationContext,
+  IP extends Payload,
+> implements MiddlewareObj<C>
 {
   /**
    * Unique name of this conversation.
@@ -218,7 +229,11 @@ export class Conversation<C extends LinearConversationContext, IP>
   }
 }
 
-class ConversationBuilder<C extends LinearConversationContext, P, IP> {
+class ConversationBuilder<
+  C extends LinearConversationContext,
+  P extends Payload,
+  IP extends Payload,
+> {
   /**
    * Unique name of this conversation.
    */
@@ -247,10 +262,12 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
   proceed(
     func: (ctx: C, payload: P) => MaybePromise<Finish>,
   ): ConversationBuilder<C, never, IP>;
-  proceed<T>(
+  proceed<T extends Payload>(
     func: (ctx: C, payload: P) => MaybePromise<Next<T> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  proceed<T>(func: (ctx: C, payload: P) => MaybePromise<Next<T> | Finish>) {
+  proceed<T extends Payload>(
+    func: (ctx: C, payload: P) => MaybePromise<Next<T> | Finish>,
+  ) {
     this.steps.push({ func: func as any });
     return this as unknown as ConversationBuilder<C, T, IP>;
   }
@@ -263,11 +280,11 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
     filter: (ctx: C, payload: P) => ctx is F,
     func: (ctx: F, payload: P) => MaybePromise<Repeat<P> | Finish>,
   ): ConversationBuilder<C, never, IP>;
-  wait<F extends C, T>(
+  wait<F extends C, T extends Payload>(
     filter: (ctx: C, payload: P) => ctx is F,
     func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  wait<F extends C, T>(
+  wait<F extends C, T extends Payload>(
     filter: (ctx: C, payload: P) => ctx is F,
     func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
@@ -279,14 +296,14 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
     filter: Q | Q[],
     func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
   ): ConversationBuilder<C, never, IP>;
-  waitFilterQuery<Q extends FilterQuery, T>(
+  waitFilterQuery<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  waitFilterQuery<Q extends FilterQuery, T>(
+  waitFilterQuery<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
@@ -300,14 +317,14 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
     filter: Q | Q[],
     func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
   ): ConversationBuilder<C, never, IP>;
-  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
@@ -328,14 +345,14 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): ConversationBuilder<C, never, IP>;
-  waitText<T>(
+  waitText<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  waitText<T>(
+  waitText<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
@@ -352,14 +369,14 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): ConversationBuilder<C, never, IP>;
-  waitTextIgnoreCommand<T>(
+  waitTextIgnoreCommand<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  waitTextIgnoreCommand<T>(
+  waitTextIgnoreCommand<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
@@ -380,14 +397,14 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): ConversationBuilder<C, never, IP>;
-  waitCommand<T>(
+  waitCommand<T extends Payload>(
     command: MaybeArray<string>,
     func: (
       ctx: CommandContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  waitCommand<T>(
+  waitCommand<T extends Payload>(
     command: MaybeArray<string>,
     func: (
       ctx: CommandContext<C>,
@@ -404,14 +421,14 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): ConversationBuilder<C, never, IP>;
-  waitCallbackQuery<T>(
+  waitCallbackQuery<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: CallbackQueryContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): ConversationBuilder<C, T, IP>;
-  waitCallbackQuery<T>(
+  waitCallbackQuery<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: CallbackQueryContext<C>,
@@ -434,7 +451,12 @@ class ConversationBuilder<C extends LinearConversationContext, P, IP> {
   }
 }
 
-class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
+class EitherBuilder<
+  C extends LinearConversationContext,
+  P extends Payload,
+  IP extends Payload,
+  RP extends Payload = never,
+> {
   private readonly builder: ConversationBuilder<C, P, IP>;
   private readonly options: Step<C>[];
 
@@ -448,11 +470,11 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
     filter: (ctx: C, payload: P) => ctx is F,
     func: (ctx: F, payload: P) => MaybePromise<Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP>;
-  wait<F extends C, T>(
+  wait<F extends C, T extends Payload>(
     filter: (ctx: C, payload: P) => ctx is F,
     func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP | T>;
-  wait<F extends C, T>(
+  wait<F extends C, T extends Payload>(
     filter: (ctx: C, payload: P) => ctx is F,
     func: (ctx: F, payload: P) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ) {
@@ -464,14 +486,14 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
     filter: Q | Q[],
     func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP>;
-  waitFilterQuery<Q extends FilterQuery, T>(
+  waitFilterQuery<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP | T>;
-  waitFilterQuery<Q extends FilterQuery, T>(
+  waitFilterQuery<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
@@ -485,14 +507,14 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
     filter: Q | Q[],
     func: (ctx: Filter<C, Q>, payload: P) => MaybePromise<Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP>;
-  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP | T>;
-  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T>(
+  waitFilterQueryIgnoreCmd<Q extends FilterQuery, T extends Payload>(
     filter: Q | Q[],
     func: (
       ctx: Filter<C, Q>,
@@ -513,14 +535,14 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP>;
-  waitText<T>(
+  waitText<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP | T>;
-  waitText<T>(
+  waitText<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
@@ -537,14 +559,14 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP>;
-  waitTextIgnoreCommand<T>(
+  waitTextIgnoreCommand<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP | T>;
-  waitTextIgnoreCommand<T>(
+  waitTextIgnoreCommand<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: HearsContext<C>,
@@ -565,14 +587,14 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP>;
-  waitCommand<T>(
+  waitCommand<T extends Payload>(
     command: MaybeArray<string>,
     func: (
       ctx: CommandContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP | T>;
-  waitCommand<T>(
+  waitCommand<T extends Payload>(
     command: MaybeArray<string>,
     func: (
       ctx: CommandContext<C>,
@@ -589,14 +611,14 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
       payload: P,
     ) => MaybePromise<Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP>;
-  waitCallbackQuery<T>(
+  waitCallbackQuery<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: CallbackQueryContext<C>,
       payload: P,
     ) => MaybePromise<Next<T> | Repeat<P> | Finish>,
   ): EitherBuilder<C, P, IP, RP | T>;
-  waitCallbackQuery<T>(
+  waitCallbackQuery<T extends Payload>(
     trigger: MaybeArray<string | RegExp>,
     func: (
       ctx: CallbackQueryContext<C>,
@@ -633,7 +655,7 @@ class EitherBuilder<C extends LinearConversationContext, P, IP, RP = never> {
  */
 export function conversation<
   C extends LinearConversationContext,
-  P = undefined,
+  P extends Payload = undefined,
 >(name: string, ...args: Middleware<C>[]) {
   return new ConversationBuilder<C, P, P>(name, [], args, SEALED);
 }

@@ -18,7 +18,7 @@ export function session() {
   return defaultSession<SessionData, Context>({
     initial: (): SessionData => ({}),
     storage: enhanceStorage({
-      storage: new SessionStorage(),
+      storage: new SessionStorage<SessionData>(),
       migrations: {
         1: migration1NewInterviewEngine,
       },

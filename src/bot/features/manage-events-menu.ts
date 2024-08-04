@@ -42,6 +42,7 @@ import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
 import { patchCtx } from "../helpers/menu.js";
+import { makeSignupReminderKeyboard } from "./event-reminders.js";
 
 export const composer = new Composer<Context>();
 
@@ -573,7 +574,8 @@ const editEventDate = conversation<Context>(
   })
   .either()
   .waitCommand("cancel", async (ctx, { eventId }) => {
-    return { eventId };
+    await sendEventMenu(ctx, eventId);
+    return finishConversation();
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
     const date = moment.tz(
@@ -597,11 +599,73 @@ const editEventDate = conversation<Context>(
       return repeatConversationStep({ eventId });
     }
 
-    await updateEvent(eventId, { date: date.toDate() });
-    return { eventId };
+    // await updateEvent(eventId, { date: date.toDate() });
+    return { eventId, date: date.toDate() };
   })
   .done()
-  .proceed(async (ctx, { eventId }) => {
+  .proceed((ctx, { eventId, date }) => {
+    ctx.reply(ctx.t("manage_events.enter_date_change_reason", { date }));
+    return { eventId, date };
+  })
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+    return finishConversation();
+  })
+  .waitCommand("empty", async (ctx, { eventId, date }) => {
+    return { eventId, date, reasonTextHtml: undefined };
+  })
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId, date }) => {
+    const reasonText = ctx.msg.text ?? ctx.msg.caption ?? "";
+    const reasonEntities = ctx.msg.entities ?? ctx.msg.caption_entities ?? [];
+    const reasonTextHtml = parseTelegramEntities(reasonText, reasonEntities);
+
+    return { eventId, date, reasonTextHtml };
+  })
+  .done()
+  .proceed(async (ctx, { eventId, date, reasonTextHtml }) => {
+    const event = await updateEvent(eventId, { date });
+
+    if (reasonTextHtml !== undefined) {
+      await ctx.replyWithChatAction("typing");
+
+      const makePost = (locale: string) =>
+        i18n.t(locale, "manage_events.date_change_post", {
+          name: sanitizeHtmlOrEmpty(event.name),
+          date: toFluentDateTime(event.date),
+          reasonTextHtml,
+        });
+
+      const post = await ctx.api.sendMessage(
+        config.CHANNEL,
+        makePost(config.DEFAULT_LOCALE),
+      );
+      await post.forward(config.MEMBERS_GROUP);
+
+      const signups = await getEventSignups(eventId);
+      const promises = signups
+        .filter((signup) =>
+          [
+            SignupStatus.Approved,
+            SignupStatus.PendingApproval,
+            SignupStatus.PendingPayment,
+          ].includes(signup.status),
+        )
+        .map(async (signup) =>
+          ctx.api.sendMessage(
+            signup.user.id,
+            makePost(signup.user.locale ?? config.DEFAULT_LOCALE),
+            {
+              reply_markup: makeSignupReminderKeyboard(
+                eventId,
+                signup.user.locale ?? config.DEFAULT_LOCALE,
+              ),
+            },
+          ),
+        );
+      await Promise.all(promises);
+    }
+
     await sendEventMenu(ctx, eventId);
   })
   .build();
@@ -1071,7 +1135,7 @@ const messageEventParticipants = conversation<Context>(
       ctx,
       { eventId, includeApproved, includePending, includeRejected },
     ) => {
-      ctx.logger.info({ includeApproved, includePending, includeRejected });
+      await ctx.replyWithChatAction("typing");
       const signups = await getEventSignups(eventId);
       const promises = signups
         .filter((signup) => {
