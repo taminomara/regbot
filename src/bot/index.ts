@@ -51,10 +51,10 @@ export function createBot(token: string) {
 
   // Middlewares
 
-  protectedBot.use(errorReporterMw());
   protectedBot.use(loggerMw());
   protectedBot.use(updateLoggerMw());
   protectedBot.use(dataSourceMw());
+  protectedBot.use(errorReporterMw());
   protectedBot.use(autoChatAction(bot.api));
   protectedBot.use(hydrateReply);
   protectedBot.use(hydrate());
