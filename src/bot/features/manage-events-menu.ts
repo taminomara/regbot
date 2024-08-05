@@ -1064,6 +1064,7 @@ const messageEventParticipantsData = createCallbackData(
     includeApproved: Boolean,
     includePending: Boolean,
     includeRejected: Boolean,
+    conversationId: Number,
   },
 );
 function makeMessageEventParticipantsKeyboard(
@@ -1072,6 +1073,7 @@ function makeMessageEventParticipantsKeyboard(
     includeApproved: boolean;
     includePending: boolean;
     includeRejected: boolean;
+    conversationId: number;
   },
 ) {
   return new InlineKeyboard()
@@ -1113,6 +1115,7 @@ const messageEventParticipants = conversation<Context>(
       includeApproved: true,
       includePending: false,
       includeRejected: false,
+      conversationId: ctx.update.update_id,
     };
 
     await ctx.reply(
@@ -1128,14 +1131,19 @@ const messageEventParticipants = conversation<Context>(
   })
   .waitCallbackQuery(
     messageEventParticipantsData.filter(),
-    async (ctx, { eventId }) => {
-      const params = messageEventParticipantsData.unpack(
+    async (ctx, { eventId, ...params }) => {
+      const newParams = messageEventParticipantsData.unpack(
         ctx.callbackQuery.data,
       );
-      await ctx.editMessageReplyMarkup({
-        reply_markup: makeMessageEventParticipantsKeyboard(ctx, params),
-      });
-      return repeatConversationStep({ eventId, ...params });
+      if (newParams.conversationId === params.conversationId) {
+        await ctx.editMessageReplyMarkup({
+          reply_markup: makeMessageEventParticipantsKeyboard(ctx, newParams),
+        });
+        await ctx.answerCallbackQuery();
+        return repeatConversationStep({ eventId, ...newParams });
+      } else {
+        return repeatConversationStep({ eventId, ...params });
+      }
     },
   )
   .waitFilterQueryIgnoreCmd(
