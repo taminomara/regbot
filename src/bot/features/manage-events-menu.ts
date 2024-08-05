@@ -914,13 +914,13 @@ async function switchEventPayment(ctx: Context) {
   if (event !== undefined) {
     switch (event.payment) {
       case EventPayment.Required:
-        await updateEvent(event.id, { payment: EventPayment.Donation });
-        break;
-      case EventPayment.Donation:
         await updateEvent(event.id, { payment: EventPayment.NotRequired });
         break;
-      case EventPayment.NotRequired:
+      case EventPayment.Donation:
         await updateEvent(event.id, { payment: EventPayment.Required });
+        break;
+      case EventPayment.NotRequired:
+        await updateEvent(event.id, { payment: EventPayment.Donation });
         break;
     }
     await updateManageEventMenu(ctx);
