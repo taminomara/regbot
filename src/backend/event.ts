@@ -317,7 +317,7 @@ export async function upcomingEventsWithUserSignup(
 ): Promise<EventWithSignup[]> {
   const events = await orm.em.find(
     EventObject,
-    { date: { $gte: new Date() }, registrationOpen: true },
+    { date: { $gte: new Date() }, published: true },
     {
       orderBy: { date: "ASC" },
       populate: ["signups"],

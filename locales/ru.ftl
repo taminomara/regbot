@@ -286,8 +286,8 @@ manage_events =
     .event_title = {$prefix} {$name} | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} | {$suffix}
     .event_title_prefix = {$published ->
         [yes] 🚀
-        [no] ▶️
-        *[hidden] 📝
+        [no] 📝
+        *[closed] 🫷
     }
     .event_title_suffix = {$participants}
     .event_title_suffix_with_pending = {$participants}+{$pending}⏳

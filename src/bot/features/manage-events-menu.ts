@@ -86,11 +86,12 @@ const manageEventsMenu = new Menu<Context>("manageEventsMenu")
         config.DEFAULT_LOCALE,
         "manage_events.event_title_prefix",
         {
-          published: event.published
-            ? "yes"
-            : event.registrationOpen
-              ? "no"
-              : "hidden",
+          published:
+            event.published && event.registrationOpen
+              ? "yes"
+              : event.published && !event.registrationOpen
+                ? "closed"
+                : "no",
         },
       );
       const suffix = i18n.t(
