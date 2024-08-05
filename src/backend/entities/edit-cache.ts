@@ -1,10 +1,4 @@
-import {
-  Entity,
-  Index,
-  PrimaryKey,
-  PrimaryKeyProp,
-  Property,
-} from "@mikro-orm/core";
+import { Entity, Index, PrimaryKey, Property } from "@mikro-orm/core";
 
 @Entity()
 @Index({ properties: ["originId", "originChatId"] })
@@ -23,12 +17,13 @@ export class EditCache {
   }
 
   @PrimaryKey()
+  id: number;
+
+  @Property()
   originId: number;
 
-  @PrimaryKey()
+  @Property()
   originChatId: number;
-
-  [PrimaryKeyProp]?: ["originId", "originChatId"];
 
   @Property()
   destinationId: number;

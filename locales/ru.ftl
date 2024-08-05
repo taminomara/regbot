@@ -287,7 +287,7 @@ manage_events =
     .event_title_prefix = {$published ->
         [yes] 🚀
         [no] 📝
-        *[closed] 🫷
+        *[closed] ⛔
     }
     .event_title_suffix = {$participants}
     .event_title_suffix_with_pending = {$participants}+{$pending}⏳
