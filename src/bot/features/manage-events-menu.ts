@@ -640,6 +640,14 @@ const editEventDate = conversation<Context>(
       const post = await ctx.api.sendMessage(
         config.CHANNEL,
         makePost(config.DEFAULT_LOCALE),
+        {
+          reply_parameters:
+            event.channelPostId === null
+              ? undefined
+              : {
+                  message_id: event.channelPostId,
+                },
+        },
       );
       await post.forward(config.MEMBERS_GROUP);
 
