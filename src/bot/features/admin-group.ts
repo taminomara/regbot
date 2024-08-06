@@ -34,6 +34,8 @@ import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
+import { userLink } from "../helpers/links.js";
+
 export const composer = new Composer<Context>();
 
 /**
@@ -154,15 +156,15 @@ export async function formatAboutMe(user: User) {
   if (user.status === UserStatus.Rejected && user.verifiedBy !== null) {
     const admin = await getUserLite(user.verifiedBy);
     details = i18n.t(config.DEFAULT_LOCALE, "admin_group.rejection_details", {
-      id: String(admin.id),
-      name: sanitizeHtmlOrEmpty(admin.name),
+      adminLink: userLink(admin.id),
+      adminName: sanitizeHtmlOrEmpty(admin.name),
       date: toFluentDateTime(user.verifiedAt ?? new Date(0)),
     });
   } else if (user.status === UserStatus.Banned && user.verifiedBy !== null) {
     const admin = await getUserLite(user.verifiedBy);
     details = i18n.t(config.DEFAULT_LOCALE, "admin_group.ban_details", {
-      id: String(admin.id),
-      name: sanitizeHtmlOrEmpty(admin.name),
+      adminLink: userLink(admin.id),
+      adminName: sanitizeHtmlOrEmpty(admin.name),
       date: toFluentDateTime(user.verifiedAt ?? new Date(0)),
       reason: sanitizeHtmlOrEmpty(user.banReason),
     });
@@ -170,7 +172,7 @@ export async function formatAboutMe(user: User) {
 
   return [
     i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_header", {
-      id: String(user.id),
+      userLink: userLink(user.id),
       name: sanitizeHtmlOrEmpty(user.name),
       username: sanitizeHtmlOrEmpty(user.username),
     }),
@@ -218,7 +220,7 @@ export async function banUser(
     ctx,
     bannedUser,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.message_banned", {
-      adminId: String(ctx.user.id),
+      adminLink: userLink(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
       date: toFluentDateTime(bannedUser.bannedAt ?? new Date(0)),
       reason: banReason,
@@ -298,7 +300,7 @@ export async function unbanUser(ctx: Context, userLite: UserLite) {
     ctx,
     unbannedUser,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.message_unbanned", {
-      adminId: String(ctx.user.id),
+      adminLink: userLink(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
       date: toFluentDateTime(unbannedUser.verifiedAt ?? new Date(0)),
     }),

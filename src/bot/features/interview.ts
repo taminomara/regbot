@@ -14,6 +14,7 @@ import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
+import { userLink } from "../helpers/links.js";
 
 export async function approve(ctx: Context) {
   const user = await getUserForTopic(ctx);
@@ -25,7 +26,7 @@ export async function approve(ctx: Context) {
     ctx,
     approvedUser,
     i18n.t(config.DEFAULT_LOCALE, "interview.admin_message_approved", {
-      adminId: String(ctx.user.id),
+      adminLink: userLink(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
       date: toFluentDateTime(approvedUser.verifiedAt ?? new Date(0)),
     }),
@@ -63,7 +64,7 @@ export async function reject(ctx: Context) {
     ctx,
     rejectedUser,
     i18n.t(config.DEFAULT_LOCALE, "interview.admin_message_rejected", {
-      adminId: String(ctx.user.id),
+      adminLink: userLink(ctx.user.id),
       adminName: sanitizeHtmlOrEmpty(ctx.user.name),
       date: toFluentDateTime(rejectedUser.verifiedAt ?? new Date(0)),
     }),

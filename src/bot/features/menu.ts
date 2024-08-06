@@ -35,6 +35,7 @@ import {
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 
+import { userLink } from "../helpers/links.js";
 import { logHandle } from "../helpers/logging.js";
 import { patchCtx } from "../helpers/menu.js";
 
@@ -339,14 +340,14 @@ async function updateEventParticipantsMenu(ctx: Context) {
 
       return signup.user.username
         ? ctx.t("menu.event_participant", {
-            id: String(signup.user.id),
+            userLink: userLink(signup.user.id),
             name: sanitizeHtmlOrEmpty(signup.user.name),
             pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
             username: sanitizeHtml(signup.user.username),
             options,
           })
         : ctx.t("menu.event_participant_no_username", {
-            id: String(signup.user.id),
+            userLink: userLink(signup.user.id),
             name: sanitizeHtmlOrEmpty(signup.user.name),
             pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
             options,

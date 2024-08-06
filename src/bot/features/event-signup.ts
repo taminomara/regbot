@@ -31,6 +31,8 @@ import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
+import { userLink } from "../helpers/links.js";
+
 export async function postInterviewSignup(ctx: Context, user?: User) {
   if (user === undefined) {
     user = (await getUser(ctx.user.id)) ?? undefined;
@@ -326,7 +328,7 @@ async function sendConfirmation(
         i18n.t(config.DEFAULT_LOCALE, "event_signup.admin_message_registered", {
           name: sanitizeHtmlOrEmpty(event.name),
           date: toFluentDateTime(event.date),
-          adminId: String(admin?.id),
+          adminLink: userLink(admin?.id),
           adminName: sanitizeHtmlOrEmpty(admin?.name),
           approveDate: toFluentDateTime(signup.approvedAt ?? new Date(0)),
           options,
@@ -357,7 +359,7 @@ async function sendConfirmation(
           {
             name: sanitizeHtmlOrEmpty(event.name),
             date: toFluentDateTime(event.date),
-            adminId: String(admin?.id),
+            adminLink: userLink(admin?.id),
             adminName: sanitizeHtmlOrEmpty(admin?.name),
             rejectDate: toFluentDateTime(signup.approvedAt ?? new Date(0)),
           },
