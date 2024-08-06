@@ -31,6 +31,7 @@ import { config } from "#root/config.js";
 
 import { logHandle } from "../helpers/logging.js";
 import { patchCtx } from "../helpers/menu.js";
+import { userLink } from "../helpers/links.js";
 
 export const composer = new Composer<Context>();
 
@@ -180,7 +181,7 @@ async function updateAdminGroupBanUserMenu(ctx: Context) {
   await editMessageTextSafe(
     ctx,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.ban_prompt", {
-      id: String(user.id),
+      userLink: userLink(user.id),
       name: sanitizeHtmlOrEmpty(user.name),
     }),
   );
@@ -211,7 +212,7 @@ async function updateAdminGroupUnbanUserMenu(ctx: Context) {
   await editMessageTextSafe(
     ctx,
     i18n.t(config.DEFAULT_LOCALE, "admin_group.unban_prompt", {
-      id: String(user.id),
+      userLink: userLink(user.id),
       name: sanitizeHtmlOrEmpty(user.name),
     }),
   );

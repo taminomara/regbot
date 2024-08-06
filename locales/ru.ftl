@@ -110,7 +110,7 @@ interview =
     .edit_sexuality_first = Сначала введите новую сексуальную идентичность.
 
     .admin_message_approved =
-        ✅ Пользователь верифицирован админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+        ✅ Пользователь верифицирован админом <a href="{$adminLink}">{$adminName}</a> {$date}.
     .message_approved =
         ✅ <b>Добро пожаловать на квирные квартирники!</b>
 
@@ -118,7 +118,7 @@ interview =
         Не забудьте рассказать о себе под тегом #hi.
 
     .admin_message_rejected =
-        ❌ Пользователь отклонён админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+        ❌ Пользователь отклонён админом <a href="{$adminLink}">{$adminName}</a> {$date}.
     .message_rejected =
         ❌ <b>К сожалению, ваша заявка была отклонена.</b>
 
@@ -130,7 +130,7 @@ interview =
 admin_group =
     .topic_name = {$name} (@{$username})
     .topic_header =
-        <b>Диалог с пользователем <a href="tg://user?id={$id}">{$name}</a> (@{$username})</b>
+        <b>Диалог с пользователем <a href="{$userLink}">{$name}</a> (@{$username})</b>
     .topic_body =
         Имя: <b>{$name}</b>
         Местоимения: <b>{$pronouns}</b>
@@ -147,9 +147,9 @@ admin_group =
 
         {$details}
     .rejection_details =
-        Собеседовал админ <a href="tg://user?id={$id}">{$name}</a> {$date}
+        Собеседовал админ <a href="{$adminLink}">{$adminName}</a> {$date}
     .ban_details =
-        Забанил админ <a href="tg://user?id={$id}">{$name}</a> {$date}
+        Забанил админ <a href="{$adminLink}">{$adminName}</a> {$date}
 
         {$reason}
 
@@ -163,21 +163,21 @@ admin_group =
 
     .approve = ✅ Подтвердить
     .message_interview_approved =
-        ✅ Пользователь верифицирован админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+        ✅ Пользователь верифицирован админом <a href="{$adminLink}">{$adminName}</a> {$date}.
 
     .reject = ❌ Отказать
     .message_interview_rejected =
-        ❌ Пользователь отклонён админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+        ❌ Пользователь отклонён админом <a href="{$adminLink}">{$adminName}</a> {$date}.
 
     .ban = ⛔ Забанить
     .ban_prompt =
-        Вы уверены, что хотите забанить пользователя <a href="tg://user?id={$id}">{$name}</a>?
+        Вы уверены, что хотите забанить пользователя <a href="{$userLink}">{$name}</a>?
 
         Пользователь будет удалён из чатов, регистрации пользователя на будущие события будут отозваны.
 
         Пользователь не получит сообщения о бане. Прокомуницируйте причину бана через этот чат самостоятельно!
     .message_banned =
-        ⛔ Пользователь забанен админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+        ⛔ Пользователь забанен админом <a href="{$adminLink}">{$adminName}</a> {$date}.
 
         {$reason}
     .message_banned_privileged_user = ⚠️ Пользователь является админом {$chat ->
@@ -188,14 +188,14 @@ admin_group =
 
     .unban = ⚠️ Разбанить
     .unban_prompt =
-        Вы уверены, что хотите разбанить пользователя <a href="tg://user?id={$id}">{$name}</a>?
+        Вы уверены, что хотите разбанить пользователя <a href="{$userLink}">{$name}</a>?
 
         Пользователь сможет присоединяться к чатам и регистрироваться на события.
 
         Пользователь не получит сообщения о разбане и свежую ссылку на чат участников. Прокомуницируйте разбан через этот чат самостоятельно!
 
     .message_unbanned =
-        ✅ Пользователь разбанен админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$date}.
+        ✅ Пользователь разбанен админом <a href="{$adminLink}">{$adminName}</a> {$date}.
 
 
 menu =
@@ -248,12 +248,12 @@ menu =
     .who_else_coming_button = 👯‍♀️ Кто ещё будет?
 
     .event_participants =
-        <b>Ещё записались:</b>
+        <b>Ещё записались на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}:</b>
 
         {$participants}
     .event_participants_empty = Пока что никто не записался.
-    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}{$options}
-    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}{$options}
+    .event_participant = <b><a href="{$userLink}">{$name}</a></b> (@{$username}), {$pronouns}{$options}
+    .event_participant_no_username = <b><a href="{$userLink}">{$name}</a></b>, {$pronouns}{$options}
 
 manage_events =
     .events = Предстоящие события:
@@ -360,11 +360,12 @@ manage_events =
         Введите причину изменения события, она будет разослана участникам и отправлена в канал.
         Отправьте /empty, чтобы не публиковать изменение даты.
     .date_change_post =
-        <b>⚠️ Перенос {$name}</b>
+        <b>⚠️ Перенос: <a href="{$eventPostLink}">{$name}</a></b>
 
         {$reasonTextHtml}
 
-        Новая дата: <b>{DATETIME($date, dateStyle: "short", timeStyle: "short")}</b>
+        Новая дата: <b>{DATETIME($date, dateStyle: "short", timeStyle: "short", weekday: "short")}</b>
+        Записаться на новую дату можно <a href="{$eventSignupLink}">по ссылке</a>.
     .event_in_past = Событие уже прошло.
     .enter_post =
         Введите текст поста с анонсом события.
@@ -383,7 +384,7 @@ manage_events =
     .edit_success = Данные сохранены
 
     .event_created = Событие успешно создано.
-    .signup_link = Ссылка для регистрации: <code>https://t.me/{$username}?start={$eventId}</code>.
+    .signup_link = Ссылка для регистрации: <code>{$eventSignupLink}</code>.
 
     .event_participants =
         Участники <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}:
@@ -396,8 +397,8 @@ manage_events =
         [Approved] {$event_participant}
         *[Rejected] {$event_participant}, ❌ Заявка отклонена
     }
-    .event_participant = <b><a href="tg://user?id={$id}">{$name}</a></b> (@{$username}), {$pronouns}{$options}
-    .event_participant_no_username = <b><a href="tg://user?id={$id}">{$name}</a></b>, {$pronouns}{$options}
+    .event_participant = <b><a href="{$userLink}">{$name}</a></b> (@{$username}), {$pronouns}{$options}
+    .event_participant_no_username = <b><a href="{$userLink}">{$name}</a></b>, {$pronouns}{$options}
 
     .enter_message_for_event_participants =
         Введите сообщение, которое будет разослано участникам, или отправьте /cancel для отмены.
@@ -436,21 +437,21 @@ event_signup =
     .registered =
         ✅ Вы зарегистрированы на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
     .admin_message_registered =
-        ✅ Пользователь зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$approveDate}.
+        ✅ Пользователь зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="{$adminLink}">{$adminName}</a> {$approveDate}.
 
         {$options}
 
     .rejected =
         ❌ К сожалению, мы не можем зарегистрировать вас на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
     .admin_message_rejected =
-        ❌ Пользователь не зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$rejectDate}.
+        ❌ Пользователь не зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="{$adminLink}">{$adminName}</a> {$rejectDate}.
 
     .rejected_with_refund =
         ❌ К сожалению, мы не можем зарегистрировать вас на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")}.
 
         Скоро мы напишем вам по поводу возврата денег.
     .admin_message_rejected_with_refund =
-        ❌ Пользователь не зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="tg://user?id={$adminId}">{$adminName}</a> {$rejectDate}.
+        ❌ Пользователь не зарегистрирован на <b>{$name}</b> | {DATETIME($date, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short")} админом <a href="{$adminLink}">{$adminName}</a> {$rejectDate}.
 
         ⚠️ Возможно, нужен возврат денег.
 

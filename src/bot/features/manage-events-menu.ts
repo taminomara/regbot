@@ -41,6 +41,7 @@ import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
+import { messageLink, signupLink, userLink } from "../helpers/links.js";
 import { patchCtx } from "../helpers/menu.js";
 import { makeSignupReminderKeyboard } from "./event-reminders.js";
 
@@ -469,14 +470,14 @@ async function updateManageEventParticipantsMenu(ctx: Context) {
         status: signup.status,
         event_participant: signup.user.username
           ? ctx.t("manage_events.event_participant", {
-              id: String(signup.user.id),
+              userLink: userLink(signup.user.id),
               name: sanitizeHtmlOrEmpty(signup.user.name),
               pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
               username: sanitizeHtml(signup.user.username),
               options,
             })
           : ctx.t("manage_events.event_participant_no_username", {
-              id: String(signup.user.id),
+              userLink: userLink(signup.user.id),
               name: sanitizeHtmlOrEmpty(signup.user.name),
               pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
               options,
@@ -632,6 +633,8 @@ const editEventDate = conversation<Context>(
 
       const makePost = (locale: string) =>
         i18n.t(locale, "manage_events.date_change_post", {
+          eventSignupLink: signupLink(ctx.me.username, event.id),
+          eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
           name: sanitizeHtmlOrEmpty(event.name),
           date: toFluentDateTime(event.date),
           reasonTextHtml,
