@@ -344,6 +344,11 @@ async function sendConfirmation(
             date: toFluentDateTime(event.date),
           },
         ),
+        {
+          ...({
+            message_effect_id: "5159385139981059251",
+          } as object),
+        },
       );
       break;
     }
