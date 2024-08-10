@@ -352,7 +352,10 @@ registerCommandHelp({
 });
 
 feature
-  .drop((ctx) => ctx.entities("bot_command").length > 0)
+  .filter(
+    (ctx) =>
+      !ctx.has("::bot_command") || !(ctx.msg?.text ?? "").startsWith("/"),
+  )
   .on("message", logHandle("message-to-user"), async (ctx) => {
     if (ctx.message.message_thread_id === undefined) {
       return;

@@ -10,7 +10,7 @@ export function errorReporter(): Middleware<Context> {
     } catch (e) {
       if (e instanceof GrammyError && e.method === "answerCallbackQuery") {
         logger.error(e);
-        return;  // ignore callback query answering failures.
+        return; // ignore callback query answering failures.
       }
 
       try {
