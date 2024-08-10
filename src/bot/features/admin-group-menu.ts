@@ -29,9 +29,9 @@ import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
+import { userLink } from "../helpers/links.js";
 import { logHandle } from "../helpers/logging.js";
 import { patchCtx } from "../helpers/menu.js";
-import { userLink } from "../helpers/links.js";
 
 export const composer = new Composer<Context>();
 
