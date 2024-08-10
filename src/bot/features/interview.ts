@@ -14,6 +14,7 @@ import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
+
 import { userLink } from "../helpers/links.js";
 
 export async function approve(ctx: Context) {
@@ -50,6 +51,9 @@ export async function sendApproveMessage(ctx: Context, approvedUser: UserLite) {
     {
       protect_content: true,
       reply_markup: { remove_keyboard: true },
+      ...({
+        message_effect_id: "5046509860389126442",
+      } as object),
     },
   );
 }
