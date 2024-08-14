@@ -35,6 +35,7 @@ import {
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 
+import { formatEventText, formatEventTitleForMenu } from "../helpers/event.js";
 import { userLink } from "../helpers/links.js";
 import { logHandle } from "../helpers/logging.js";
 import { patchCtx } from "../helpers/menu.js";
@@ -84,21 +85,11 @@ export async function sendEventMenu(
   >,
 ) {
   await patchCtx(ctx, { match: event.id, locale }, async (ctx) => {
-    await ctx.api.sendMessage(
-      chatId,
-      text ??
-        event.announceTextHtml ??
-        ctx.t("menu.event", {
-          name: sanitizeHtmlOrEmpty(event.name),
-          date: toFluentDateTime(event.date),
-          price: sanitizeHtmlOrEmpty(event.price),
-        }),
-      {
-        ...other,
-        link_preview_options: { is_disabled: true },
-        reply_markup: eventsMenu.at("eventMenu"),
-      },
-    );
+    await ctx.api.sendMessage(chatId, text ?? formatEventText(ctx, event), {
+      ...other,
+      link_preview_options: { is_disabled: true },
+      reply_markup: eventsMenu.at("eventMenu"),
+    });
   });
 }
 
@@ -123,19 +114,7 @@ const eventsMenu = new Menu<Context>("eventsMenu")
       range
         .submenu(
           {
-            text: ctx.t("menu.event_title", {
-              name: event.name,
-              date: toFluentDateTime(event.date),
-              signedUp:
-                event.signup === undefined
-                  ? "no"
-                  : {
-                      [SignupStatus.Approved]: "approved",
-                      [SignupStatus.Rejected]: "rejected",
-                      [SignupStatus.PendingApproval]: "pending",
-                      [SignupStatus.PendingPayment]: "pending",
-                    }[event.signup.status],
-            }),
+            text: formatEventTitleForMenu(ctx, event),
             payload: String(event.id),
           },
           "eventMenu",
@@ -222,7 +201,12 @@ const eventMenu = new Menu<Context>("eventMenu")
     const event = await getEventFromMatch(ctx);
     if (event === undefined) return;
 
-    if (event.signup === undefined && event.participationOptions !== null) {
+    if (!event.registrationOpen && event.signup === undefined) {
+      // Registration closed.
+    } else if (
+      event.signup === undefined &&
+      event.participationOptions !== null
+    ) {
       range.submenu(
         withPayload(
           ctx.t("menu.signup_button", {
@@ -295,19 +279,9 @@ async function updateEventMenu(ctx: Context) {
 
   const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
-  // TODO: default template?
-  await editMessageTextSafe(
-    ctx,
-    event.announceTextHtml ??
-      ctx.t("menu.event", {
-        name: sanitizeHtmlOrEmpty(event.name),
-        date: toFluentDateTime(event.date),
-        price: sanitizeHtmlOrEmpty(event.price),
-      }),
-    {
-      link_preview_options: { is_disabled: true },
-    },
-  );
+  await editMessageTextSafe(ctx, formatEventText(ctx, event), {
+    link_preview_options: { is_disabled: true },
+  });
 }
 
 const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu")
@@ -499,14 +473,28 @@ function unpackMatch(match?: string): { eventId?: number; options: boolean[] } {
 async function getEventFromMatch(ctx: Context) {
   const { eventId } = unpackMatch(ctx.match);
   if (eventId === undefined) {
-    ctx.logger.error("Can't get event id form match", { match: ctx.match });
+    ctx.logger.error({
+      msg: "Can't get event id form match",
+      match: ctx.match,
+    });
     return;
   }
   const event = await getEventWithUserSignup(eventId, ctx.user.id);
   if (event === null) {
-    ctx.logger.error("Can't get event id form match", { match: ctx.match });
+    ctx.logger.error({
+      msg: "Can't get event id form match",
+      match: ctx.match,
+    });
     return;
   }
+  if (!event.published) {
+    ctx.logger.error({
+      msg: "Trying to request an unpublished event",
+      match: ctx.match,
+    });
+    return;
+  }
+
   return event;
 }
 

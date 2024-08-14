@@ -8,6 +8,7 @@ import {
   Event,
   createEvent as createDbEvent,
   deleteEvent as deleteDbEvent,
+  getEvent,
   getEventSignups,
   getEventWithSignupStats,
   upcomingEventsWithSignupStats,
@@ -24,6 +25,7 @@ import { isAdmin } from "#root/bot/filters/index.js";
 import {
   conversation,
   finishConversation,
+  getConversationId,
   repeatConversationStep,
 } from "#root/bot/helpers/conversations-v2.js";
 import {
@@ -41,6 +43,7 @@ import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
+import { DEFAULT_EVENT_TEXT, formatEventText } from "../helpers/event.js";
 import { messageLink, signupLink, userLink } from "../helpers/links.js";
 import { patchCtx } from "../helpers/menu.js";
 import { makeSignupReminderKeyboard } from "./event-reminders.js";
@@ -70,33 +73,27 @@ async function sendEventMenu(ctx: Context, eventId: number) {
 
 const manageEventsMenu = new Menu<Context>("manageEventsMenu")
   .text(
-    () => i18n.t(config.DEFAULT_LOCALE, "manage_events.update"),
+    (ctx) => ctx.t("manage_events.update"),
     logHandle("menu:manageEventsMenu:update"),
     updateManageEventsMenu,
   )
   .text(
-    () => i18n.t(config.DEFAULT_LOCALE, "manage_events.create"),
+    (ctx) => ctx.t("manage_events.create"),
     logHandle("menu:manageEventsMenu:create"),
     async (ctx) => createEvent.enter(ctx),
   )
   .row()
-  .dynamic(async (_ctx, range) => {
+  .dynamic(async (ctx, range) => {
     const events = await upcomingEventsWithSignupStats();
     for (const event of events) {
-      const prefix = i18n.t(
-        config.DEFAULT_LOCALE,
-        "manage_events.event_title_prefix",
-        {
-          published:
-            event.published && event.registrationOpen
-              ? "yes"
-              : event.published && !event.registrationOpen
-                ? "closed"
-                : "no",
-        },
-      );
-      const suffix = i18n.t(
-        config.DEFAULT_LOCALE,
+      const prefix = ctx.t("manage_events.event_title_prefix", {
+        published: event.cancelled
+          ? "cancelled"
+          : event.published
+            ? "yes"
+            : "no",
+      });
+      const suffix = ctx.t(
         event.pendingSignups === 0
           ? "manage_events.event_title_suffix"
           : "manage_events.event_title_suffix_with_pending",
@@ -109,7 +106,7 @@ const manageEventsMenu = new Menu<Context>("manageEventsMenu")
       range
         .submenu(
           {
-            text: i18n.t(config.DEFAULT_LOCALE, "manage_events.event_title", {
+            text: ctx.t("manage_events.event_title", {
               name: sanitizeHtmlOrEmpty(event.name),
               date: toFluentDateTime(event.date),
               prefix,
@@ -126,97 +123,122 @@ const manageEventsMenu = new Menu<Context>("manageEventsMenu")
   });
 feature.use(manageEventsMenu);
 async function updateManageEventsMenu(ctx: Context) {
-  await editMessageTextSafe(
-    ctx,
-    i18n.t(config.DEFAULT_LOCALE, "manage_events.events"),
-  );
+  await editMessageTextSafe(ctx, ctx.t("manage_events.events"));
 }
 
 const manageEventMenu = new Menu<Context>("manageEventMenu")
   .text(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.update")),
+    withPayload((ctx) => ctx.t("manage_events.update")),
     logHandle("menu:manageEventMenu:update"),
     updateManageEventMenu,
   )
   .row()
   .dynamic(async (ctx, range) => {
-    const event = await getEventFromMatch(ctx);
+    const event = await getEventFromMatch(ctx); // allow editing closed and past events
     if (event === undefined) return;
 
-    range.text(
-      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_name")),
-      logHandle("menu:manageEventMenu:edit-name"),
-      (ctx) => editEventName.enter(ctx),
-    );
-    range.text(
-      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_date")),
-      logHandle("menu:manageEventMenu:edit-date"),
-      (ctx) => editEventDate.enter(ctx),
-    );
-    range.row();
-    if (event.announceTextHtml === null) {
+    if (!event.cancelled && !moment.utc(event.date).isBefore(moment.now())) {
       range.text(
-        withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.add_post")),
-        logHandle("menu:manageEventMenu:add-post"),
+        withPayload(ctx.t("manage_events.edit_name")),
+        logHandle("menu:manageEventMenu:edit-name"),
+        (ctx) => editEventName.enter(ctx),
+      );
+      range.text(
+        withPayload(ctx.t("manage_events.edit_date")),
+        logHandle("menu:manageEventMenu:edit-date"),
+        (ctx) => editEventDate.enter(ctx),
+      );
+      range.row();
+      range.text(
+        withPayload(ctx.t("manage_events.edit_post")),
+        logHandle("menu:manageEventMenu:edit-post"),
         (ctx) => editEventPost.enter(ctx),
+      );
+      range.text(
+        withPayload(ctx.t("manage_events.edit_options")),
+        logHandle("menu:manageEventMenu:edit-options"),
+        (ctx) => editEventOptions.enter(ctx),
+      );
+      range.row();
+      range.text(
+        withPayload(ctx.t("manage_events.edit_price")),
+        logHandle("menu:manageEventMenu:edit-price"),
+        (ctx) => editEventPrice.enter(ctx),
+      );
+      range.text(
+        withPayload(ctx.t("manage_events.edit_payment_details")),
+        logHandle("menu:manageEventMenu:edit-payment-details"),
+        (ctx) => editEventPaymentDetails.enter(ctx),
+      );
+      range.row();
+      range.text(
+        withPayload(ctx.t("manage_events.edit_reminder")),
+        logHandle("menu:manageEventMenu:edit-reminder"),
+        (ctx) => editEventReminder.enter(ctx),
+      );
+      range.row();
+      range.text(
+        withPayload(
+          ctx.t("manage_events.confirmation", {
+            required: event.requireApproval ? "yes" : "no",
+          }),
+        ),
+        logHandle("menu:manageEventMenu:switch-confirmation"),
+        switchConfirmation,
+      );
+      range.row();
+      range.text(
+        withPayload(
+          ctx.t("manage_events.manage_event_price", {
+            payment: event.payment,
+          }),
+        ),
+        logHandle("menu:manageEventMenu:switch-event-payment"),
+        switchEventPayment,
       );
     } else {
       range.text(
-        withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_post")),
+        withPayload(ctx.t("manage_events.edit_name")),
+        logHandle("menu:manageEventMenu:edit-name"),
+        (ctx) => editEventName.enter(ctx),
+      );
+      range.text(
+        withPayload(ctx.t("manage_events.edit_post")),
         logHandle("menu:manageEventMenu:edit-post"),
         (ctx) => editEventPost.enter(ctx),
       );
     }
-    range.text(
-      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_options")),
-      logHandle("menu:manageEventMenu:edit-options"),
-      (ctx) => editEventOptions.enter(ctx),
-    );
     range.row();
-    range.text(
-      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_price")),
-      logHandle("menu:manageEventMenu:edit-price"),
-      (ctx) => editEventPrice.enter(ctx),
-    );
-    range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_payment_details"),
-      ),
-      logHandle("menu:manageEventMenu:edit-payment-details"),
-      (ctx) => editEventPaymentDetails.enter(ctx),
-    );
-    range.row();
-    range.text(
-      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.edit_reminder")),
-      logHandle("menu:manageEventMenu:edit-reminder"),
-      (ctx) => editEventReminder.enter(ctx),
-    );
-    range.row();
-    range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.confirmation", {
-          required: event.requireApproval ? "yes" : "no",
-        }),
-      ),
-      logHandle("menu:manageEventMenu:switch-confirmation"),
-      switchConfirmation,
-    );
-    range.row();
-    range.text(
-      withPayload(
-        i18n.t(config.DEFAULT_LOCALE, "manage_events.manage_event_price", {
-          payment: event.payment,
-        }),
-      ),
-      logHandle("menu:manageEventMenu:switch-event-payment"),
-      switchEventPayment,
-    );
+
+    if (event.visibleInMenu) {
+      range.submenu(
+        withPayload(
+          ctx.t("manage_events.visible_in_menu", {
+            visibleInMenu: "yes",
+          }),
+        ),
+        "makeInvisibleMenu",
+        logHandle("menu:manageEventMenu:close-registration"),
+        updateMakeInvisibleMenu,
+      );
+    } else {
+      range.submenu(
+        withPayload(
+          ctx.t("manage_events.visible_in_menu", {
+            visibleInMenu: "no",
+          }),
+        ),
+        "makeVisibleMenu",
+        logHandle("menu:manageEventMenu:open-registration"),
+        updateMakeVisibleMenu,
+      );
+    }
     range.row();
 
     if (event.registrationOpen) {
       range.submenu(
         withPayload(
-          i18n.t(config.DEFAULT_LOCALE, "manage_events.registration_open", {
+          ctx.t("manage_events.registration_open", {
             registrationOpen: "yes",
           }),
         ),
@@ -224,10 +246,19 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
         logHandle("menu:manageEventMenu:close-registration"),
         updateCloseEventRegistrationMenu,
       );
+    } else if (event.cancelled) {
+      range.text(
+        withPayload(
+          ctx.t("manage_events.registration_open", {
+            registrationOpen: "no_permanent",
+          }),
+        ),
+        logHandle("menu:manageEventMenu:open-registration-on-cancelled-event"),
+      );
     } else {
       range.submenu(
         withPayload(
-          i18n.t(config.DEFAULT_LOCALE, "manage_events.registration_open", {
+          ctx.t("manage_events.registration_open", {
             registrationOpen: "no",
           }),
         ),
@@ -238,19 +269,28 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
     }
     range.row();
 
-    if (event.published) {
+    if (event.channelPostId !== null) {
       range.text(
         withPayload(
-          i18n.t(config.DEFAULT_LOCALE, "manage_events.published", {
+          ctx.t("manage_events.published", {
             published: "yes",
           }),
         ),
         logHandle("menu:manageEventMenu:unpublish"),
       );
+    } else if (event.cancelled) {
+      range.text(
+        withPayload(
+          ctx.t("manage_events.published", {
+            published: "no_permanent",
+          }),
+        ),
+        logHandle("menu:manageEventMenu:publish-on-cancelled-event"),
+      );
     } else {
       range.submenu(
         withPayload(
-          i18n.t(config.DEFAULT_LOCALE, "manage_events.published", {
+          ctx.t("manage_events.published", {
             published: "no",
           }),
         ),
@@ -263,8 +303,7 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
 
     range.submenu(
       withPayload(
-        i18n.t(
-          config.DEFAULT_LOCALE,
+        ctx.t(
           event.pendingSignups === 0
             ? "manage_events.manage_participants"
             : "manage_events.manage_participants_with_pending",
@@ -280,29 +319,43 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
     );
     range.row();
 
-    range.submenu(
-      withPayload(i18n.t(config.DEFAULT_LOCALE, "manage_events.delete")),
-      "deleteEventMenu",
-      logHandle("menu:manageEventMenu:delete-event"),
-      updateDeleteEventMenu,
-    );
+    if (event.published && !event.cancelled) {
+      range.submenu(
+        withPayload(ctx.t("manage_events.cancel")),
+        "cancelEventMenu",
+        logHandle("menu:manageEventMenu:cancel-event"),
+        updateCancelEventMenu,
+      );
+    } else if (event.published && event.cancelled) {
+      range.text(
+        withPayload(ctx.t("manage_events.cancelled")),
+        logHandle("menu:manageEventMenu:cancelled"),
+      );
+    } else {
+      range.submenu(
+        withPayload(ctx.t("manage_events.delete")),
+        "deleteEventMenu",
+        logHandle("menu:manageEventMenu:delete-event"),
+        updateDeleteEventMenu,
+      );
+    }
     range.row();
   })
   .back(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
+    withPayload((ctx) => ctx.t("manage_events.back")),
     logHandle("menu:manageEventMenu:back"),
     updateManageEventsMenu,
   );
 manageEventsMenu.register(manageEventMenu);
 async function updateManageEventMenu(ctx: Context) {
-  const event = await getEventFromMatch(ctx);
+  const event = await getEventFromMatch(ctx); // allow editing closed and past events
   if (event === undefined) return;
   await editMessageTextSafe(ctx, formatEventDescription(ctx, event), {
     link_preview_options: { is_disabled: true },
   });
 }
 function formatEventDescription(ctx: Context, event: Event) {
-  let eventDescription = i18n.t(config.DEFAULT_LOCALE, "manage_events.event", {
+  let eventDescription = ctx.t("manage_events.event", {
     id: String(event.id),
     botUsername: ctx.me.username,
     name: sanitizeHtmlOrEmpty(event.name),
@@ -314,17 +367,22 @@ function formatEventDescription(ctx: Context, event: Event) {
     price: sanitizeHtmlOrEmpty(event.price),
     iban: sanitizeHtmlOrEmpty(event.iban ?? config.PAYMENT_IBAN),
     recipient: sanitizeHtmlOrEmpty(event.recipient ?? config.PAYMENT_RECIPIENT),
+    status: event.cancelled
+      ? "cancelled"
+      : event.dateChanged
+        ? "date_changed"
+        : event.published
+          ? "published"
+          : "draft",
   });
 
-  if (event.announceTextHtml !== null) {
-    eventDescription += `\n\n${i18n.t(
-      config.DEFAULT_LOCALE,
-      "manage_events.eventText",
-    )}\n\n<blockquote expandable>${event.announceTextHtml}</blockquote>`;
-  }
+  const announceTextHtml = formatEventText(ctx, event);
+  eventDescription += `\n\n${ctx.t(
+    "manage_events.eventText",
+  )}\n\n<blockquote expandable>${announceTextHtml}</blockquote>`;
+
   if (event.reminderTextHtml !== null) {
-    eventDescription += `\n\n${i18n.t(
-      config.DEFAULT_LOCALE,
+    eventDescription += `\n\n${ctx.t(
       "manage_events.eventReminder",
     )}\n\n<blockquote expandable>${event.reminderTextHtml}</blockquote>`;
   }
@@ -332,18 +390,46 @@ function formatEventDescription(ctx: Context, event: Event) {
   return eventDescription;
 }
 
+const makeVisibleMenu = new Menu<Context>("makeVisibleMenu")
+  .back(
+    withPayload((ctx) => ctx.t("manage_events.make_visible_no")),
+    logHandle("menu:makeVisibleMenu:back"),
+    updateManageEventMenu,
+  )
+  .back(
+    withPayload((ctx) => ctx.t("manage_events.make_visible_yes")),
+    logHandle("menu:makeVisibleMenu:open-registration"),
+    makeVisible,
+  );
+manageEventMenu.register(makeVisibleMenu);
+async function updateMakeVisibleMenu(ctx: Context) {
+  await editMessageTextSafe(ctx, ctx.t("manage_events.make_visible_confirm"));
+}
+
+const makeInvisibleMenu = new Menu<Context>("makeInvisibleMenu")
+  .back(
+    withPayload((ctx) => ctx.t("manage_events.make_invisible_no")),
+    logHandle("menu:makeInvisibleMenu:back"),
+    updateManageEventMenu,
+  )
+  .back(
+    withPayload((ctx) => ctx.t("manage_events.make_invisible_yes")),
+    logHandle("menu:makeInvisibleMenu:close-registration"),
+    makeInvisible,
+  );
+manageEventMenu.register(makeInvisibleMenu);
+async function updateMakeInvisibleMenu(ctx: Context) {
+  await editMessageTextSafe(ctx, ctx.t("manage_events.make_invisible_confirm"));
+}
+
 const openEventRegistrationMenu = new Menu<Context>("openEventRegistrationMenu")
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_no"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.open_registration_no")),
     logHandle("menu:openEventRegistrationMenu:back"),
     updateManageEventMenu,
   )
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_yes"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.open_registration_yes")),
     logHandle("menu:openEventRegistrationMenu:open-registration"),
     openRegistration,
   );
@@ -351,7 +437,7 @@ manageEventMenu.register(openEventRegistrationMenu);
 async function updateOpenEventRegistrationMenu(ctx: Context) {
   await editMessageTextSafe(
     ctx,
-    i18n.t(config.DEFAULT_LOCALE, "manage_events.open_registration_confirm"),
+    ctx.t("manage_events.open_registration_confirm"),
   );
 }
 
@@ -359,16 +445,12 @@ const closeEventRegistrationMenu = new Menu<Context>(
   "closeEventRegistrationMenu",
 )
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_no"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.close_registration_no")),
     logHandle("menu:closeEventRegistrationMenu:back"),
     updateManageEventMenu,
   )
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_yes"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.close_registration_yes")),
     logHandle("menu:closeEventRegistrationMenu:close-registration"),
     closeRegistration,
   );
@@ -376,52 +458,59 @@ manageEventMenu.register(closeEventRegistrationMenu);
 async function updateCloseEventRegistrationMenu(ctx: Context) {
   await editMessageTextSafe(
     ctx,
-    i18n.t(config.DEFAULT_LOCALE, "manage_events.close_registration_confirm"),
+    ctx.t("manage_events.close_registration_confirm"),
   );
 }
 
 const publishEventMenu = new Menu<Context>("publishEventMenu")
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_no"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.publish_no")),
     logHandle("menu:publishEventMenu:back"),
     updateManageEventMenu,
   )
   .back(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_yes"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.publish_yes")),
     logHandle("menu:publishEventMenu:publish"),
     publishEvent,
   );
 manageEventMenu.register(publishEventMenu);
 async function updatePublishEventMenu(ctx: Context) {
-  await editMessageTextSafe(
-    ctx,
-    i18n.t(config.DEFAULT_LOCALE, "manage_events.publish_confirm"),
-  );
+  await editMessageTextSafe(ctx, ctx.t("manage_events.publish_confirm"));
 }
 
 const deleteEventMenu = new Menu<Context>("deleteEventMenu")
   .back(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_no")),
+    withPayload((ctx) => ctx.t("manage_events.delete_no")),
     logHandle("menu:deleteEventMenu:back"),
     updateManageEventMenu,
   )
   .text(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_yes"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.delete_yes")),
     logHandle("menu:deleteEventMenu:delete"),
     deleteEvent,
   );
 manageEventMenu.register(deleteEventMenu);
 async function updateDeleteEventMenu(ctx: Context) {
-  await editMessageTextSafe(
-    ctx,
-    i18n.t(config.DEFAULT_LOCALE, "manage_events.delete_confirm"),
+  await editMessageTextSafe(ctx, ctx.t("manage_events.delete_confirm"));
+}
+
+const cancelEventMenu = new Menu<Context>("cancelEventMenu")
+  .back(
+    withPayload((ctx) => ctx.t("manage_events.cancel_no")),
+    logHandle("menu:cancelEventMenu:back"),
+    updateManageEventMenu,
+  )
+  .back(
+    withPayload((ctx) => ctx.t("manage_events.cancel_yes")),
+    logHandle("menu:cancelEventMenu:cancel"),
+    async (ctx) => {
+      await updateManageEventMenu(ctx);
+      await cancelEvent.enter(ctx);
+    },
   );
+manageEventMenu.register(cancelEventMenu);
+async function updateCancelEventMenu(ctx: Context) {
+  await editMessageTextSafe(ctx, ctx.t("manage_events.cancel_confirm"));
 }
 
 const manageEventParticipantsMenu = new Menu<Context>(
@@ -434,21 +523,19 @@ const manageEventParticipantsMenu = new Menu<Context>(
   )
   .row()
   .text(
-    withPayload(() =>
-      i18n.t(config.DEFAULT_LOCALE, "manage_events.message_participants"),
-    ),
+    withPayload((ctx) => ctx.t("manage_events.message_participants")),
     logHandle("menu:manageEventParticipantsMenu:message-participants"),
     async (ctx) => messageEventParticipants.enter(ctx),
   )
   .row()
   .back(
-    withPayload(() => i18n.t(config.DEFAULT_LOCALE, "manage_events.back")),
+    withPayload((ctx) => ctx.t("manage_events.back")),
     logHandle("menu:manageEventParticipantsMenu:back"),
     updateManageEventMenu,
   );
 manageEventMenu.register(manageEventParticipantsMenu);
 async function updateManageEventParticipantsMenu(ctx: Context) {
-  const event = await getEventFromMatch(ctx);
+  const event = await getEventFromMatch(ctx); // allow editing closed and past events
   if (event === undefined) return;
 
   const participants = (await getEventSignups(event.id))
@@ -509,20 +596,23 @@ async function getEventFromMatch(ctx: Context) {
   }
   const event = await getEventWithSignupStats(eventId);
   if (event === null) {
-    ctx.logger.error("Can't get event id form match", { match: ctx.match });
+    ctx.logger.error("Can't get event form match", { match: ctx.match });
     return;
   }
   return event;
 }
 
 async function getEventForEditFromMatch(ctx: Context) {
-  const event = await getEventFromMatch(ctx);
+  const event = await getEventFromMatch(ctx); // allow editing closed and past events
   if (event === undefined) return;
 
   if (moment.utc(event.date).isBefore(moment.now())) {
-    await ctx.reply(
-      i18n.translate(config.DEFAULT_LOCALE, "manage_events.event_in_past"),
-    );
+    await ctx.reply(ctx.t("manage_events.event_in_past"));
+    return;
+  }
+
+  if (event.cancelled) {
+    await ctx.reply(ctx.t("manage_events.event_cancelled"));
     return;
   }
 
@@ -544,7 +634,7 @@ const editEventName = conversation<Context>(
   logHandle("conversation:editEventName"),
 )
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(ctx);
+    const event = await getEventFromMatch(ctx); // allow editing closed and past events
     if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_name"));
     return { eventId: event.id };
@@ -554,7 +644,8 @@ const editEventName = conversation<Context>(
     return { eventId };
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
-    await updateEvent(eventId, { name: ctx.message.text });
+    const event = await updateEvent(eventId, { name: ctx.message.text });
+    await updateEventPost(ctx, event);
     return { eventId };
   })
   .done()
@@ -564,6 +655,41 @@ const editEventName = conversation<Context>(
   .build();
 feature.use(editEventName);
 
+const eventChangeUpdateData = createCallbackData("eventChangeUpdate", {
+  postToChannel: Boolean,
+  messageParticipants: Boolean,
+  conversationId: Number,
+});
+function makeEventChangeUpdateKeyboard(
+  ctx: Context,
+  conversationId: number,
+  data: {
+    postToChannel: boolean;
+    messageParticipants: boolean;
+  },
+) {
+  return new InlineKeyboard()
+    .text(
+      (data.postToChannel ? "☑️ " : "➖ ") +
+        ctx.t("manage_events.post_to_channel"),
+      eventChangeUpdateData.pack({
+        ...data,
+        conversationId,
+        postToChannel: !data.postToChannel,
+      }),
+    )
+    .row()
+    .text(
+      (data.messageParticipants ? "☑️ " : "➖ ") +
+        ctx.t("manage_events.message_event_participants"),
+      eventChangeUpdateData.pack({
+        ...data,
+        conversationId,
+        messageParticipants: !data.messageParticipants,
+      }),
+    );
+}
+
 const editEventDate = conversation<Context>(
   "editEventDate",
   logHandle("conversation:editEventDate"),
@@ -572,7 +698,9 @@ const editEventDate = conversation<Context>(
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_date"));
-    return { eventId: event.id };
+    return {
+      eventId: event.id,
+    };
   })
   .either()
   .waitCommand("cancel", async (ctx, { eventId }) => {
@@ -580,6 +708,9 @@ const editEventDate = conversation<Context>(
     return finishConversation();
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
+    const event = await getEvent(eventId);
+    if (event === null) return finishConversation();
+
     const date = moment.tz(
       ctx.message.text,
       "YYYY-MM-DD HH:mm",
@@ -601,48 +732,112 @@ const editEventDate = conversation<Context>(
       return repeatConversationStep({ eventId });
     }
 
-    // await updateEvent(eventId, { date: date.toDate() });
-    return { eventId, date: date.toDate() };
+    if (date.isSame(event.date)) {
+      await ctx.reply(ctx.t("manage_events.date_not_changed"), {
+        reply_to_message_id: ctx.message.message_id,
+      });
+      return repeatConversationStep({ eventId });
+    }
+
+    if (!event.published) {
+      // Early finish
+      const event = await updateEvent(eventId, { date: date.toDate() });
+      await updateEventPost(ctx, event);
+      await sendEventMenu(ctx, eventId);
+      return finishConversation();
+    }
+
+    return {
+      eventId,
+      date: date.toDate(),
+      hasChannelPost: event.channelPostId !== null,
+    };
   })
   .done()
-  .proceed((ctx, { eventId, date }) => {
-    ctx.reply(ctx.t("manage_events.enter_date_change_reason", { date }));
-    return { eventId, date };
+  .proceed(async (ctx, { eventId, date, hasChannelPost }) => {
+    const params = {
+      postToChannel: hasChannelPost,
+      messageParticipants: true,
+      conversationId: getConversationId(ctx),
+    };
+
+    await ctx.reply(
+      ctx.t("manage_events.enter_date_change_reason", {
+        date: toFluentDateTime(date),
+      }),
+      {
+        reply_markup: makeEventChangeUpdateKeyboard(
+          ctx,
+          getConversationId(ctx),
+          params,
+        ),
+      },
+    );
+    return { eventId, date, ...params };
   })
   .either()
   .waitCommand("cancel", async (ctx, { eventId }) => {
     await sendEventMenu(ctx, eventId);
     return finishConversation();
   })
-  .waitCommand("empty", async (ctx, { eventId, date }) => {
-    return { eventId, date, reasonTextHtml: undefined };
+  .waitCommand("empty", async (ctx, params) => {
+    return { reasonTextHtml: undefined, ...params };
   })
-  .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId, date }) => {
+  .waitCallbackQuery(
+    eventChangeUpdateData.filter(),
+    async (ctx, { eventId, date, ...params }) => {
+      const newParams = eventChangeUpdateData.unpack(ctx.callbackQuery.data);
+      if (newParams.conversationId === getConversationId(ctx)) {
+        await ctx.editMessageReplyMarkup({
+          reply_markup: makeEventChangeUpdateKeyboard(
+            ctx,
+            getConversationId(ctx),
+            newParams,
+          ),
+        });
+        await ctx.answerCallbackQuery();
+        return repeatConversationStep({ eventId, date, ...newParams });
+      } else {
+        return repeatConversationStep({ eventId, date, ...params });
+      }
+    },
+  )
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, params) => {
     const reasonText = ctx.msg.text ?? ctx.msg.caption ?? "";
     const reasonEntities = ctx.msg.entities ?? ctx.msg.caption_entities ?? [];
     const reasonTextHtml = parseTelegramEntities(reasonText, reasonEntities);
 
-    return { eventId, date, reasonTextHtml };
+    return { reasonTextHtml, ...params };
   })
   .done()
-  .proceed(async (ctx, { eventId, date, reasonTextHtml }) => {
-    const event = await updateEvent(eventId, { date });
+  .proceed(async (ctx, { eventId, date, reasonTextHtml, ...params }) => {
+    let event = await updateEvent(eventId, { date });
 
-    if (reasonTextHtml !== undefined) {
-      await ctx.replyWithChatAction("typing");
+    await ctx.replyWithChatAction("typing");
 
-      const makePost = (locale: string) =>
-        i18n.t(locale, "manage_events.date_change_post", {
-          eventSignupLink: signupLink(ctx.me.username, event.id),
-          eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
-          name: sanitizeHtmlOrEmpty(event.name),
-          date: toFluentDateTime(event.date),
-          reasonTextHtml,
-        });
+    event = await updateEvent(eventId, { dateChanged: true });
 
+    if (params.postToChannel) {
       const post = await ctx.api.sendMessage(
         config.CHANNEL,
-        makePost(config.DEFAULT_LOCALE),
+        reasonTextHtml === undefined
+          ? i18n.t(
+              config.DEFAULT_LOCALE,
+              "manage_events.date_change_post_no_reason",
+              {
+                eventSignupLink: signupLink(ctx.me.username, event.id),
+                eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
+                name: sanitizeHtmlOrEmpty(event.name),
+                date: toFluentDateTime(event.date),
+              },
+            )
+          : i18n.t(config.DEFAULT_LOCALE, "manage_events.date_change_post", {
+              eventSignupLink: signupLink(ctx.me.username, event.id),
+              eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
+              name: sanitizeHtmlOrEmpty(event.name),
+              date: toFluentDateTime(event.date),
+              reasonTextHtml,
+            }),
         {
           reply_parameters:
             event.channelPostId === null
@@ -653,6 +848,26 @@ const editEventDate = conversation<Context>(
         },
       );
       await post.forward(config.MEMBERS_GROUP);
+    }
+
+    if (params.messageParticipants) {
+      const makePost = (locale: string) =>
+        reasonTextHtml === undefined
+          ? i18n.t(
+              locale,
+              "manage_events.date_change_post_no_signup_link_no_reason",
+              {
+                eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
+                name: sanitizeHtmlOrEmpty(event.name),
+                date: toFluentDateTime(event.date),
+              },
+            )
+          : i18n.t(locale, "manage_events.date_change_post_no_signup_link", {
+              eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
+              name: sanitizeHtmlOrEmpty(event.name),
+              date: toFluentDateTime(event.date),
+              reasonTextHtml,
+            });
 
       const signups = await getEventSignups(eventId);
       const promises = signups
@@ -678,6 +893,7 @@ const editEventDate = conversation<Context>(
       await Promise.all(promises);
     }
 
+    await updateEventPost(ctx, event);
     await sendEventMenu(ctx, eventId);
   })
   .build();
@@ -688,9 +904,10 @@ const editEventPost = conversation<Context>(
   logHandle("conversation:editEventPost"),
 )
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(ctx);
+    const event = await getEventFromMatch(ctx); // allow editing closed and past events
     if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_post"));
+    await ctx.reply(event.announceTextHtml);
     return { eventId: event.id };
   })
   .either()
@@ -723,11 +940,13 @@ const editEventPrice = conversation<Context>(
     return { eventId };
   })
   .waitCommand("empty", async (ctx, { eventId }) => {
-    await updateEvent(eventId, { price: null });
+    const event = await updateEvent(eventId, { price: null });
+    await updateEventPost(ctx, event);
     return { eventId };
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, { eventId }) => {
-    await updateEvent(eventId, { price: ctx.message.text });
+    const event = await updateEvent(eventId, { price: ctx.message.text });
+    await updateEventPost(ctx, event);
     return { eventId };
   })
   .done()
@@ -776,7 +995,8 @@ const editEventPaymentDetails = conversation<Context>(
   })
   .done()
   .proceed(async (ctx, { eventId, iban, recipient }) => {
-    await updateEvent(eventId, { iban, recipient });
+    const event = await updateEvent(eventId, { iban, recipient });
+    await updateEventPost(ctx, event);
     await sendEventMenu(ctx, eventId);
   })
   .build();
@@ -861,45 +1081,51 @@ async function editEventPostFromCtx(
     announceEntities,
   );
   let announcePhotoId: string | null = null;
-  if (!event.published || event.announcePhotoId !== null) {
+  if (event.channelPostId === null || event.announcePhotoId !== null) {
     announcePhotoId =
       ctx.msg?.photo?.reduce((a, b) => (a.width > b.width ? a : b))?.file_id ??
       event.announcePhotoId;
   }
 
-  await updateEvent(event.id, { announceTextHtml, announcePhotoId });
+  const updatedEvent = await updateEvent(event.id, {
+    announceTextHtml,
+    announcePhotoId,
+  });
+  if (updatedEvent.channelPostId !== ctx.msg?.message_id) {
+    await updateEventPost(ctx, updatedEvent);
+  }
+}
 
-  if (
-    event.channelPostId !== null &&
-    event.channelPostId !== ctx.msg?.message_id
-  ) {
-    try {
-      if (announcePhotoId) {
-        await ctx.api.editMessageMedia(config.CHANNEL, event.channelPostId, {
-          type: "photo",
-          media: announcePhotoId,
-          caption: announceTextHtml,
-        });
+async function updateEventPost(ctx: Context, event: Event) {
+  if (event.channelPostId === null) return;
+  try {
+    const announceTextHtml = formatEventText(ctx, event);
+
+    if (event.announcePhotoId) {
+      await ctx.api.editMessageMedia(config.CHANNEL, event.channelPostId, {
+        type: "photo",
+        media: event.announcePhotoId,
+        caption: announceTextHtml,
+      });
+    } else {
+      await ctx.api.editMessageText(
+        config.CHANNEL,
+        event.channelPostId,
+        announceTextHtml,
+        {
+          link_preview_options: { is_disabled: true },
+        },
+      );
+    }
+  } catch (error) {
+    if (error instanceof GrammyError && error.error_code === 400) {
+      if (error.description.includes("message is not modified")) {
+        ctx.logger.debug("Ignored MESSAGE_NOT_MODIFIED error");
       } else {
-        await ctx.api.editMessageText(
-          config.CHANNEL,
-          event.channelPostId,
-          announceTextHtml,
-          {
-            link_preview_options: { is_disabled: true },
-          },
-        );
+        ctx.logger.warn(error);
       }
-    } catch (error) {
-      if (error instanceof GrammyError && error.error_code === 400) {
-        if (error.description.includes("message is not modified")) {
-          ctx.logger.debug("Ignored MESSAGE_NOT_MODIFIED error");
-        } else {
-          ctx.logger.warn(error);
-        }
-      } else {
-        throw error;
-      }
+    } else {
+      throw error;
     }
   }
 }
@@ -926,6 +1152,28 @@ async function switchEventPayment(ctx: Context) {
         await updateEvent(event.id, { payment: EventPayment.Donation });
         break;
     }
+    await updateEventPost(ctx, event);
+    await updateManageEventMenu(ctx);
+  }
+}
+
+async function makeVisible(ctx: Context) {
+  const event = await getEventFromMatch(ctx); // allow editing closed and past events
+  if (event !== undefined) {
+    await updateEvent(event.id, {
+      published: true,
+      visibleInMenu: true,
+    });
+    await updateEventPost(ctx, event);
+    await updateManageEventMenu(ctx);
+  }
+}
+
+async function makeInvisible(ctx: Context) {
+  const event = await getEventFromMatch(ctx); // allow editing closed and past events
+  if (event !== undefined) {
+    await updateEvent(event.id, { visibleInMenu: false });
+    await updateEventPost(ctx, event);
     await updateManageEventMenu(ctx);
   }
 }
@@ -933,28 +1181,36 @@ async function switchEventPayment(ctx: Context) {
 async function openRegistration(ctx: Context) {
   const event = await getEventForEditFromMatch(ctx);
   if (event !== undefined) {
-    await updateEvent(event.id, { registrationOpen: true });
+    await updateEvent(event.id, {
+      published: true,
+      visibleInMenu: true,
+      registrationOpen: true,
+    });
+    await updateEventPost(ctx, event);
     await updateManageEventMenu(ctx);
   }
 }
 
 async function closeRegistration(ctx: Context) {
-  const event = await getEventForEditFromMatch(ctx);
+  const event = await getEventFromMatch(ctx); // allow editing closed and past events
   if (event !== undefined) {
     await updateEvent(event.id, { registrationOpen: false });
+    await updateEventPost(ctx, event);
     await updateManageEventMenu(ctx);
   }
 }
 
 async function publishEvent(ctx: Context) {
   const event = await getEventForEditFromMatch(ctx);
-  if (event === undefined || event.published) return;
+  if (event === undefined || event.channelPostId !== null) return;
 
-  await updateEvent(event.id, { published: true, registrationOpen: true });
-  ctx.menu.back();
-  await updateManageEventMenu(ctx);
+  await updateEvent(event.id, {
+    published: true,
+    visibleInMenu: true,
+    registrationOpen: true,
+  });
 
-  if (!event.announceTextHtml) return;
+  const announceTextHtml = formatEventText(ctx, event);
 
   let channelPost;
   if (event.announcePhotoId) {
@@ -962,17 +1218,13 @@ async function publishEvent(ctx: Context) {
       config.CHANNEL,
       event.announcePhotoId,
       {
-        caption: event.announceTextHtml,
+        caption: announceTextHtml,
       },
     );
   } else {
-    channelPost = await ctx.api.sendMessage(
-      config.CHANNEL,
-      event.announceTextHtml,
-      {
-        link_preview_options: { is_disabled: true },
-      },
-    );
+    channelPost = await ctx.api.sendMessage(config.CHANNEL, announceTextHtml, {
+      link_preview_options: { is_disabled: true },
+    });
   }
 
   const chatPost = await ctx.api.forwardMessage(
@@ -985,11 +1237,13 @@ async function publishEvent(ctx: Context) {
     channelPostId: channelPost.message_id,
     chatPostId: chatPost.message_id,
   });
+
+  await updateManageEventMenu(ctx);
 }
 
 async function deleteEvent(ctx: Context) {
   const event = await getEventForEditFromMatch(ctx);
-  if (event === undefined) return;
+  if (event === undefined || event.published) return;
 
   if (event.chatPostId !== null) {
     await deleteMessageSafe(ctx, config.MEMBERS_GROUP, event.chatPostId);
@@ -1003,6 +1257,124 @@ async function deleteEvent(ctx: Context) {
   ctx.menu.nav("manageEventsMenu");
   await updateManageEventsMenu(ctx);
 }
+
+const cancelEvent = conversation<Context>(
+  "cancelEvent",
+  logHandle("conversation:cancelEvent"),
+)
+  .proceed(async (ctx) => {
+    const event = await getEventForEditFromMatch(ctx);
+    if (event === undefined || !event.published) return finishConversation();
+
+    const params = {
+      postToChannel: event.channelPostId !== null,
+      messageParticipants: true,
+    };
+
+    await ctx.reply(ctx.t("manage_events.enter_cancellation_reason"), {
+      reply_markup: makeEventChangeUpdateKeyboard(
+        ctx,
+        getConversationId(ctx),
+        params,
+      ),
+    });
+    return { eventId: event.id, ...params };
+  })
+  .either()
+  .waitCommand("cancel", async (ctx, { eventId }) => {
+    await sendEventMenu(ctx, eventId);
+    return finishConversation();
+  })
+  .waitCommand("empty", async (ctx, data) => {
+    return { ...data, reasonTextHtml: undefined };
+  })
+  .waitCallbackQuery(
+    eventChangeUpdateData.filter(),
+    async (ctx, { eventId, ...params }) => {
+      const newParams = eventChangeUpdateData.unpack(ctx.callbackQuery.data);
+      if (newParams.conversationId === getConversationId(ctx)) {
+        await ctx.editMessageReplyMarkup({
+          reply_markup: makeEventChangeUpdateKeyboard(
+            ctx,
+            getConversationId(ctx),
+            newParams,
+          ),
+        });
+        await ctx.answerCallbackQuery();
+        return repeatConversationStep({ eventId, ...newParams });
+      } else {
+        return repeatConversationStep({ eventId, ...params });
+      }
+    },
+  )
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, params) => {
+    const reasonText = ctx.msg.text ?? ctx.msg.caption ?? "";
+    const reasonEntities = ctx.msg.entities ?? ctx.msg.caption_entities ?? [];
+    const reasonTextHtml = parseTelegramEntities(reasonText, reasonEntities);
+
+    return { ...params, reasonTextHtml };
+  })
+  .done()
+  .proceed(async (ctx, { eventId, reasonTextHtml, ...params }) => {
+    await ctx.replyWithChatAction("typing");
+
+    const event = await updateEvent(eventId, {
+      cancelled: true,
+      registrationOpen: false,
+    });
+
+    const makePost = (locale: string) =>
+      reasonTextHtml === undefined
+        ? i18n.t(locale, "manage_events.event_cancellation_post_no_reason", {
+            eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
+            title: sanitizeHtmlOrEmpty(event.name),
+          })
+        : i18n.t(locale, "manage_events.event_cancellation_post", {
+            eventPostLink: messageLink(config.CHANNEL, event.channelPostId),
+            title: sanitizeHtmlOrEmpty(event.name),
+            reasonTextHtml,
+          });
+
+    if (params.postToChannel) {
+      const post = await ctx.api.sendMessage(
+        config.CHANNEL,
+        makePost(config.DEFAULT_LOCALE),
+        {
+          reply_parameters:
+            event.channelPostId === null
+              ? undefined
+              : {
+                  message_id: event.channelPostId,
+                },
+        },
+      );
+      await post.forward(config.MEMBERS_GROUP);
+    }
+
+    if (params.messageParticipants) {
+      const signups = await getEventSignups(eventId);
+      const promises = signups
+        .filter((signup) =>
+          [
+            SignupStatus.Approved,
+            SignupStatus.PendingApproval,
+            SignupStatus.PendingPayment,
+          ].includes(signup.status),
+        )
+        .map(async (signup) =>
+          ctx.api.sendMessage(
+            signup.user.id,
+            makePost(signup.user.locale ?? config.DEFAULT_LOCALE),
+          ),
+        );
+      await Promise.all(promises);
+    }
+
+    await updateEventPost(ctx, event);
+    await sendEventMenu(ctx, eventId);
+  })
+  .build();
+feature.use(cancelEvent);
 
 const createEvent = conversation<Context>(
   "createEvent",
@@ -1055,7 +1427,7 @@ const createEvent = conversation<Context>(
   })
   .done()
   .proceed(async (ctx, { name, date }) => {
-    const event = await createDbEvent(name, date);
+    const event = await createDbEvent(name, date, DEFAULT_EVENT_TEXT);
     await sendEventMenu(ctx, event.id);
   })
   .build();
@@ -1112,7 +1484,7 @@ const messageEventParticipants = conversation<Context>(
   logHandle("conversation:messageEventParticipants"),
 )
   .proceed(async (ctx) => {
-    const event = await getEventForEditFromMatch(ctx);
+    const event = await getEventFromMatch(ctx); // allow editing closed and past events
     if (event === undefined) return finishConversation();
     const params = {
       includeApproved: true,

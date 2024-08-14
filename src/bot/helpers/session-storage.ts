@@ -1,4 +1,5 @@
 import { Enhance, StorageAdapter } from "grammy";
+import { isDate } from "util/types";
 
 import { del, read, write } from "#root/backend/session.js";
 
@@ -32,8 +33,9 @@ export class SessionStorage<P extends Payload>
   }
 }
 
-function replacer(key: string, value: unknown) {
-  return value instanceof Date ? { $date: value.toUTCString() } : value;
+function replacer(this: Record<string, unknown>, key: string, value: unknown) {
+  const v = this[key];
+  return isDate(v) ? { $date: v.toString() } : value;
 }
 
 function reviver(key: string, value: unknown) {

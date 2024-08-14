@@ -205,7 +205,7 @@ async function getEventForSignup(
   if (!(await isApproved(ctx))) return;
 
   const event = await getEventWithUserSignup(eventId, user.id);
-  if (event === null) {
+  if (event === null || !event.published) {
     ctx.logger.warn({ msg: "Unknown event", eventId });
     await ctx.api.sendMessage(
       user.id,
