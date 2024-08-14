@@ -21,6 +21,7 @@ import { Payload } from "./session-storage.js";
 
 export type LinearConversationSessionData = {
   linearConversation?: {
+    id: number;
     name: string;
     step: number;
     payload: Payload;
@@ -156,6 +157,7 @@ export class Conversation<
     }
 
     ctx.session.linearConversation = {
+      id: ctx.update.update_id,
       name: this.name,
       step: 0,
       payload: args[0],
@@ -658,4 +660,15 @@ export function conversation<
   P extends Payload = undefined,
 >(name: string, ...args: Middleware<C>[]) {
   return new ConversationBuilder<C, P, P>(name, [], args, SEALED);
+}
+
+export function getConversationId<C extends LinearConversationContext>(
+  ctx: C,
+): number {
+  if (ctx.session.linearConversation === undefined) {
+    throw new Error(
+      "getConversationId is not available outside of conversations",
+    );
+  }
+  return ctx.session.linearConversation.id ?? 0;
 }

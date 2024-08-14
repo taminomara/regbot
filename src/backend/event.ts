@@ -28,6 +28,11 @@ export type SignupStats = {
   approvedSignups: number;
 };
 
+export async function getEvent(id: number): Promise<Event | null> {
+  const event = await orm.em.findOne(EventObject, { id });
+  return event === null ? null : wrap(event).toObject();
+}
+
 export async function getEventWithSignupStats(
   id: number,
 ): Promise<(EventWithSignups & SignupStats) | null> {
@@ -274,8 +279,12 @@ export async function getEventSignups(
   ).map((signup) => wrap(signup).toObject());
 }
 
-export async function createEvent(name: string, date: Date) {
-  const event = new EventObject(name, date);
+export async function createEvent(
+  name: string,
+  date: Date,
+  announceTextHtml: string,
+) {
+  const event = new EventObject(name, date, announceTextHtml);
   await orm.em.persistAndFlush(event);
   return wrap(event).toObject();
 }
@@ -317,7 +326,7 @@ export async function upcomingEventsWithUserSignup(
 ): Promise<EventWithSignup[]> {
   const events = await orm.em.find(
     EventObject,
-    { date: { $gte: new Date() }, published: true },
+    { date: { $gte: new Date() }, visibleInMenu: true },
     {
       orderBy: { date: "ASC" },
       populate: ["signups"],
@@ -392,7 +401,8 @@ export async function lockEventForSendingReminders(): Promise<{
       EventObject,
       {
         reminderSent: false,
-        registrationOpen: true,
+        published: true,
+        cancelled: false,
         date: { $gte: startDate.toDate(), $lte: endDate.toDate() },
       },
       {

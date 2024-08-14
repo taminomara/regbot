@@ -34,6 +34,7 @@ function migration1NewInterviewEngine(old: SessionDataV0): SessionData {
       old.interviewStep === undefined
         ? undefined
         : {
+            id: 0,
             name: "interview",
             payload: undefined,
             step: old.interviewStep,

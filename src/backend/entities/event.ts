@@ -15,9 +15,10 @@ import { User } from "#root/backend/entities/user.js";
 
 @Entity()
 export class Event {
-  constructor(name: string, date: Date) {
+  constructor(name: string, date: Date, announceTextHtml: string) {
     this.name = name;
     this.date = date;
+    this.announceTextHtml = announceTextHtml;
   }
 
   @PrimaryKey()
@@ -30,7 +31,8 @@ export class Event {
   date: Date;
 
   @Property() // TODO: make lazy
-  announceTextHtml: string | null = null;
+  @Index()
+  announceTextHtml: string;
 
   @Property()
   announcePhotoId: string | null = null;
@@ -39,16 +41,30 @@ export class Event {
   reminderTextHtml: string | null = null;
 
   @Property()
-  published: boolean = false;
-
-  @Property()
   channelPostId: number | null = null;
 
   @Property()
   chatPostId: number | null = null;
 
+  /// This event was visible to the users for any amount of time.
+  @Property()
+  published: boolean = false;
+
+  /// Users can find this event in the menu.
+  @Property()
+  visibleInMenu: boolean = false;
+
+  /// Users can sign up to this event.
   @Property()
   registrationOpen: boolean = false;
+
+  /// This event was cancelled.
+  @Property()
+  cancelled: boolean = false;
+
+  /// This event's date was changed after its publication.
+  @Property()
+  dateChanged: boolean = false;
 
   @Property()
   requireApproval: boolean = false;
