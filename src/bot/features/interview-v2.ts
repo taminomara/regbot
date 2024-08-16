@@ -27,6 +27,7 @@ import {
 } from "#root/bot/helpers/conversations-v2.js";
 import { config } from "#root/config.js";
 
+import { isApproved } from "../filters/is-approved.js";
 import { logHandle } from "../helpers/logging.js";
 
 export const composer = new Composer<Context>();
@@ -112,7 +113,10 @@ export const interviewConversation = conversation<Context>(
       ctx.user.id,
     );
 
-    if (["member", "creator", "administrator"].includes(chatMember.status)) {
+    if (
+      (await isApproved(ctx)) ||
+      ["member", "creator", "administrator"].includes(chatMember.status)
+    ) {
       // We're done here.
       ctx.user.status = UserStatus.Approved;
       await updateUser(ctx.user.id, { status: UserStatus.Approved });
