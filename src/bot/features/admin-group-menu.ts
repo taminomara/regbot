@@ -14,6 +14,7 @@ import {
 import {
   enterEditGender,
   enterEditName,
+  enterEditPositioning,
   enterEditPronouns,
   enterEditSexuality,
 } from "#root/bot/features/edit-user.js";
@@ -141,6 +142,12 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_sexuality")),
         logHandle("menu:adminGroupEditUserMenu:edit-sexuality"),
         async (ctx) => enterEditSexuality(ctx, user.id),
+      )
+      .row()
+      .text(
+        withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_positioning")),
+        logHandle("menu:adminGroupEditUserMenu:edit-positioning"),
+        async (ctx) => enterEditPositioning(ctx, user.id),
       )
       .row();
   })

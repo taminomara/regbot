@@ -181,6 +181,7 @@ export async function formatAboutMe(user: User) {
       pronouns: sanitizeHtmlOrEmpty(user.pronouns),
       gender: sanitizeHtmlOrEmpty(user.gender),
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
+      positioning: sanitizeHtmlOrEmpty(user.positioning),
       status: user.status,
       details,
     }),

@@ -115,9 +115,16 @@ export async function setUserSexuality(
   return updateUser(id, { sexuality: normalizeIdentity(sexuality) });
 }
 
+export async function setUserPositioning(
+  id: number,
+  positioning: string,
+): Promise<User> {
+  return updateUser(id, { positioning: normalizeIdentity(positioning) });
+}
+
 const normalizeIdentity = (s: string) => {
   return s
-    .replaceAll(/^[🌻🌸🪻🌿🐝🦊🐨🧁🍩🍉🥑]/gu, "")
+    .replaceAll(/^[🌻🌸🪻🌿🐝🦊🐨🧁🍩🍉🥑😈🥺🙃]/gu, "")
     .replaceAll(/\s+/gu, " ")
     .replaceAll(/\s*?\/\s*/gu, "/")
     .trim()

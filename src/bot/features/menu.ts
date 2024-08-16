@@ -14,6 +14,7 @@ import { Context } from "#root/bot/context.js";
 import {
   enterEditGender,
   enterEditName,
+  enterEditPositioning,
   enterEditPronouns,
   enterEditSexuality,
 } from "#root/bot/features/edit-user.js";
@@ -51,6 +52,7 @@ export async function sendEditProfileMenu(ctx: Context, chatId: number) {
       pronouns: sanitizeHtmlOrEmpty(user.pronouns),
       gender: sanitizeHtmlOrEmpty(user.gender),
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
+      positioning: sanitizeHtmlOrEmpty(user.positioning),
     }),
     {
       reply_markup: eventsMenu.at("editProfileMenu"),
@@ -157,6 +159,7 @@ async function updateProfileMenu(ctx: Context) {
       pronouns: sanitizeHtmlOrEmpty(user.pronouns),
       gender: sanitizeHtmlOrEmpty(user.gender),
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
+      positioning: sanitizeHtmlOrEmpty(user.positioning),
     }),
   );
 }
@@ -182,6 +185,12 @@ const editProfileMenu = new Menu<Context>("editProfileMenu")
     (ctx) => ctx.t("menu.edit_sexuality"),
     logHandle("menu:editProfileMenu:edit-sexuality"),
     async (ctx) => enterEditSexuality(ctx, ctx.user.id, true),
+  )
+  .row()
+  .text(
+    (ctx) => ctx.t("menu.edit_positioning"),
+    logHandle("menu:editProfileMenu:edit-positioning"),
+    async (ctx) => enterEditPositioning(ctx, ctx.user.id, true),
   )
   .row()
   .back(

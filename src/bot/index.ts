@@ -79,6 +79,7 @@ export async function onStart(bot: Bot<Context>) {
       pronouns: "they/she/it",
       gender: "machine",
       sexuality: "pansexual",
+      positioning: "switch (top for you, bottom for mommy)",
     });
     await orm.em.flush();
     startBackgroundProcess(bot);

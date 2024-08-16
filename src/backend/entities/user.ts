@@ -64,6 +64,9 @@ export class User {
   sexuality: string | null = null;
 
   @Property()
+  positioning: string | null = null;
+
+  @Property()
   pendingSignup: number | null = null;
 }
 
