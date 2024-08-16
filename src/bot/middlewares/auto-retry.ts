@@ -129,9 +129,6 @@ export function autoRetry(options?: Partial<AutoRetryOptions>): Transformer {
     options?.rethrowInternalServerErrors ?? false;
   const rethrowHttpErrors = options?.rethrowHttpErrors ?? false;
   return async (prev, method, payload, signal) => {
-    metrics.telegramApiCallsStarted.inc({ method });
-    metrics.telegramApiCallsInflight.inc({ method });
-
     logger.debug({
       msg: "Bot API call",
       method,
@@ -148,7 +145,11 @@ export function autoRetry(options?: Partial<AutoRetryOptions>): Transformer {
     }
     async function call() {
       while (true) {
+        metrics.telegramApiCallsStarted.inc({ method });
+        metrics.telegramApiCallsInflight.inc({ method });
+
         const startTime = performance.now();
+
         try {
           return await prev(method, payload, signal);
         } catch (e) {
@@ -172,6 +173,8 @@ export function autoRetry(options?: Partial<AutoRetryOptions>): Transformer {
           const endTime = performance.now();
           const elapsed = endTime - startTime;
 
+          metrics.telegramApiCallsFinished.inc({ method });
+          metrics.telegramApiCallsInflight.dec({ method });
           metrics.telegramApiCallsTimeMs.observe({ method }, elapsed);
         }
 
@@ -212,9 +215,6 @@ export function autoRetry(options?: Partial<AutoRetryOptions>): Transformer {
       }
       remainingAttempts -= 1;
     } while (retry && !result.ok && remainingAttempts >= 0);
-
-    metrics.telegramApiCallsFinished.inc({ method });
-    metrics.telegramApiCallsInflight.dec({ method });
 
     return result;
   };
