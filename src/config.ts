@@ -1,18 +1,14 @@
-import { env, loadEnvFile } from "node:process";
+import { config as loadEnv } from "dotenv";
 import { parseEnv, z } from "znv";
 
 // fix for https://github.com/microsoft/TypeScript/issues/47663
 import * as _ from "#root/../node_modules/znv/dist/util.js";
 
-try {
-  loadEnvFile(env.REGBOT_ENV_FILE_PATH);
-} catch {
-  // No .env file found
-}
+loadEnv({ path: process.env.REGBOT_ENV_FILE_PATH });
 
 const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
   const config = parseEnv(environment, {
-    NODE_ENV: z.enum(["development", "production"]),
+    NODE_ENV: z.enum(["development", "production", "test"]),
     LOG_LEVEL: z
       .enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"])
       .default("info"),
@@ -35,7 +31,7 @@ const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
 
   return {
     ...config,
-    isDev: process.env.NODE_ENV === "development",
+    isDev: ["development", "test"].includes(config.NODE_ENV),
     isProd: process.env.NODE_ENV === "production",
   };
 };

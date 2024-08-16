@@ -1,6 +1,6 @@
 {
   "trailingComma": "all",
-  "importOrder": ["^#root/(.*)$", "^[./]"],
+  "importOrder": ["^#root/(.*)$", "^#test/(.*)$", "^[./]"],
   "importOrderSeparation": true,
   "importOrderSortSpecifiers": true,
   "plugins": ["@trivago/prettier-plugin-sort-imports"],

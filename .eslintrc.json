@@ -52,6 +52,14 @@
     ],
     "prettier/prettier": "warn"
   },
+  "overrides": [
+    {
+      "files": ["**/*.test.*", "test/**/*"],
+      "rules": {
+        "import/no-extraneous-dependencies": "off"
+      }
+    }
+  ],
   "settings": {
     "import/parsers": {
       "@typescript-eslint/parser": [".ts"]
@@ -62,5 +70,11 @@
       }
     }
   },
-  "ignorePatterns": ["build/*", "scripts/*", "src/backend/migrations/*", "src/_messages.ts"]
+  "ignorePatterns": [
+    "build/*",
+    "scripts/*",
+    "src/backend/migrations/*",
+    "src/_messages.ts",
+    "jest.config.js"
+  ]
 }
