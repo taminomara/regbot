@@ -3,6 +3,7 @@ import { Composer, Keyboard } from "grammy";
 import {
   setUserGender,
   setUserName,
+  setUserPositioning,
   setUserPronouns,
   setUserSexuality,
 } from "#root/backend/user.js";
@@ -185,6 +186,49 @@ export async function enterEditSexuality(
   }
 }
 
+const editPositioning = conversation<
+  Context,
+  { userId: number; sendMenu?: boolean }
+>("editPositioning", logHandle("conversation:editPositioning"))
+  .proceed(async (ctx, opts) => {
+    await ctx.reply(ctx.t("interview.edit_positioning"), {
+      reply_markup: new Keyboard()
+        .text(ctx.t("interview.positioning_top"))
+        .text(ctx.t("interview.positioning_bottom"))
+        .text(ctx.t("interview.positioning_switch"))
+        .placeholder(ctx.t("interview.can_use_custom_positioning"))
+        .resized(),
+      message_thread_id: ctx.msg?.message_thread_id,
+    });
+    return opts;
+  })
+  .either()
+  .waitCommand("cancel", async (ctx, opts) => {
+    await sendCancelled(ctx);
+    return opts;
+  })
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
+    const user = await setUserPositioning(opts.userId, ctx.message.text);
+    await updateAdminGroupTopicTitle(ctx, user);
+    await sendConfirmation(ctx);
+    return opts;
+  })
+  .done()
+  .proceed(async (ctx, opts) => {
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+  })
+  .build();
+composer.use(editPositioning);
+export async function enterEditPositioning(
+  ctx: Context,
+  userId: number,
+  sendMenu: boolean = false,
+) {
+  if (await checkNoConversations(ctx)) {
+    await editPositioning.enter(ctx, { userId, sendMenu });
+  }
+}
+
 async function checkNoConversations(ctx: Context) {
   switch (ctx.session.linearConversation?.name) {
     case "interview":
@@ -214,6 +258,12 @@ async function checkNoConversations(ctx: Context) {
     case "editSexuality":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_sexuality_first"),
+        show_alert: true,
+      });
+      return false;
+    case "editPositioning":
+      await ctx.answerCallbackQuery({
+        text: ctx.t("interview.edit_positioning_first"),
         show_alert: true,
       });
       return false;

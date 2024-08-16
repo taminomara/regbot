@@ -7,6 +7,7 @@ import { UserStatus } from "#root/backend/entities/user.js";
 import {
   setUserGender,
   setUserName,
+  setUserPositioning,
   setUserPronouns,
   setUserSexuality,
   updateUser,
@@ -90,6 +91,19 @@ export const interviewConversation = conversation<Context>(
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
     await setUserSexuality(ctx.user.id, ctx.message.text);
+  })
+  .proceed(async (ctx) => {
+    await ctx.reply(ctx.t("interview.positioning"), {
+      reply_markup: new Keyboard()
+        .text(ctx.t("interview.positioning_top"))
+        .text(ctx.t("interview.positioning_bottom"))
+        .text(ctx.t("interview.positioning_switch"))
+        .placeholder(ctx.t("interview.can_use_custom_positioning"))
+        .resized(),
+    });
+  })
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
+    await setUserPositioning(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
     // Allow trusted users in without an interview.
