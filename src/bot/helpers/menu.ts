@@ -22,3 +22,11 @@ export async function patchCtx(
     if (options.locale) await ctx.i18n.setLocale(lastLocale);
   }
 }
+
+export function makeOutdatedHandler(updater: (ctx: Context) => Promise<void>) {
+  return async (ctx: Context) => {
+    ctx.menu.update();
+    await updater(ctx);
+    await ctx.answerCallbackQuery(ctx.t("menu.outdated"));
+  };
+}

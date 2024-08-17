@@ -33,7 +33,7 @@ import { config } from "#root/config.js";
 
 import { userLink } from "../helpers/links.js";
 import { logHandle } from "../helpers/logging.js";
-import { patchCtx } from "../helpers/menu.js";
+import { makeOutdatedHandler, patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
 
@@ -53,7 +53,7 @@ export async function sendAdminGroupUserMenu(ctx: Context, user: User) {
 }
 
 const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
-  onMenuOutdated: updateAdminGroupUserMenu,
+  onMenuOutdated: makeOutdatedHandler(updateAdminGroupUserMenu),
 })
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.update")),
@@ -110,6 +110,7 @@ const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
     }
   });
 feature.use(adminGroupUserMenu);
+
 async function updateAdminGroupUserMenu(ctx: Context) {
   const user = await getUserFromMatch(ctx);
   if (user !== undefined) {
@@ -117,7 +118,10 @@ async function updateAdminGroupUserMenu(ctx: Context) {
   }
 }
 
-const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")
+const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateAdminGroupEditUserMenu),
+  autoAnswer: false,
+})
   .dynamic(async (ctx, range) => {
     const user = await getUserFromMatch(ctx);
     if (user === undefined) return;
@@ -126,42 +130,72 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_name")),
         logHandle("menu:adminGroupEditUserMenu:edit-name"),
-        async (ctx) => enterEditName(ctx, user.id),
+        async (ctx) => {
+          if (await enterEditName(ctx, user.id)) {
+            await ctx.answerCallbackQuery();
+          }
+        },
       )
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_pronouns")),
         logHandle("menu:adminGroupEditUserMenu:edit-pronouns"),
-        async (ctx) => enterEditPronouns(ctx, user.id),
+        async (ctx) => {
+          if (await enterEditPronouns(ctx, user.id)) {
+            await ctx.answerCallbackQuery();
+          }
+        },
       )
       .row()
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_gender")),
         logHandle("menu:adminGroupEditUserMenu:edit-gender"),
-        async (ctx) => enterEditGender(ctx, user.id),
+        async (ctx) => {
+          if (await enterEditGender(ctx, user.id)) {
+            await ctx.answerCallbackQuery();
+          }
+        },
       )
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_sexuality")),
         logHandle("menu:adminGroupEditUserMenu:edit-sexuality"),
-        async (ctx) => enterEditSexuality(ctx, user.id),
+        async (ctx) => {
+          if (await enterEditSexuality(ctx, user.id)) {
+            await ctx.answerCallbackQuery();
+          }
+        },
       )
       .row()
       .text(
-        withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_positioning")),
+        withPayload(() =>
+          i18n.t(config.DEFAULT_LOCALE, "menu.edit_positioning"),
+        ),
         logHandle("menu:adminGroupEditUserMenu:edit-positioning"),
-        async (ctx) => enterEditPositioning(ctx, user.id),
+        async (ctx) => {
+          if (await enterEditPositioning(ctx, user.id)) {
+            await ctx.answerCallbackQuery();
+          }
+        },
       )
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_about_me")),
         logHandle("menu:adminGroupEditUserMenu:edit-aboutMe"),
-        async (ctx) => enterEditAboutMe(ctx, user.id),
+        async (ctx) => {
+          if (await enterEditAboutMe(ctx, user.id)) {
+            await ctx.answerCallbackQuery();
+          }
+        },
       )
       .row();
   })
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.back")),
-    updateAdminGroupUserMenu,
+    async (ctx) => {
+      await updateAdminGroupUserMenu(ctx);
+      await ctx.answerCallbackQuery();
+    },
   );
 adminGroupUserMenu.register(adminGroupEditUserMenu);
+
 async function updateAdminGroupEditUserMenu(ctx: Context) {
   await editMessageTextSafe(
     ctx,
@@ -169,7 +203,9 @@ async function updateAdminGroupEditUserMenu(ctx: Context) {
   );
 }
 
-const adminGroupBanUserMenu = new Menu<Context>("adminGroupBanUserMenu")
+const adminGroupBanUserMenu = new Menu<Context>("adminGroupBanUserMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateAdminGroupBanUserMenu),
+})
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.back")),
     logHandle("menu:adminGroupBanUserMenu:back"),
@@ -187,6 +223,7 @@ const adminGroupBanUserMenu = new Menu<Context>("adminGroupBanUserMenu")
     },
   );
 adminGroupUserMenu.register(adminGroupBanUserMenu);
+
 async function updateAdminGroupBanUserMenu(ctx: Context) {
   const user = await getUserFromMatch(ctx);
   if (user === undefined) return;
@@ -200,7 +237,9 @@ async function updateAdminGroupBanUserMenu(ctx: Context) {
   );
 }
 
-const adminGroupUnbanUserMenu = new Menu<Context>("adminGroupUnbanUserMenu")
+const adminGroupUnbanUserMenu = new Menu<Context>("adminGroupUnbanUserMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateAdminGroupUnbanUserMenu),
+})
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.back")),
     logHandle("menu:adminGroupUnbanUserMenu:back"),
@@ -218,6 +257,7 @@ const adminGroupUnbanUserMenu = new Menu<Context>("adminGroupUnbanUserMenu")
     },
   );
 adminGroupUserMenu.register(adminGroupUnbanUserMenu);
+
 async function updateAdminGroupUnbanUserMenu(ctx: Context) {
   const user = await getUserFromMatch(ctx);
   if (user === undefined) return;

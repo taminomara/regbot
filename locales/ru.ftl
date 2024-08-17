@@ -239,6 +239,8 @@ event =
     .free_donation = любой донат
 
 menu =
+    .outdated = Это меню устарело, попробуйте заново.
+
     .about =
         Имя: <b>{$name}</b>
         Местоимения: <b>{$pronouns}</b>
