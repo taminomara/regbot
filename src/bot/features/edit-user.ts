@@ -277,6 +277,12 @@ const editAboutMe = conversation<
     await sendCancelled(ctx);
     return opts;
   })
+  .waitCommand("empty", async (ctx, opts) => {
+    const user = await updateUser(opts.userId, { aboutMeHtml: null });
+    await updateAdminGroupTopicTitle(ctx, user);
+    await sendConfirmation(ctx);
+    return opts;
+  })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const aboutMeHtml = parseTelegramEntities(
       ctx.message.text,

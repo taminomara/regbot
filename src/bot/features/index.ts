@@ -45,3 +45,13 @@ registerCommandHelp({
   scope: CommandScope.AdminGroup,
   privileges: CommandPrivileges.AllUsers,
 });
+registerCommandHelp({
+  command: "empty",
+  scope: CommandScope.PrivateChat,
+  privileges: CommandPrivileges.AllUsers,
+});
+registerCommandHelp({
+  command: "empty",
+  scope: CommandScope.AdminGroup,
+  privileges: CommandPrivileges.AllUsers,
+});

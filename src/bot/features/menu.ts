@@ -10,7 +10,7 @@ import {
   getEventWithUserSignup,
   upcomingEventsWithUserSignup,
 } from "#root/backend/event.js";
-import { getUserOrFail } from "#root/backend/user.js";
+import { User, getUserOrFail } from "#root/backend/user.js";
 import { Context } from "#root/bot/context.js";
 import {
   enterEditAboutMe,
@@ -47,19 +47,9 @@ export const composer = new Composer<Context>();
 
 export async function sendEditProfileMenu(ctx: Context, chatId: number) {
   const user = await getUserOrFail(ctx.user.id);
-  await ctx.api.sendMessage(
-    chatId,
-    ctx.t("menu.about", {
-      name: sanitizeHtmlOrEmpty(user.name),
-      pronouns: sanitizeHtmlOrEmpty(user.pronouns),
-      gender: sanitizeHtmlOrEmpty(user.gender),
-      sexuality: sanitizeHtmlOrEmpty(user.sexuality),
-      positioning: sanitizeHtmlOrEmpty(user.positioning),
-    }),
-    {
-      reply_markup: eventsMenu.at("editProfileMenu"),
-    },
-  );
+  await ctx.api.sendMessage(chatId, formatAbout(ctx, user), {
+    reply_markup: eventsMenu.at("editProfileMenu"),
+  });
 }
 
 export async function sendEventsMenu(
@@ -159,6 +149,10 @@ eventsMenu.register(profileMenu);
 async function updateProfileMenu(ctx: Context) {
   const user = await getUserOrFail(ctx.user.id);
 
+  await editMessageTextSafe(ctx, formatAbout(ctx, user));
+}
+
+function formatAbout(ctx: Context, user: User) {
   let about = ctx.t("menu.about", {
     name: sanitizeHtmlOrEmpty(user.name),
     pronouns: sanitizeHtmlOrEmpty(user.pronouns),
@@ -173,7 +167,7 @@ async function updateProfileMenu(ctx: Context) {
     }</blockquote>`;
   }
 
-  await editMessageTextSafe(ctx, about);
+  return about;
 }
 
 const editProfileMenu = new Menu<Context>("editProfileMenu", {
