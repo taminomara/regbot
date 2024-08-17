@@ -41,7 +41,7 @@ import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { formatEventText, formatEventTitleForMenu } from "../helpers/event.js";
 import { userLink } from "../helpers/links.js";
 import { logHandle } from "../helpers/logging.js";
-import { patchCtx } from "../helpers/menu.js";
+import { makeOutdatedHandler, patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
 
@@ -97,7 +97,9 @@ export async function sendEventMenu(
   });
 }
 
-const eventsMenu = new Menu<Context>("eventsMenu")
+const eventsMenu = new Menu<Context>("eventsMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateEventsMenu),
+})
   .text(
     (ctx) => ctx.t("menu.update"),
     logHandle("menu:eventsMenu:update"),
@@ -133,7 +135,9 @@ async function updateEventsMenu(ctx: Context) {
   await editMessageTextSafe(ctx, ctx.t("menu.events"));
 }
 
-const profileMenu = new Menu<Context>("profileMenu")
+const profileMenu = new Menu<Context>("profileMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateProfileMenu),
+})
   .text(
     (ctx) => ctx.t("menu.update"),
     logHandle("menu:profileMenu:update"),
@@ -172,51 +176,83 @@ async function updateProfileMenu(ctx: Context) {
   await editMessageTextSafe(ctx, about);
 }
 
-const editProfileMenu = new Menu<Context>("editProfileMenu")
+const editProfileMenu = new Menu<Context>("editProfileMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateEditProfileMenu),
+  autoAnswer: false,
+})
   .text(
     (ctx) => ctx.t("menu.edit_name"),
     logHandle("menu:editProfileMenu:edit-name"),
-    async (ctx) => enterEditName(ctx, ctx.user.id, true),
+    async (ctx) => {
+      if (await enterEditName(ctx, ctx.user.id, true)) {
+        await ctx.answerCallbackQuery();
+      }
+    },
   )
   .text(
     (ctx) => ctx.t("menu.edit_pronouns"),
     logHandle("menu:editProfileMenu:edit-pronouns"),
-    async (ctx) => enterEditPronouns(ctx, ctx.user.id, true),
+    async (ctx) => {
+      if (await enterEditPronouns(ctx, ctx.user.id, true)) {
+        await ctx.answerCallbackQuery();
+      }
+    },
   )
   .row()
   .text(
     (ctx) => ctx.t("menu.edit_gender"),
     logHandle("menu:editProfileMenu:edit-gender"),
-    async (ctx) => enterEditGender(ctx, ctx.user.id, true),
+    async (ctx) => {
+      if (await enterEditGender(ctx, ctx.user.id, true)) {
+        await ctx.answerCallbackQuery();
+      }
+    },
   )
   .text(
     (ctx) => ctx.t("menu.edit_sexuality"),
     logHandle("menu:editProfileMenu:edit-sexuality"),
-    async (ctx) => enterEditSexuality(ctx, ctx.user.id, true),
+    async (ctx) => {
+      if (await enterEditSexuality(ctx, ctx.user.id, true)) {
+        await ctx.answerCallbackQuery();
+      }
+    },
   )
   .row()
   .text(
     (ctx) => ctx.t("menu.edit_positioning"),
     logHandle("menu:editProfileMenu:edit-positioning"),
-    async (ctx) => enterEditPositioning(ctx, ctx.user.id, true),
+    async (ctx) => {
+      if (await enterEditPositioning(ctx, ctx.user.id, true)) {
+        await ctx.answerCallbackQuery();
+      }
+    },
   )
   .text(
     withPayload((ctx) => ctx.t("menu.edit_about_me")),
     logHandle("menu:adminGroupEditUserMenu:edit-aboutMe"),
-    async (ctx) => enterEditAboutMe(ctx, ctx.user.id, true),
+    async (ctx) => {
+      if (await enterEditAboutMe(ctx, ctx.user.id, true)) {
+        await ctx.answerCallbackQuery();
+      }
+    },
   )
   .row()
   .back(
     (ctx) => ctx.t("menu.back"),
     logHandle("menu:editProfileMenu:back"),
-    updateProfileMenu,
+    async (ctx) => {
+      await updateProfileMenu(ctx);
+      await ctx.answerCallbackQuery();
+    },
   );
 profileMenu.register(editProfileMenu);
 async function updateEditProfileMenu(ctx: Context) {
   await updateProfileMenu(ctx);
 }
 
-const eventMenu = new Menu<Context>("eventMenu")
+const eventMenu = new Menu<Context>("eventMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateEventMenu),
+})
   .dynamic(async (ctx, range) => {
     if (!(await isApproved(ctx))) return;
 
@@ -309,7 +345,9 @@ async function updateEventMenu(ctx: Context) {
   });
 }
 
-const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu")
+const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateEventParticipantsMenu),
+})
   .text(
     withPayload((ctx) => ctx.t("menu.update")),
     logHandle("menu:eventParticipantsMenu:update"),
@@ -390,7 +428,9 @@ async function updateEventParticipantsMenu(ctx: Context) {
   );
 }
 
-const eventParticipantMenu = new Menu<Context>("eventParticipantMenu")
+const eventParticipantMenu = new Menu<Context>("eventParticipantMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateEventParticipantMenu),
+})
   .text(
     withPayload((ctx) => ctx.t("menu.update")),
     logHandle("menu:eventParticipantMenu:update"),
@@ -492,7 +532,9 @@ async function eventParticipantMenuNext(ctx: Context, n: number) {
   }
 }
 
-export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu")
+export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateCancelSignupMenu),
+})
   .back(
     withPayload((ctx) => ctx.t("menu.cancel_signup_button_no")),
     logHandle("menu:cancelSignupMenu:back"),
@@ -515,6 +557,7 @@ async function updateCancelSignupMenu(ctx: Context) {
 }
 
 const optionsMenu = new Menu<Context>("optionsMenu", {
+  onMenuOutdated: makeOutdatedHandler(updateOptionsMenu),
   fingerprint: async (ctx) =>
     (await getEventFromMatch(ctx))?.participationOptions?.join("\n") ?? "",
 }).dynamic(async (ctx, range) => {
@@ -542,10 +585,7 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
   }
 
   range.back(
-    {
-      text: (ctx) => ctx.t("menu.back"),
-      payload: (ctx) => String(unpackMatch(ctx.match).eventId),
-    },
+    withPayload((ctx) => ctx.t("menu.back")),
     logHandle("menu:optionsMenu:back"),
     updateEventMenu,
   );

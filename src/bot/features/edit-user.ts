@@ -56,6 +56,9 @@ export async function enterEditName(
 ) {
   if (await checkNoConversations(ctx)) {
     await editName.enter(ctx, { userId, sendMenu });
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -101,6 +104,9 @@ export async function enterEditPronouns(
 ) {
   if (await checkNoConversations(ctx)) {
     await editPronouns.enter(ctx, { userId, sendMenu });
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -144,6 +150,9 @@ export async function enterEditGender(
 ) {
   if (await checkNoConversations(ctx)) {
     await editGender.enter(ctx, { userId, sendMenu });
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -189,6 +198,9 @@ export async function enterEditSexuality(
 ) {
   if (await checkNoConversations(ctx)) {
     await editSexuality.enter(ctx, { userId, sendMenu });
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -232,6 +244,9 @@ export async function enterEditPositioning(
 ) {
   if (await checkNoConversations(ctx)) {
     await editPositioning.enter(ctx, { userId, sendMenu });
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -285,6 +300,9 @@ export async function enterEditAboutMe(
 ) {
   if (await checkNoConversations(ctx)) {
     await editAboutMe.enter(ctx, { userId, sendMenu });
+    return true;
+  } else {
+    return false;
   }
 }
 
@@ -294,43 +312,36 @@ async function checkNoConversations(ctx: Context) {
     case "interview:post":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.finish_interview_first"),
-        show_alert: true,
       });
       return false;
     case "editName":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_name_first"),
-        show_alert: true,
       });
       return false;
     case "editPronouns":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_pronouns_first"),
-        show_alert: true,
       });
       return false;
     case "editGender":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_gender_first"),
-        show_alert: true,
       });
       return false;
     case "editSexuality":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_sexuality_first"),
-        show_alert: true,
       });
       return false;
     case "editPositioning":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_positioning_first"),
-        show_alert: true,
       });
       return false;
     case "editAboutMe":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_positioning_first"),
-        show_alert: true,
       });
       return false;
   }
