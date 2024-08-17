@@ -12,6 +12,7 @@ import {
   unbanUser,
 } from "#root/bot/features/admin-group.js";
 import {
+  enterEditAboutMe,
   enterEditGender,
   enterEditName,
   enterEditPositioning,
@@ -148,6 +149,11 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu")
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_positioning")),
         logHandle("menu:adminGroupEditUserMenu:edit-positioning"),
         async (ctx) => enterEditPositioning(ctx, user.id),
+      )
+      .text(
+        withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_about_me")),
+        logHandle("menu:adminGroupEditUserMenu:edit-aboutMe"),
+        async (ctx) => enterEditAboutMe(ctx, user.id),
       )
       .row();
   })

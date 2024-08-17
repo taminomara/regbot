@@ -67,6 +67,9 @@ export class User {
   positioning: string | null = null;
 
   @Property()
+  aboutMeHtml: string | null = null;
+
+  @Property()
   pendingSignup: number | null = null;
 }
 

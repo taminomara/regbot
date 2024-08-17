@@ -1,17 +1,23 @@
 import { Composer, Keyboard } from "grammy";
 
 import {
+  getUser,
   setUserGender,
   setUserName,
   setUserPositioning,
   setUserPronouns,
   setUserSexuality,
+  updateUser,
 } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
 
-import { conversation } from "../helpers/conversations-v2.js";
+import {
+  conversation,
+  finishConversation,
+} from "../helpers/conversations-v2.js";
 import { logHandle } from "../helpers/logging.js";
+import { parseTelegramEntities } from "../helpers/parse-telegram-entities.js";
 import { sendEditProfileMenu } from "./menu.js";
 
 export const composer = new Composer<Context>();
@@ -229,9 +235,63 @@ export async function enterEditPositioning(
   }
 }
 
+const editAboutMe = conversation<
+  Context,
+  { userId: number; sendMenu?: boolean }
+>("editAboutMe", logHandle("conversation:editAboutMe"))
+  .proceed(async (ctx, opts) => {
+    const user = await getUser(opts.userId);
+    if (user === null) return finishConversation();
+
+    if (user.aboutMeHtml !== null) {
+      await ctx.reply(ctx.t("interview.edit_about_me_with_current_text"), {
+        message_thread_id: ctx.msg?.message_thread_id,
+      });
+      await ctx.reply(user.aboutMeHtml, {
+        message_thread_id: ctx.msg?.message_thread_id,
+      });
+    } else {
+      await ctx.reply(ctx.t("interview.edit_about_me"), {
+        message_thread_id: ctx.msg?.message_thread_id,
+      });
+    }
+    return opts;
+  })
+  .either()
+  .waitCommand("cancel", async (ctx, opts) => {
+    await sendCancelled(ctx);
+    return opts;
+  })
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
+    const aboutMeHtml = parseTelegramEntities(
+      ctx.message.text,
+      ctx.message.entities,
+    );
+    const user = await updateUser(opts.userId, { aboutMeHtml });
+    await updateAdminGroupTopicTitle(ctx, user);
+    await sendConfirmation(ctx);
+    return opts;
+  })
+  .done()
+  .proceed(async (ctx, opts) => {
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+  })
+  .build();
+composer.use(editAboutMe);
+export async function enterEditAboutMe(
+  ctx: Context,
+  userId: number,
+  sendMenu: boolean = false,
+) {
+  if (await checkNoConversations(ctx)) {
+    await editAboutMe.enter(ctx, { userId, sendMenu });
+  }
+}
+
 async function checkNoConversations(ctx: Context) {
   switch (ctx.session.linearConversation?.name) {
     case "interview":
+    case "interview:post":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.finish_interview_first"),
         show_alert: true,
@@ -262,6 +322,12 @@ async function checkNoConversations(ctx: Context) {
       });
       return false;
     case "editPositioning":
+      await ctx.answerCallbackQuery({
+        text: ctx.t("interview.edit_positioning_first"),
+        show_alert: true,
+      });
+      return false;
+    case "editAboutMe":
       await ctx.answerCallbackQuery({
         text: ctx.t("interview.edit_positioning_first"),
         show_alert: true,

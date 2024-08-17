@@ -377,14 +377,14 @@ function formatEventDescription(ctx: Context, event: Event) {
   });
 
   const announceTextHtml = formatEventText(ctx, event);
-  eventDescription += `\n\n${ctx.t(
+  eventDescription += `\n\n<b>${ctx.t(
     "manage_events.eventText",
-  )}\n\n<blockquote expandable>${announceTextHtml}</blockquote>`;
+  )}</b>\n\n<blockquote expandable>${announceTextHtml}</blockquote>`;
 
   if (event.reminderTextHtml !== null) {
-    eventDescription += `\n\n${ctx.t(
+    eventDescription += `\n\n<b>${ctx.t(
       "manage_events.eventReminder",
-    )}\n\n<blockquote expandable>${event.reminderTextHtml}</blockquote>`;
+    )}</b>\n\n<blockquote expandable>${event.reminderTextHtml}</blockquote>`;
   }
 
   return eventDescription;
