@@ -6,12 +6,14 @@ import {
   Event,
   SignupStatus,
   getApprovedEventSignups,
+  getEventSignup,
   getEventWithUserSignup,
   upcomingEventsWithUserSignup,
 } from "#root/backend/event.js";
 import { getUserOrFail } from "#root/backend/user.js";
 import { Context } from "#root/bot/context.js";
 import {
+  enterEditAboutMe,
   enterEditGender,
   enterEditName,
   enterEditPositioning,
@@ -152,16 +154,22 @@ const profileMenu = new Menu<Context>("profileMenu")
 eventsMenu.register(profileMenu);
 async function updateProfileMenu(ctx: Context) {
   const user = await getUserOrFail(ctx.user.id);
-  await editMessageTextSafe(
-    ctx,
-    ctx.t("menu.about", {
-      name: sanitizeHtmlOrEmpty(user.name),
-      pronouns: sanitizeHtmlOrEmpty(user.pronouns),
-      gender: sanitizeHtmlOrEmpty(user.gender),
-      sexuality: sanitizeHtmlOrEmpty(user.sexuality),
-      positioning: sanitizeHtmlOrEmpty(user.positioning),
-    }),
-  );
+
+  let about = ctx.t("menu.about", {
+    name: sanitizeHtmlOrEmpty(user.name),
+    pronouns: sanitizeHtmlOrEmpty(user.pronouns),
+    gender: sanitizeHtmlOrEmpty(user.gender),
+    sexuality: sanitizeHtmlOrEmpty(user.sexuality),
+    positioning: sanitizeHtmlOrEmpty(user.positioning),
+  });
+
+  if (user.aboutMeHtml !== null) {
+    about += `\n\n<b>${ctx.t("menu.about_me")}</b>\n\n<blockquote>${
+      user.aboutMeHtml
+    }</blockquote>`;
+  }
+
+  await editMessageTextSafe(ctx, about);
 }
 
 const editProfileMenu = new Menu<Context>("editProfileMenu")
@@ -191,6 +199,11 @@ const editProfileMenu = new Menu<Context>("editProfileMenu")
     (ctx) => ctx.t("menu.edit_positioning"),
     logHandle("menu:editProfileMenu:edit-positioning"),
     async (ctx) => enterEditPositioning(ctx, ctx.user.id, true),
+  )
+  .text(
+    withPayload((ctx) => ctx.t("menu.edit_about_me")),
+    logHandle("menu:adminGroupEditUserMenu:edit-aboutMe"),
+    async (ctx) => enterEditAboutMe(ctx, ctx.user.id, true),
   )
   .row()
   .back(
@@ -278,7 +291,10 @@ const eventMenu = new Menu<Context>("eventMenu")
   })
   .row()
   .back(
-    withPayload((ctx) => ctx.t("menu.back")),
+    {
+      text: (ctx) => ctx.t("menu.back"),
+      payload: (ctx) => String(unpackMatch(ctx.match).eventId),
+    },
     logHandle("menu:eventMenu:back"),
     updateEventsMenu,
   );
@@ -294,15 +310,63 @@ async function updateEventMenu(ctx: Context) {
 }
 
 const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu")
-  .back(
-    withPayload((ctx) => ctx.t("menu.back")),
-    logHandle("menu:eventParticipantsMenu:back"),
-    updateEventMenu,
-  )
   .text(
     withPayload((ctx) => ctx.t("menu.update")),
     logHandle("menu:eventParticipantsMenu:update"),
     updateEventParticipantsMenu,
+  )
+  .row()
+  .dynamic(async (ctx, range) => {
+    if (!(await isApproved(ctx))) return;
+
+    const event = await getEventFromMatch(ctx);
+    if (event === undefined) return;
+
+    const { options } = unpackMatch(ctx.match);
+
+    const signups = await getApprovedEventSignups(event.id);
+    for (const signup of signups) {
+      let participantOptions = (signup.participationOptions ?? [])
+        .map((option) => /^(?<emoji>\p{Emoji})/gu.exec(option)?.groups?.emoji)
+        .filter((option) => option)
+        .join("/");
+      if (participantOptions.length > 0) {
+        participantOptions = `, ${participantOptions}`;
+      }
+      if (signup.user.positioning !== null) {
+        participantOptions = `, ${sanitizeHtmlOrEmpty(signup.user.positioning)}${participantOptions}`;
+      }
+
+      const text = signup.user.username
+        ? ctx.t("menu.event_participant_button", {
+            name: sanitizeHtmlOrEmpty(signup.user.name),
+            username: sanitizeHtml(signup.user.username),
+            pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
+            options: participantOptions,
+          })
+        : ctx.t("menu.event_participant_button_no_username", {
+            name: sanitizeHtmlOrEmpty(signup.user.name),
+            pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
+            options: participantOptions,
+          });
+
+      range.submenu(
+        {
+          text,
+          payload: packMatch(event.id, options, signup.user.id),
+        },
+        "eventParticipantMenu",
+        logHandle("menu:eventParticipantsMenu:event-participant"),
+        updateEventParticipantMenu,
+      );
+      range.row();
+    }
+  })
+  .row()
+  .back(
+    withPayload((ctx) => ctx.t("menu.back")),
+    logHandle("menu:eventParticipantsMenu:back"),
+    updateEventMenu,
   );
 eventMenu.register(eventParticipantsMenu);
 async function updateEventParticipantsMenu(ctx: Context) {
@@ -311,46 +375,121 @@ async function updateEventParticipantsMenu(ctx: Context) {
   const event = await getEventFromMatch(ctx);
   if (event === undefined) return;
 
-  const participants = (await getApprovedEventSignups(event.id))
-    .map((signup) => {
-      let options = (signup.participationOptions ?? [])
-        .map((option) => /^(?<emoji>\p{Emoji})/gu.exec(option)?.groups?.emoji)
-        .filter((option) => option)
-        .join("/");
-      if (options.length > 0) {
-        options = `, ${options}`;
-      }
-
-      return signup.user.username
-        ? ctx.t("menu.event_participant", {
-            userLink: userLink(signup.user.id),
-            name: sanitizeHtmlOrEmpty(signup.user.name),
-            pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
-            username: sanitizeHtml(signup.user.username),
-            options,
-          })
-        : ctx.t("menu.event_participant_no_username", {
-            userLink: userLink(signup.user.id),
-            name: sanitizeHtmlOrEmpty(signup.user.name),
-            pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
-            options,
-          });
-    })
-    .join("\n");
-
+  const signups = await getApprovedEventSignups(event.id);
   await editMessageTextSafe(
     ctx,
     ctx.t(
-      participants.length > 0
+      signups.length > 0
         ? "menu.event_participants"
         : "menu.event_participants_empty",
       {
-        participants,
         name: sanitizeHtmlOrEmpty(event.name),
         date: toFluentDateTime(event.date),
       },
     ),
   );
+}
+
+const eventParticipantMenu = new Menu<Context>("eventParticipantMenu")
+  .text(
+    withPayload((ctx) => ctx.t("menu.update")),
+    logHandle("menu:eventParticipantMenu:update"),
+    updateEventParticipantMenu,
+  )
+  .row()
+  .text(
+    withPayload((ctx) => ctx.t("menu.previous_profile")),
+    logHandle("menu:eventParticipantMenu:previous"),
+    (ctx) => eventParticipantMenuNext(ctx, -1),
+  )
+  .text(
+    withPayload((ctx) => ctx.t("menu.next_profile")),
+    logHandle("menu:eventParticipantMenu:next"),
+    (ctx) => eventParticipantMenuNext(ctx, 1),
+  )
+  .row()
+  .back(
+    withPayload((ctx) => ctx.t("menu.back")),
+    logHandle("menu:eventParticipantMenu:back"),
+    updateEventParticipantsMenu,
+  );
+eventParticipantsMenu.register(eventParticipantMenu);
+async function updateEventParticipantMenu(ctx: Context) {
+  if (!(await isApproved(ctx))) return;
+
+  const event = await getEventFromMatch(ctx);
+  if (event === undefined) return;
+
+  const { profileUserId } = unpackMatch(ctx.match);
+  if (profileUserId === undefined) return;
+
+  const signup = await getEventSignup(event.id, profileUserId);
+  if (signup === null) return;
+
+  let text =
+    signup.user.username === null
+      ? ctx.t("menu.event_participant_no_username", {
+          userLink: userLink(signup.user.id),
+          name: sanitizeHtmlOrEmpty(signup.user.name),
+          pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
+          options: "",
+        })
+      : ctx.t("menu.event_participant", {
+          userLink: userLink(signup.user.id),
+          name: sanitizeHtmlOrEmpty(signup.user.name),
+          pronouns: sanitizeHtmlOrEmpty(signup.user.pronouns),
+          username: sanitizeHtml(signup.user.username),
+          options: "",
+        });
+
+  if (signup.user.gender !== null) {
+    text += `\n${ctx.t("menu.event_participant_gender", { gender: sanitizeHtml(signup.user.gender) })}`;
+  }
+  if (signup.user.sexuality !== null) {
+    text += `\n${ctx.t("menu.event_participant_sexuality", { sexuality: sanitizeHtml(signup.user.sexuality) })}`;
+  }
+  if (signup.user.positioning !== null) {
+    text += `\n${ctx.t("menu.event_participant_positioning", { positioning: sanitizeHtml(signup.user.positioning) })}`;
+  }
+  if (
+    signup.participationOptions !== null &&
+    signup.participationOptions.length > 0
+  ) {
+    const options = signup.participationOptions.join(", ");
+    text += `\n${ctx.t("menu.event_participant_options", { options: sanitizeHtml(options) })}`;
+  }
+  if (signup.user.aboutMeHtml !== null) {
+    text += `\n\n<b>${ctx.t("menu.about_me")}</b>\n\n<blockquote>${
+      signup.user.aboutMeHtml
+    }</blockquote>`;
+  }
+
+  await editMessageTextSafe(ctx, text);
+}
+async function eventParticipantMenuNext(ctx: Context, n: number) {
+  if (!(await isApproved(ctx))) return;
+
+  const event = await getEventFromMatch(ctx);
+  if (event === undefined) return;
+
+  const { options, profileUserId } = unpackMatch(ctx.match);
+  if (profileUserId === undefined) return;
+
+  const signups = await getApprovedEventSignups(event.id);
+  const index = signups.findIndex((signup) => signup.user.id === profileUserId);
+
+  if (index === -1) {
+    ctx.menu.back();
+    await updateEventParticipantsMenu(ctx);
+  } else {
+    let nextIndex = (index + n + signups.length) % signups.length;
+    while (nextIndex < 0) {
+      nextIndex += signups.length;
+    }
+    ctx.match = packMatch(event.id, options, signups[nextIndex].user.id);
+    ctx.menu.update();
+    await updateEventParticipantMenu(ctx);
+  }
 }
 
 export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu")
@@ -449,7 +588,11 @@ async function updateOptionsMenu(ctx: Context) {
   });
 }
 
-function packMatch(eventId: number, options: boolean[]) {
+function packMatch(
+  eventId: number,
+  options: boolean[],
+  profileUserId?: number,
+) {
   let optionBits = 0;
   for (let i = 0; i < options.length; i += 1) {
     if (options[i]) {
@@ -457,13 +600,21 @@ function packMatch(eventId: number, options: boolean[]) {
       optionBits |= 1 << i;
     }
   }
-  return `${eventId};${String.fromCharCode(optionBits)}`;
+  const encodedProfileUserId =
+    profileUserId === undefined ? "" : String(profileUserId);
+  return `${eventId};${String.fromCharCode(optionBits)};${encodedProfileUserId}`;
 }
 
-function unpackMatch(match?: string): { eventId?: number; options: boolean[] } {
-  const [encodedEventId, encodedOptions] = match?.split(";") ?? ["", ""];
+function unpackMatch(match?: string): {
+  eventId?: number;
+  options: boolean[];
+  profileUserId?: number;
+} {
+  const [encodedEventId, encodedOptions, encodedProfileUserId] = match?.split(
+    ";",
+  ) ?? ["", "", ""];
 
-  let eventId: number | undefined = Number(encodedEventId);
+  let eventId: number | undefined = Number(encodedEventId ?? "");
   if (!Number.isFinite(eventId)) {
     eventId = undefined;
   }
@@ -476,7 +627,13 @@ function unpackMatch(match?: string): { eventId?: number; options: boolean[] } {
     // eslint-disable-next-line no-bitwise
     bitOptions >>= 1;
   }
-  return { eventId, options };
+
+  let profileUserId: number | undefined = Number(encodedProfileUserId ?? "");
+  if (!Number.isFinite(profileUserId)) {
+    profileUserId = undefined;
+  }
+
+  return { eventId, options, profileUserId };
 }
 
 async function getEventFromMatch(ctx: Context) {

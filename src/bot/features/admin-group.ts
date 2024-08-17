@@ -170,6 +170,13 @@ export async function formatAboutMe(user: User) {
     });
   }
 
+  let aboutMe = "";
+  if (user.aboutMeHtml !== null) {
+    aboutMe = `<b>${i18n.t(config.DEFAULT_LOCALE, "admin_group.about_me")}</b>\n\n<blockquote>${
+      user.aboutMeHtml
+    }</blockquote>`;
+  }
+
   return [
     i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_header", {
       userLink: userLink(user.id),
@@ -183,9 +190,12 @@ export async function formatAboutMe(user: User) {
       sexuality: sanitizeHtmlOrEmpty(user.sexuality),
       positioning: sanitizeHtmlOrEmpty(user.positioning),
       status: user.status,
-      details,
     }),
-  ].join("\n\n");
+    details,
+    aboutMe,
+  ]
+    .filter((s) => s.length > 0)
+    .join("\n\n");
 }
 
 export function formatTopicName(userLite: UserLite) {

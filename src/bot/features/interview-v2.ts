@@ -1,7 +1,7 @@
 // State-machine based approach to interview, because the native conversations
 // engine breaks too often.
 import { ReplyKeyboardMarkup } from "@grammyjs/types";
-import { Composer, Filter, Keyboard } from "grammy";
+import { Composer, Filter, InlineKeyboard, Keyboard } from "grammy";
 
 import { UserStatus } from "#root/backend/entities/user.js";
 import {
@@ -23,14 +23,17 @@ import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import { sendApproveMessage } from "#root/bot/features/interview.js";
 import {
   conversation,
-  finishConversation,
+  switchConversation,
 } from "#root/bot/helpers/conversations-v2.js";
 import { config } from "#root/config.js";
 
 import { isApproved } from "../filters/is-approved.js";
 import { logHandle } from "../helpers/logging.js";
+import { parseTelegramEntities } from "../helpers/parse-telegram-entities.js";
 
 export const composer = new Composer<Context>();
+
+const feature = composer.chatType("private");
 
 export const interviewConversation = conversation<Context>(
   "interview",
@@ -117,13 +120,10 @@ export const interviewConversation = conversation<Context>(
       (await isApproved(ctx)) ||
       ["member", "creator", "administrator"].includes(chatMember.status)
     ) {
-      // We're done here.
-      ctx.user.status = UserStatus.Approved;
-      await updateUser(ctx.user.id, { status: UserStatus.Approved });
-      await ensureHasAdminGroupTopic(ctx, ctx.user);
-      await sendApproveMessage(ctx, ctx.user);
-      await postInterviewSignup(ctx);
-      return finishConversation();
+      // We're done here, but we need to ask some final questions.
+      return switchConversation(interviewPostConversation, {
+        isApproved: true,
+      });
     } else {
       await ensureHasAdminGroupTopic(ctx, ctx.user);
     }
@@ -158,13 +158,61 @@ export const interviewConversation = conversation<Context>(
   .waitFilterQueryIgnoreCmd("message", handleResponse)
   .proceed(handleQuestion("interview.personal_borders"))
   .waitFilterQueryIgnoreCmd("message", handleResponse)
-  .proceed(async (ctx) => {
-    await ctx.replyWithChatAction("typing");
-    await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
-    await sendInterviewFinishNotificationToAdminGroupTopic(ctx, ctx.user);
-    await ctx.reply(ctx.t("interview.interview_replies_saved"));
+  .proceed(async () => {
+    return switchConversation(interviewPostConversation, { isApproved: false });
   })
   .build();
+feature.chatType("private").use(interviewConversation);
+
+export const interviewPostConversation = conversation<
+  Context,
+  { isApproved: boolean }
+>("interview:post", logHandle("conversation:interview"))
+  .proceed(async (ctx, params) => {
+    await ctx.reply(ctx.t("interview.about_me"), {
+      reply_markup: new InlineKeyboard().text(
+        ctx.t("interview.about_me_later"),
+        "aboutMeLater",
+      ),
+    });
+    return params;
+  })
+  .either()
+  .waitCallbackQuery("aboutMeLater", async (ctx, params) => {
+    await ctx.answerCallbackQuery();
+    await ctx.reply(ctx.t("interview.about_me_later_response"));
+    return params;
+  })
+  .waitFilterQueryIgnoreCmd("message:text", async (ctx, params) => {
+    const aboutMeHtml = parseTelegramEntities(
+      ctx.message.text,
+      ctx.message.entities,
+    )
+      .replace(new RegExp(`^\\s*@${ctx.me.username}`), "")
+      .trim();
+
+    await updateUser(ctx.user.id, { aboutMeHtml });
+    return params;
+  })
+  .done()
+  .proceed(async (ctx, { isApproved }) => {
+    await ctx.replyWithChatAction("typing");
+
+    await ensureHasAdminGroupTopic(ctx, ctx.user);
+
+    if (isApproved) {
+      ctx.user.status = UserStatus.Approved;
+      await updateUser(ctx.user.id, { status: UserStatus.Approved });
+      await sendApproveMessage(ctx, ctx.user);
+      await postInterviewSignup(ctx);
+    } else {
+      await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
+      await sendInterviewFinishNotificationToAdminGroupTopic(ctx, ctx.user);
+      await ctx.reply(ctx.t("interview.interview_replies_saved"));
+    }
+  })
+  .build();
+feature.chatType("private").use(interviewPostConversation);
 
 function handleQuestion(
   key: string,
@@ -183,5 +231,3 @@ function handleQuestion(
 async function handleResponse(ctx: Filter<Context, "message">) {
   await copyMessageToAdminGroupTopic(ctx);
 }
-
-composer.chatType("private").use(interviewConversation);

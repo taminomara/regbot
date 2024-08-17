@@ -262,9 +262,21 @@ export async function getApprovedEventSignups(
     await orm.em.find(
       EventSignupObject,
       { event: eventId, status: SignupStatus.Approved },
-      { populate: ["event", "user"] },
+      { populate: ["event", "user"], orderBy: { user: { name: "ASC" } } },
     )
   ).map((signup) => wrap(signup).toObject());
+}
+
+export async function getEventSignup(
+  eventId: number,
+  userId: number,
+): Promise<PopulatedEventSignup | null> {
+  const signup = await orm.em.findOne(
+    EventSignupObject,
+    { event: eventId, user: userId },
+    { populate: ["event", "user"] },
+  );
+  return signup === null ? null : wrap(signup).toObject();
 }
 
 export async function getEventSignups(
@@ -274,7 +286,7 @@ export async function getEventSignups(
     await orm.em.find(
       EventSignupObject,
       { event: eventId },
-      { populate: ["event", "user"] },
+      { populate: ["event", "user"], orderBy: { user: { name: "ASC" } } },
     )
   ).map((signup) => wrap(signup).toObject());
 }
