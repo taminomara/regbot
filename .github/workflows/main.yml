@@ -38,15 +38,13 @@ jobs:
     if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     needs: build-and-test
-    permissions:
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: ahmadnassri/action-dependabot-auto-merge@v2
         with:
           target: minor
           command: squash and merge
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.DEPENDABOT_AUTOMERGE_TOKEN }}
 
   build-and-push-image:
     if: ${{ github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags') }}
