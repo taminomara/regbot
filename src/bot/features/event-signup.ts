@@ -3,6 +3,7 @@ import moment from "moment-timezone";
 import {
   Event,
   EventSignup,
+  PopulatedEventSignup,
   SignupStatus,
   confirmPayment as confirmPaymentDb,
   confirmSignup as confirmSignupDb,
@@ -32,6 +33,7 @@ import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
 import { userLink } from "../helpers/links.js";
+import { sendSignupReminder } from "./event-reminders.js";
 
 export async function postInterviewSignup(ctx: Context, user?: User) {
   if (user === undefined) {
@@ -350,6 +352,17 @@ async function sendConfirmation(
           } as object),
         },
       );
+      if (event.reminderSent) {
+        await sendSignupReminder(
+          ctx.api,
+          {
+            ...signup,
+            event,
+            user,
+          } as PopulatedEventSignup,
+          { withTitle: false, withKeyboard: false },
+        );
+      }
       break;
     }
     case SignupStatus.Rejected: {
