@@ -568,6 +568,8 @@ event_reminders =
 
         {$more}
 
+    .signup_reminder_today = {$more}
+
     .i_cant_make_it = 😥 Ой, а я не приду
     .i_will_be_there = ☺️ Я буду
 
