@@ -38,6 +38,7 @@ import { parseTelegramEntities } from "#root/bot/helpers/parse-telegram-entities
 import {
   sanitizeHtml,
   sanitizeHtmlOrEmpty,
+  textLength,
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
@@ -355,14 +356,24 @@ async function updateManageEventMenu(ctx: Context) {
   });
 }
 function formatEventDescription(ctx: Context, event: Event) {
+  const optionsList = (event.participationOptions ?? [undefined]).map(
+    sanitizeHtmlOrEmpty,
+  );
+  let optionsLength = 0;
+  for (let i = 0; i < optionsList.length; i += 1) {
+    optionsLength += textLength(optionsList[i]);
+    if (optionsLength > 150) {
+      optionsList.splice(0, i + 1);
+      optionsList.push("...");
+    }
+  }
+
   let eventDescription = ctx.t("manage_events.event", {
     id: String(event.id),
     botUsername: ctx.me.username,
     name: sanitizeHtmlOrEmpty(event.name),
     date: toFluentDateTime(event.date),
-    options: (event.participationOptions ?? [undefined])
-      .map(sanitizeHtmlOrEmpty)
-      .join("; "),
+    options: optionsList.join("; "),
     payment: event.payment,
     price: sanitizeHtmlOrEmpty(event.price),
     iban: sanitizeHtmlOrEmpty(event.iban ?? config.PAYMENT_IBAN),
@@ -376,15 +387,35 @@ function formatEventDescription(ctx: Context, event: Event) {
           : "draft",
   });
 
-  const announceTextHtml = formatEventText(ctx, event);
-  eventDescription += `\n\n<b>${ctx.t(
-    "manage_events.eventText",
-  )}</b>\n\n<blockquote expandable>${announceTextHtml}</blockquote>`;
+  if (event.announceTextHtml === null) {
+    return eventDescription;
+  }
 
-  if (event.reminderTextHtml !== null) {
+  const announceTextHtml = formatEventText(ctx, event);
+  const eventDescriptionWithPost = `${eventDescription}\n\n<b>${ctx.t(
+    "manage_events.event_text",
+  )}</b>\n\n<blockquote expandable>${announceTextHtml}</blockquote>`;
+  if (textLength(eventDescriptionWithPost) < 3500) {
+    eventDescription = eventDescriptionWithPost;
+  } else {
     eventDescription += `\n\n<b>${ctx.t(
-      "manage_events.eventReminder",
-    )}</b>\n\n<blockquote expandable>${event.reminderTextHtml}</blockquote>`;
+      "manage_events.event_text",
+    )}</b>\n\n<blockquote>${ctx.t("manage_events.too_long_to_display")}</blockquote>`;
+  }
+
+  if (event.reminderTextHtml === null) {
+    return eventDescription;
+  }
+
+  const eventDescriptionWithReminder = `${eventDescription}\n\n<b>${ctx.t(
+    "manage_events.event_reminder",
+  )}</b>\n\n<blockquote expandable>${event.reminderTextHtml}</blockquote>`;
+  if (textLength(eventDescriptionWithReminder) < 3500) {
+    eventDescription = eventDescriptionWithReminder;
+  } else {
+    eventDescription += `\n\n<b>${ctx.t(
+      "manage_events.event_reminder",
+    )}</b>\n\n<blockquote>${ctx.t("manage_events.too_long_to_display")}</blockquote>`;
   }
 
   return eventDescription;
@@ -907,7 +938,15 @@ const editEventPost = conversation<Context>(
     const event = await getEventFromMatch(ctx); // allow editing closed and past events
     if (event === undefined) return finishConversation();
     await ctx.reply(ctx.t("manage_events.enter_post"));
-    await ctx.reply(event.announceTextHtml);
+    if (event.announcePhotoId) {
+      await ctx.replyWithPhoto(event.announcePhotoId, {
+        caption: event.announceTextHtml,
+      });
+    } else {
+      await ctx.reply(event.announceTextHtml, {
+        link_preview_options: { is_disabled: true },
+      });
+    }
     return { eventId: event.id };
   })
   .either()
@@ -915,7 +954,10 @@ const editEventPost = conversation<Context>(
     return { eventId };
   })
   .waitFilterQueryIgnoreCmd("message", async (ctx, { eventId }) => {
-    await editEventPostFromCtx(ctx, eventId);
+    const eventUpdated = await editEventPostFromCtx(ctx, eventId);
+    if (!eventUpdated) {
+      return repeatConversationStep({ eventId });
+    }
     return { eventId };
   })
   .done()
@@ -1076,15 +1118,23 @@ async function editEventPostFromCtx(
 
   const announceText = ctx.msg.text ?? ctx.msg.caption ?? "";
   const announceEntities = ctx.msg.entities ?? ctx.msg.caption_entities ?? [];
-  const announceTextHtml = parseTelegramEntities(
-    announceText,
-    announceEntities,
-  );
+  let announceTextHtml = parseTelegramEntities(announceText, announceEntities);
+  if (announceTextHtml.length === 0) {
+    announceTextHtml = event.announceTextHtml;
+  }
+
   let announcePhotoId: string | null = null;
   if (event.channelPostId === null || event.announcePhotoId !== null) {
     announcePhotoId =
       ctx.msg?.photo?.reduce((a, b) => (a.width > b.width ? a : b))?.file_id ??
       event.announcePhotoId;
+  }
+
+  const postLength = textLength(announceTextHtml);
+  if (postLength > 4096 || (announcePhotoId !== null && postLength > 1024)) {
+    // Event text is too long.
+    await ctx.reply("Event text is too long!");
+    return false;
   }
 
   const updatedEvent = await updateEvent(event.id, {
@@ -1094,6 +1144,8 @@ async function editEventPostFromCtx(
   if (updatedEvent.channelPostId !== ctx.msg?.message_id) {
     await updateEventPost(ctx, updatedEvent);
   }
+
+  return true;
 }
 
 async function updateEventPost(ctx: Context, event: Event) {
