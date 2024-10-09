@@ -14,7 +14,7 @@ import { sanitizeHtmlOrEmpty } from "./sanitize-html.js";
 export const DEFAULT_EVENT_TEXT = `
 <b>{ title }</b>
 
-Следующий квартирник будет { date | DD MMMM }!
+Следующий квартирник будет { date | D MMMM }!
 
 Что будет: уютная кинки-секс-квирная тусовочка. У нас правило активного согласия, БДР и 4C 🥰 Для ЛГБТ людей и союзников.
 - Сбор в { date | HH:mm }, круг знакомств в { datePlus1h | HH:mm }.
@@ -24,7 +24,7 @@ export const DEFAULT_EVENT_TEXT = `
 - В наличии есть душ.
 - Правила вечеринки: <a href="https://t.me/regbot?rulesLink">смотри тут</a>.
 
-Где и когда: { date | dddd, DD MMMM }, с { date | HH:mm } и до утра. Тбилиси, район Ваке, 20 минут пешком от Руставели.
+Где и когда: { date | dddd, D MMMM }, с { date | HH:mm } и до утра. Тбилиси, район Ваке, 20 минут пешком от Руставели.
 
 Вход: { price }.
 
@@ -69,6 +69,7 @@ export function formatEventText(ctx: Context, event: Event) {
   return simpleTemplate(event.announceTextHtml, {
     title: formatEventTitleForPost(ctx, event),
     date: event.date,
+    datePlus30m: moment(event.date).add({ minutes: 30 }).toDate(),
     datePlus1h: moment(event.date).add({ hours: 1 }).toDate(),
     rulesLink:
       "https://taminomara.notion.site/1f06a005adb344ffb0f3be28804bbd9f", // TODO: make it not hardcoded (here and in locales)
