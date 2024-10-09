@@ -1,5 +1,5 @@
 import { createCallbackData } from "callback-data";
-import { Bot, Composer, InlineKeyboard } from "grammy";
+import { Api, Bot, Composer, InlineKeyboard } from "grammy";
 import { Counter, Gauge } from "prom-client";
 
 import { EventPayment } from "#root/backend/entities/event.js";
@@ -178,73 +178,83 @@ class BackgroundProcess {
     }
   }
 
-  private async sendSignupReminder(signup: PopulatedEventSignup) {
+  async sendSignupReminder(
+    signup: PopulatedEventSignup,
+    opts: { withTitle?: boolean; withKeyboard?: boolean } = {},
+  ) {
     await delay(1000 + Math.random() * 5000);
     try {
-      let more = signup.event.reminderTextHtml ?? "";
-      if (signup.event.payment === EventPayment.Donation) {
-        let paymentDetails;
-        if (signup.event.price !== null) {
-          paymentDetails = i18n.t(
-            signup.user.locale ?? config.DEFAULT_LOCALE,
-            "event_reminders.payment_details_with_price",
-            {
-              price: sanitizeHtmlOrEmpty(signup.event.price),
-              iban: sanitizeHtmlOrEmpty(
-                signup.event.iban ?? config.PAYMENT_IBAN,
-              ),
-              recipient: sanitizeHtmlOrEmpty(
-                signup.event.recipient ?? config.PAYMENT_RECIPIENT,
-              ),
-            },
-          );
-        } else {
-          paymentDetails = i18n.t(
-            signup.user.locale ?? config.DEFAULT_LOCALE,
-            "event_reminders.payment_details",
-            {
-              iban: sanitizeHtmlOrEmpty(
-                signup.event.iban ?? config.PAYMENT_IBAN,
-              ),
-              recipient: sanitizeHtmlOrEmpty(
-                signup.event.recipient ?? config.PAYMENT_RECIPIENT,
-              ),
-            },
-          );
-        }
-
-        if (more.length > 0) more += "\n\n";
-        more += i18n.t(
-          signup.user.locale ?? config.DEFAULT_LOCALE,
-          "event_reminders.donate_reminder",
-          {
-            paymentDetails,
-          },
-        );
-      }
-
-      await this.bot.api.sendMessage(
-        signup.user.id,
-        i18n.t(
-          signup.user.locale ?? config.DEFAULT_LOCALE,
-          "event_reminders.signup_reminder",
-          {
-            name: sanitizeHtmlOrEmpty(signup.event.name),
-            date: toFluentDateTime(signup.event.date),
-            more,
-          },
-        ),
-        {
-          reply_markup: makeSignupReminderKeyboard(
-            signup.event.id,
-            signup.user.locale ?? config.DEFAULT_LOCALE,
-          ),
-        },
-      );
+      await sendSignupReminder(this.bot.api, signup, opts);
     } catch (error) {
       logger.error(error, "Error when sending signup reminder");
     }
   }
+}
+
+export async function sendSignupReminder(
+  api: Api,
+  signup: PopulatedEventSignup,
+  opts: { withTitle?: boolean; withKeyboard?: boolean } = {},
+) {
+  let more = signup.event.reminderTextHtml ?? "";
+  if (signup.event.payment === EventPayment.Donation) {
+    let paymentDetails;
+    if (signup.event.price !== null) {
+      paymentDetails = i18n.t(
+        signup.user.locale ?? config.DEFAULT_LOCALE,
+        "event_reminders.payment_details_with_price",
+        {
+          price: sanitizeHtmlOrEmpty(signup.event.price),
+          iban: sanitizeHtmlOrEmpty(signup.event.iban ?? config.PAYMENT_IBAN),
+          recipient: sanitizeHtmlOrEmpty(
+            signup.event.recipient ?? config.PAYMENT_RECIPIENT,
+          ),
+        },
+      );
+    } else {
+      paymentDetails = i18n.t(
+        signup.user.locale ?? config.DEFAULT_LOCALE,
+        "event_reminders.payment_details",
+        {
+          iban: sanitizeHtmlOrEmpty(signup.event.iban ?? config.PAYMENT_IBAN),
+          recipient: sanitizeHtmlOrEmpty(
+            signup.event.recipient ?? config.PAYMENT_RECIPIENT,
+          ),
+        },
+      );
+    }
+
+    if (more.length > 0) more += "\n\n";
+    more += i18n.t(
+      signup.user.locale ?? config.DEFAULT_LOCALE,
+      "event_reminders.donate_reminder",
+      {
+        paymentDetails,
+      },
+    );
+  }
+
+  await api.sendMessage(
+    signup.user.id,
+    i18n.t(
+      signup.user.locale ?? config.DEFAULT_LOCALE,
+      opts.withTitle ? "event_reminders.signup_reminder" : "event_reminders.signup_reminder_today",
+      {
+        name: sanitizeHtmlOrEmpty(signup.event.name),
+        date: toFluentDateTime(signup.event.date),
+        more,
+      },
+    ),
+    {
+      reply_markup:
+        opts.withKeyboard ?? true
+          ? makeSignupReminderKeyboard(
+              signup.event.id,
+              signup.user.locale ?? config.DEFAULT_LOCALE,
+            )
+          : undefined,
+    },
+  );
 }
 
 const willBeThereData = createCallbackData("willBeThere", {
