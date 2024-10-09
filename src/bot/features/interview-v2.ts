@@ -46,6 +46,7 @@ export const interviewConversation = conversation<Context>(
     } else {
       await ctx.reply(ctx.t("interview.i_dont_know_you"));
     }
+    await updateUser(ctx.user.id, { status: UserStatus.InterviewInProgress });
   })
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("interview.name"));
