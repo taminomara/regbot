@@ -31,7 +31,7 @@
     "@grammyjs/types": "3.7.0",
     "@mikro-orm/better-sqlite": "^6.2.7",
     "@mikro-orm/core": "^6.2.7",
-    "@mikro-orm/migrations": "^6.2.7",
+    "@mikro-orm/migrations": "^6.4.2",
     "callback-data": "1.1.1",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
