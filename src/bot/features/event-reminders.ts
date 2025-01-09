@@ -238,7 +238,9 @@ export async function sendSignupReminder(
     signup.user.id,
     i18n.t(
       signup.user.locale ?? config.DEFAULT_LOCALE,
-      opts.withTitle ? "event_reminders.signup_reminder" : "event_reminders.signup_reminder_today",
+      opts.withTitle ?? true
+        ? "event_reminders.signup_reminder"
+        : "event_reminders.signup_reminder_today",
       {
         name: sanitizeHtmlOrEmpty(signup.event.name),
         date: toFluentDateTime(signup.event.date),
