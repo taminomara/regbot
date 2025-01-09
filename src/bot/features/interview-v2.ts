@@ -23,6 +23,7 @@ import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import { sendApproveMessage } from "#root/bot/features/interview.js";
 import {
   conversation,
+  repeatConversationStep,
   switchConversation,
 } from "#root/bot/helpers/conversations-v2.js";
 import { config } from "#root/config.js";
@@ -52,6 +53,10 @@ export const interviewConversation = conversation<Context>(
     await ctx.reply(ctx.t("interview.name"));
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
+    if (ctx.message.text.length > 150) {
+      ctx.reply(ctx.t("interview.too_long"));
+      return repeatConversationStep();
+    }
     await setUserName(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -67,6 +72,10 @@ export const interviewConversation = conversation<Context>(
     });
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
+    if (ctx.message.text.length > 150) {
+      ctx.reply(ctx.t("interview.too_long"));
+      return repeatConversationStep();
+    }
     await setUserPronouns(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -80,6 +89,10 @@ export const interviewConversation = conversation<Context>(
     });
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
+    if (ctx.message.text.length > 150) {
+      ctx.reply(ctx.t("interview.too_long"));
+      return repeatConversationStep();
+    }
     await setUserGender(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -95,6 +108,10 @@ export const interviewConversation = conversation<Context>(
     });
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
+    if (ctx.message.text.length > 150) {
+      ctx.reply(ctx.t("interview.too_long"));
+      return repeatConversationStep();
+    }
     await setUserSexuality(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
@@ -108,6 +125,10 @@ export const interviewConversation = conversation<Context>(
     });
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx) => {
+    if (ctx.message.text.length > 150) {
+      ctx.reply(ctx.t("interview.too_long"));
+      return repeatConversationStep();
+    }
     await setUserPositioning(ctx.user.id, ctx.message.text);
   })
   .proceed(async (ctx) => {
