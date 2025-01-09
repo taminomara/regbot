@@ -1082,7 +1082,14 @@ const editEventReminder = conversation<Context>(
   .proceed(async (ctx) => {
     const event = await getEventForEditFromMatch(ctx);
     if (event === undefined) return finishConversation();
-    await ctx.reply(ctx.t("manage_events.enter_reminder"));
+    if (event.reminderTextHtml) {
+      await ctx.reply(ctx.t("manage_events.enter_reminder_with_current"));
+      await ctx.reply(event.reminderTextHtml, {
+        link_preview_options: { is_disabled: true },
+      });
+    } else {
+      await ctx.reply(ctx.t("manage_events.enter_reminder"));
+    }
     return { eventId: event.id };
   })
   .either()
