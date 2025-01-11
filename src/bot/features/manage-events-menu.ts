@@ -1581,7 +1581,7 @@ const messageEventParticipants = conversation<Context>(
     },
   )
   .waitFilterQueryIgnoreCmd(
-    "message:text",
+    "message",
     async (
       ctx,
       { eventId, includeApproved, includePending, includeRejected },
