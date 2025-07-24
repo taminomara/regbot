@@ -10,7 +10,6 @@ ENV LOG_LEVEL=info
 ENV LOG_FILE=/prod_data/logs/regbot.log
 ENV PID_FILE=/var/run/regbot.pid
 ENV DATABASE=/prod_data/db/prod.db
-ENV REGBOT_ENV_FILE_PATH=/prod_data/config.env
 ENV BACKGROUND_TASK_FREQUENCY_MS=900000
 
 RUN apt-get update && apt-get install -y logrotate
