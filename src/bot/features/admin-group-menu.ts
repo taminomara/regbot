@@ -1,7 +1,6 @@
 import { Menu } from "@grammyjs/menu";
 import { createCallbackData } from "callback-data";
 import { Composer, InlineKeyboard } from "grammy";
-import { isAdmin } from "grammy-guard";
 
 import { User, UserStatus, getUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
@@ -31,6 +30,7 @@ import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
 import { config } from "#root/config.js";
 
+import { isAdmin } from "../filters/index.js";
 import { userLink } from "../helpers/links.js";
 import { logHandle } from "../helpers/logging.js";
 import { makeOutdatedHandler, patchCtx } from "../helpers/menu.js";
