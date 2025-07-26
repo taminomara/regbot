@@ -19,6 +19,7 @@ const users = {};
 const unknownUsers = {};
 const userByTopic = {};
 let nApproved = 0;
+let nRejected = 0;
 let nBanned = 0;
 
 for (let i = 0; i < data.length; i++) {
@@ -76,6 +77,7 @@ for (let i = 0; i < data.length; i++) {
       user["sexuality"] = extract(10, "\nСексуальная идентичность: ");
       user["positioning"] = extract(12, "\nПозиционирование: ");
       user["isApproved"] = false;
+      user["isRejected"] = false;
       user["isBanned"] = false;
       user["adminGroupTopic"] = msg["reply_to_message_id"];
     }
@@ -88,6 +90,12 @@ for (let i = 0; i < data.length; i++) {
     nApproved += 1;
   } else if (
     text[0]["type"] === "plain" &&
+    text[0]["text"] === "❌ Пользователь отклонён админом "
+  ) {
+    userByTopic[msg["reply_to_message_id"]]["isRejected"] = true;
+    nRejected += 1;
+  } else if (
+    text[0]["type"] === "plain" &&
     text[0]["text"] === "⛔ Пользователь забанен админом "
   ) {
     userByTopic[msg["reply_to_message_id"]]["isBanned"] = true;
@@ -95,6 +103,85 @@ for (let i = 0; i < data.length; i++) {
   }
 }
 
-console.log(JSON.stringify(users, null, "  "));
-console.log(JSON.stringify(unknownUsers, null, "  "));
-console.log(nApproved, "approved,", nBanned, "banned");
+const userList = [];
+for (const userId in users) {
+  const user = users[userId];
+  let status;
+  if (user["isApproved"] && user["isRejected"]) {
+    console.log(
+      `Warning: user ${user["username"]} is both approved and rejected`,
+    );
+  }
+  if (user["isBanned"]) {
+    status = "Banned";
+  } else if (user["isApproved"]) {
+    status = "Approved";
+  } else if (user["isRejected"]) {
+    status = "Rejected";
+  } else {
+    status = "New";
+  }
+
+  userList.push(
+    JSON.stringify({
+      id: userId,
+      status: status,
+      admin_group_topic: user["adminGroupTopic"],
+      username: user["username"],
+      name: user["name"],
+      pronouns: user["pronouns"],
+      gender: user["gender"],
+      sexuality: user["sexuality"],
+      positioning: user["positioning"],
+      has_unverified_fields: status === "Approved",
+    }),
+  );
+}
+fs.writeFileSync("./users.json", userList.join("\n"));
+
+const inviteList = [];
+for (const username in unknownUsers) {
+  const user = unknownUsers[username];
+  let status;
+  if (user["isApproved"] && user["isRejected"]) {
+    console.log(
+      `Warning: user ${user["username"]} is both approved and rejected`,
+    );
+  }
+  if (user["isBanned"]) {
+    status = "Banned";
+  } else if (user["isApproved"]) {
+    status = "Approved";
+  } else if (user["isRejected"]) {
+    status = "Rejected";
+  } else {
+    status = "New";
+  }
+
+  if (status === "Rejected") {
+    continue;
+  }
+
+  inviteList.push(
+    JSON.stringify({
+      admin_group_topic: user["adminGroupTopic"],
+      username: user["username"],
+      name: user["name"],
+      pronouns: user["pronouns"],
+      gender: user["gender"],
+      sexuality: user["sexuality"],
+      positioning: user["positioning"],
+      is_banned: user["isBanned"],
+    }),
+  );
+}
+fs.writeFileSync("./invitations.json", inviteList.join("\n"));
+
+console.log(userList.length, "users", inviteList.length, "invites");
+console.log(nApproved, "approved,", nRejected, "rejected", nBanned, "banned");
+console.log("Apply this data:");
+console.log("");
+console.log("sqlite-utils insert dev.db user ./users.json --nl --ignore");
+console.log(
+  "sqlite-utils insert dev.db invitation ./invitations.json --nl --ignore",
+);
