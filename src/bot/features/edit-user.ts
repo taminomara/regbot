@@ -10,7 +10,7 @@ import {
   updateUser,
 } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
-import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
+import { updateAdminGroupTopicTitleAndHeader } from "#root/bot/features/admin-group.js";
 
 import {
   conversation,
@@ -39,7 +39,7 @@ const editName = conversation<Context, { userId: number; sendMenu?: boolean }>(
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserName(opts.userId, ctx.message.text);
-    await updateAdminGroupTopicTitle(ctx, user);
+    await updateAdminGroupTopicTitleAndHeader(ctx, user);
     await sendConfirmation(ctx);
     return opts;
   })
@@ -87,7 +87,7 @@ const editPronouns = conversation<
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserPronouns(opts.userId, ctx.message.text);
-    await updateAdminGroupTopicTitle(ctx, user);
+    await updateAdminGroupTopicTitleAndHeader(ctx, user);
     await sendConfirmation(ctx);
     return opts;
   })
@@ -133,7 +133,7 @@ const editGender = conversation<
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserGender(opts.userId, ctx.message.text);
-    await updateAdminGroupTopicTitle(ctx, user);
+    await updateAdminGroupTopicTitleAndHeader(ctx, user);
     await sendConfirmation(ctx);
     return opts;
   })
@@ -181,7 +181,7 @@ const editSexuality = conversation<
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserSexuality(opts.userId, ctx.message.text);
-    await updateAdminGroupTopicTitle(ctx, user);
+    await updateAdminGroupTopicTitleAndHeader(ctx, user);
     await sendConfirmation(ctx);
     return opts;
   })
@@ -227,7 +227,7 @@ const editPositioning = conversation<
   })
   .waitFilterQueryIgnoreCmd("message:text", async (ctx, opts) => {
     const user = await setUserPositioning(opts.userId, ctx.message.text);
-    await updateAdminGroupTopicTitle(ctx, user);
+    await updateAdminGroupTopicTitleAndHeader(ctx, user);
     await sendConfirmation(ctx);
     return opts;
   })
@@ -279,7 +279,7 @@ const editAboutMe = conversation<
   })
   .waitCommand("empty", async (ctx, opts) => {
     const user = await updateUser(opts.userId, { aboutMeHtml: null });
-    await updateAdminGroupTopicTitle(ctx, user);
+    await updateAdminGroupTopicTitleAndHeader(ctx, user);
     await sendConfirmation(ctx);
     return opts;
   })
@@ -289,7 +289,7 @@ const editAboutMe = conversation<
       ctx.message.entities,
     );
     const user = await updateUser(opts.userId, { aboutMeHtml });
-    await updateAdminGroupTopicTitle(ctx, user);
+    await updateAdminGroupTopicTitleAndHeader(ctx, user);
     await sendConfirmation(ctx);
     return opts;
   })

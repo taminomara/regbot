@@ -25,6 +25,12 @@ export class User {
   adminGroupTopic: number | null = null;
 
   @Property()
+  adminGroupHeaderId: number | null = null;
+
+  @Property()
+  adminGroupHeaderIsOpen: boolean = false;
+
+  @Property()
   verifiedBy: number | null = null;
 
   @Property()
@@ -80,7 +86,7 @@ export class User {
 
 @Entity({
   expression:
-    "select id, status, username, admin_group_topic, name, locale, has_unverified_fields from user",
+    "select id, status, username, admin_group_topic, admin_group_header_id, name, locale, has_unverified_fields from user",
 })
 export class UserLite {
   @Property()
@@ -97,6 +103,9 @@ export class UserLite {
 
   @Property()
   adminGroupTopic: number | null;
+
+  @Property()
+  adminGroupHeaderId: number | null;
 
   @Property()
   name: string | null;

@@ -62,6 +62,7 @@ for (let i = 0; i < data.length; i++) {
       user["isApproved"] = false;
       user["isBanned"] = false;
       user["adminGroupTopic"] = msg["reply_to_message_id"];
+      user["adminGroupHeaderId"] = msg["id"];
     } else if (text[1]["type"] === "mention") {
       const username = text[1]["text"].slice(1);
       if (unknownUsers[username] !== undefined) {
@@ -134,6 +135,8 @@ for (const userId in users) {
       sexuality: user["sexuality"],
       positioning: user["positioning"],
       has_unverified_fields: status === "Approved",
+      admin_group_header_id: user["adminGroupHeaderId"],
+      admin_group_header_is_open: true,
     }),
   );
 }

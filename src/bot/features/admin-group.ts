@@ -6,6 +6,7 @@ import {
   UserLite,
   UserStatus,
   banUser as banUserDb,
+  getUser,
   getUserByAdminGroupTopic,
   getUserLite,
   getUserLiteByAdminGroupTopic,
@@ -16,6 +17,7 @@ import {
 import type { Context } from "#root/bot/context.js";
 import {
   adminPostInterviewMenu,
+  refreshAdminGroupUserMenu,
   sendAdminGroupUserMenu,
   sendAdminGroupUserTextWithoutMenu,
 } from "#root/bot/features/admin-group-menu.js";
@@ -45,7 +47,7 @@ export const composer = new Composer<Context>();
 export async function ensureHasAdminGroupTopic(
   ctx: Context,
   userLite: UserLite,
-) {
+): Promise<number> {
   if (userLite.adminGroupTopic !== null) {
     return userLite.adminGroupTopic;
   }
@@ -86,7 +88,6 @@ export async function updateAdminGroupTopicTitle(
   userLite: UserLite,
 ) {
   userLite ??= ctx.user;
-
   const adminGroupTopic = await ensureHasAdminGroupTopic(ctx, userLite);
 
   try {
@@ -103,6 +104,18 @@ export async function updateAdminGroupTopicTitle(
     } else {
       throw error;
     }
+  }
+}
+
+export async function updateAdminGroupTopicTitleAndHeader(
+  ctx: Context,
+  userLite: UserLite,
+) {
+  await updateAdminGroupTopicTitle(ctx, userLite);
+
+  const user = await getUser(userLite.id);
+  if (user !== null) {
+    await refreshAdminGroupUserMenu(ctx, user);
   }
 }
 

@@ -154,3 +154,20 @@ export async function getUserByAdminGroupTopic(
   const user = await orm.em.findOne(UserObject, { adminGroupTopic });
   return user === null ? null : wrap(user).toObject();
 }
+
+export async function setUserHeaderIsOpen(
+  id: number,
+  headerId: number | undefined,
+  isOpen: boolean,
+): Promise<User> {
+  const user = await orm.em.findOneOrFail(UserObject, { id });
+  if (
+    headerId !== undefined &&
+    user.adminGroupHeaderId !== null &&
+    user.adminGroupHeaderId === headerId
+  ) {
+    return wrap(user).assign({ adminGroupHeaderIsOpen: isOpen });
+  } else {
+    return wrap(user).toObject();
+  }
+}
