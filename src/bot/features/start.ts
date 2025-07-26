@@ -5,6 +5,7 @@ import type { Context } from "#root/bot/context.js";
 import { ensureHasAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import { interviewConversation } from "#root/bot/features/interview-v2.js";
+import { maybeNotifyAboutOutdatedProfile } from "#root/bot/features/invitation.js";
 import { logHandle } from "#root/bot/helpers/logging.js";
 
 export const composer = new Composer<Context>();
@@ -25,9 +26,14 @@ feature.command("start", logHandle("command:start"), async (ctx) => {
     await interviewConversation.forceEnter(ctx);
   } else {
     await ensureHasAdminGroupTopic(ctx, ctx.user);
+    await maybeNotifyAboutOutdatedProfile(ctx, ctx.user);
 
     if (ctx.user.status === UserStatus.InterviewInProgress) {
       await ctx.reply(ctx.t("welcome.in_progress"));
+    } else if (ctx.user.status === UserStatus.PendingApproval) {
+      if (!ctx.user.hasUnverifiedFields) {
+        await ctx.reply(ctx.t("welcome.pending_approval"));
+      }
     } else if (eventId !== undefined) {
       await postInterviewSignup(ctx);
     } else {

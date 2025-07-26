@@ -28,7 +28,7 @@ import {
 } from "#root/bot/helpers/conversations-v2.js";
 import { config } from "#root/config.js";
 
-import { isApproved } from "../filters/is-approved.js";
+import { isApproved } from "../filters/index.js";
 import { logHandle } from "../helpers/logging.js";
 import { parseTelegramEntities } from "../helpers/parse-telegram-entities.js";
 
@@ -42,7 +42,16 @@ export const interviewConversation = conversation<Context>(
 )
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("welcome"));
-    if (ctx.user.status === UserStatus.Approved) {
+
+    const chatMember = await ctx.api.getChatMember(
+      config.MEMBERS_GROUP,
+      ctx.user.id,
+    );
+
+    if (
+      ctx.user.status === UserStatus.Approved ||
+      ["member", "creator", "administrator"].includes(chatMember.status)
+    ) {
       await ctx.reply(ctx.t("interview.i_know_you"));
     } else {
       await ctx.reply(ctx.t("interview.i_dont_know_you"));

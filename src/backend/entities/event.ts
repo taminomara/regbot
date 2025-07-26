@@ -31,7 +31,6 @@ export class Event {
   date: Date;
 
   @Property() // TODO: make lazy
-  @Index()
   announceTextHtml: string;
 
   @Property()

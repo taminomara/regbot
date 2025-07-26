@@ -20,6 +20,16 @@ export async function getUserLite(
   return result === null ? createUser(id, defaultName) : result;
 }
 
+export async function getOrInsertUserLite(
+  id: number,
+  defaultName?: string,
+): Promise<[UserLite, boolean]> {
+  const result = await orm.em.findOne(UserLiteObject, { id });
+  return result === null
+    ? [await createUser(id, defaultName), true]
+    : [result, false];
+}
+
 export async function createUser(id: number, name?: string): Promise<UserLite> {
   const user = await orm.em.upsert(
     UserObject,

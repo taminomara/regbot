@@ -11,7 +11,7 @@ import {
 } from "#root/backend/event.js";
 import { Context } from "#root/bot/context.js";
 import { withdrawSignup } from "#root/bot/features/event-signup.js";
-import { isApproved } from "#root/bot/filters/is-approved.js";
+import { isApproved } from "#root/bot/filters/index.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
@@ -238,7 +238,7 @@ export async function sendSignupReminder(
     signup.user.id,
     i18n.t(
       signup.user.locale ?? config.DEFAULT_LOCALE,
-      opts.withTitle ?? true
+      (opts.withTitle ?? true)
         ? "event_reminders.signup_reminder"
         : "event_reminders.signup_reminder_today",
       {
@@ -249,7 +249,7 @@ export async function sendSignupReminder(
     ),
     {
       reply_markup:
-        opts.withKeyboard ?? true
+        (opts.withKeyboard ?? true)
           ? makeSignupReminderKeyboard(
               signup.event.id,
               signup.user.locale ?? config.DEFAULT_LOCALE,

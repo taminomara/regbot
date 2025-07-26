@@ -23,6 +23,7 @@ import {
 } from "#root/bot/features/help.js";
 import { isAdmin } from "#root/bot/filters/index.js";
 import {
+  Conversation,
   conversation,
   finishConversation,
   getConversationId,
@@ -47,6 +48,7 @@ import { config } from "#root/config.js";
 import { DEFAULT_EVENT_TEXT, formatEventText } from "../helpers/event.js";
 import { messageLink, signupLink, userLink } from "../helpers/links.js";
 import { patchCtx } from "../helpers/menu.js";
+import { Payload } from "../helpers/session-storage.js";
 import { makeSignupReminderKeyboard } from "./event-reminders.js";
 
 export const composer = new Composer<Context>();
@@ -72,6 +74,21 @@ async function sendEventMenu(ctx: Context, eventId: number) {
   });
 }
 
+async function enterOrSendError<IP extends Payload>(
+  ctx: Context,
+  conversation: Conversation<Context, IP>,
+  ...args: IP extends undefined ? [payload?: IP] : [payload: IP]
+) {
+  try {
+    return conversation.enter(ctx, ...args);
+  } catch (error) {
+    if (error instanceof Error) {
+      ctx.reply(`Error: ${error.toString()}`);
+    }
+    throw error;
+  }
+}
+
 const manageEventsMenu = new Menu<Context>("manageEventsMenu")
   .text(
     (ctx) => ctx.t("manage_events.update"),
@@ -81,7 +98,7 @@ const manageEventsMenu = new Menu<Context>("manageEventsMenu")
   .text(
     (ctx) => ctx.t("manage_events.create"),
     logHandle("menu:manageEventsMenu:create"),
-    async (ctx) => createEvent.enter(ctx),
+    async (ctx) => enterOrSendError(ctx, createEvent),
   )
   .row()
   .dynamic(async (ctx, range) => {
@@ -142,40 +159,40 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
       range.text(
         withPayload(ctx.t("manage_events.edit_name")),
         logHandle("menu:manageEventMenu:edit-name"),
-        (ctx) => editEventName.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventName),
       );
       range.text(
         withPayload(ctx.t("manage_events.edit_date")),
         logHandle("menu:manageEventMenu:edit-date"),
-        (ctx) => editEventDate.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventDate),
       );
       range.row();
       range.text(
         withPayload(ctx.t("manage_events.edit_post")),
         logHandle("menu:manageEventMenu:edit-post"),
-        (ctx) => editEventPost.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventPost),
       );
       range.text(
         withPayload(ctx.t("manage_events.edit_options")),
         logHandle("menu:manageEventMenu:edit-options"),
-        (ctx) => editEventOptions.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventOptions),
       );
       range.row();
       range.text(
         withPayload(ctx.t("manage_events.edit_price")),
         logHandle("menu:manageEventMenu:edit-price"),
-        (ctx) => editEventPrice.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventPrice),
       );
       range.text(
         withPayload(ctx.t("manage_events.edit_payment_details")),
         logHandle("menu:manageEventMenu:edit-payment-details"),
-        (ctx) => editEventPaymentDetails.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventPaymentDetails),
       );
       range.row();
       range.text(
         withPayload(ctx.t("manage_events.edit_reminder")),
         logHandle("menu:manageEventMenu:edit-reminder"),
-        (ctx) => editEventReminder.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventReminder),
       );
       range.row();
       range.text(
@@ -201,12 +218,12 @@ const manageEventMenu = new Menu<Context>("manageEventMenu")
       range.text(
         withPayload(ctx.t("manage_events.edit_name")),
         logHandle("menu:manageEventMenu:edit-name"),
-        (ctx) => editEventName.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventName),
       );
       range.text(
         withPayload(ctx.t("manage_events.edit_post")),
         logHandle("menu:manageEventMenu:edit-post"),
-        (ctx) => editEventPost.enter(ctx),
+        (ctx) => enterOrSendError(ctx, editEventPost),
       );
     }
     range.row();
@@ -536,7 +553,7 @@ const cancelEventMenu = new Menu<Context>("cancelEventMenu")
     logHandle("menu:cancelEventMenu:cancel"),
     async (ctx) => {
       await updateManageEventMenu(ctx);
-      await cancelEvent.enter(ctx);
+      await enterOrSendError(ctx, cancelEvent);
     },
   );
 manageEventMenu.register(cancelEventMenu);
@@ -556,7 +573,7 @@ const manageEventParticipantsMenu = new Menu<Context>(
   .text(
     withPayload((ctx) => ctx.t("manage_events.message_participants")),
     logHandle("menu:manageEventParticipantsMenu:message-participants"),
-    async (ctx) => messageEventParticipants.enter(ctx),
+    async (ctx) => enterOrSendError(ctx, messageEventParticipants),
   )
   .row()
   .back(

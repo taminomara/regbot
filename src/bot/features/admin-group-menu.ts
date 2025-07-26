@@ -52,6 +52,18 @@ export async function sendAdminGroupUserMenu(ctx: Context, user: User) {
   );
 }
 
+export async function sendAdminGroupUserTextWithoutMenu(ctx: Context, user: User) {
+  await patchCtx(
+    ctx,
+    { match: user.id, locale: config.DEFAULT_LOCALE },
+    async (ctx) => {
+      await ctx.api.sendMessage(config.ADMIN_GROUP, await formatAboutMe(user), {
+        message_thread_id: user.adminGroupTopic ?? undefined,
+      });
+    },
+  );
+}
+
 const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
   onMenuOutdated: makeOutdatedHandler(updateAdminGroupUserMenu),
 })
