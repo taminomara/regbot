@@ -2,7 +2,13 @@ import { Menu } from "@grammyjs/menu";
 import { createCallbackData } from "callback-data";
 import { Composer, InlineKeyboard } from "grammy";
 
-import { User, UserStatus, getUser } from "#root/backend/user.js";
+import {
+  User,
+  UserStatus,
+  getUser,
+  setUserHeaderIsOpen,
+  updateUser,
+} from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import {
   banUser,
@@ -24,7 +30,10 @@ import {
   rejectSignup,
 } from "#root/bot/features/event-signup.js";
 import { approve, reject } from "#root/bot/features/interview.js";
-import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
+import {
+  editMessageTextByIdSafe,
+  editMessageTextSafe,
+} from "#root/bot/helpers/edit-text.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
 import { i18n } from "#root/bot/i18n.js";
@@ -39,20 +48,71 @@ export const composer = new Composer<Context>();
 
 const feature = composer.filter(isAdmin);
 
-export async function sendAdminGroupUserMenu(ctx: Context, user: User) {
-  await patchCtx(
+export async function sendAdminGroupUserMenu(
+  ctx: Context,
+  user: User,
+): Promise<number> {
+  const messageId = await patchCtx(
     ctx,
     { match: user.id, locale: config.DEFAULT_LOCALE },
     async (ctx) => {
-      await ctx.api.sendMessage(config.ADMIN_GROUP, await formatAboutMe(user), {
-        message_thread_id: user.adminGroupTopic ?? undefined,
-        reply_markup: adminGroupUserMenu,
-      });
+      return (
+        await ctx.api.sendMessage(
+          config.ADMIN_GROUP,
+          await formatAboutMe(user),
+          {
+            message_thread_id: user.adminGroupTopic ?? undefined,
+            reply_markup: adminGroupUserMenu,
+          },
+        )
+      ).message_id;
     },
   );
+
+  if (user.adminGroupTopic !== null && user.adminGroupHeaderId === null) {
+    await updateUser(user.id, {
+      adminGroupHeaderId: messageId,
+      adminGroupHeaderIsOpen: true,
+    });
+    await ctx.api.unpinAllForumTopicMessages(
+      config.ADMIN_GROUP,
+      user.adminGroupTopic,
+    );
+    await ctx.api.pinChatMessage(config.ADMIN_GROUP, messageId, {
+      disable_notification: true,
+    });
+  }
+
+  return messageId;
 }
 
-export async function sendAdminGroupUserTextWithoutMenu(ctx: Context, user: User) {
+export async function refreshAdminGroupUserMenu(ctx: Context, user: User) {
+  if (user.adminGroupHeaderId === null) {
+    await sendAdminGroupUserMenu(ctx, user);
+  } else if (user.adminGroupHeaderIsOpen) {
+    const { adminGroupHeaderId } = user;
+    await patchCtx(
+      ctx,
+      { match: user.id, locale: config.DEFAULT_LOCALE },
+      async (ctx) => {
+        await editMessageTextByIdSafe(
+          ctx,
+          config.ADMIN_GROUP,
+          adminGroupHeaderId,
+          await formatAboutMe(user),
+          {
+            reply_markup: adminGroupUserMenu,
+          },
+        );
+      },
+    );
+  }
+}
+
+export async function sendAdminGroupUserTextWithoutMenu(
+  ctx: Context,
+  user: User,
+) {
   await patchCtx(
     ctx,
     { match: user.id, locale: config.DEFAULT_LOCALE },
@@ -127,6 +187,7 @@ async function updateAdminGroupUserMenu(ctx: Context) {
   const user = await getUserFromMatch(ctx);
   if (user !== undefined) {
     await editMessageTextSafe(ctx, await formatAboutMe(user));
+    await setUserHeaderIsOpen(user.id, ctx.msgId, true);
   }
 }
 
@@ -209,10 +270,14 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
 adminGroupUserMenu.register(adminGroupEditUserMenu);
 
 async function updateAdminGroupEditUserMenu(ctx: Context) {
-  await editMessageTextSafe(
-    ctx,
-    i18n.t(config.DEFAULT_LOCALE, "menu.edit_prompt"),
-  );
+  const user = await getUserFromMatch(ctx);
+  if (user !== undefined) {
+    await editMessageTextSafe(
+      ctx,
+      i18n.t(config.DEFAULT_LOCALE, "menu.edit_prompt"),
+    );
+    await setUserHeaderIsOpen(user.id, ctx.msgId, false);
+  }
 }
 
 const adminGroupBanUserMenu = new Menu<Context>("adminGroupBanUserMenu", {
@@ -247,6 +312,7 @@ async function updateAdminGroupBanUserMenu(ctx: Context) {
       name: sanitizeHtmlOrEmpty(user.name),
     }),
   );
+  await setUserHeaderIsOpen(user.id, ctx.msgId, false);
 }
 
 const adminGroupUnbanUserMenu = new Menu<Context>("adminGroupUnbanUserMenu", {
@@ -281,6 +347,7 @@ async function updateAdminGroupUnbanUserMenu(ctx: Context) {
       name: sanitizeHtmlOrEmpty(user.name),
     }),
   );
+  await setUserHeaderIsOpen(user.id, ctx.msgId, false);
 }
 
 export const adminPostInterviewMenu = new Menu<Context>(
