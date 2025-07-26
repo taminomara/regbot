@@ -5,6 +5,7 @@ import {
   rejectUser,
 } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
+import { refreshAdminGroupUserMenu } from "#root/bot/features/admin-group-menu.js";
 import {
   getUserForTopic,
   sendMessageToAdminGroupTopic,
@@ -34,6 +35,7 @@ export async function approve(ctx: Context) {
     }),
   );
 
+  await refreshAdminGroupUserMenu(ctx, approvedUser);
   await sendApproveMessage(ctx, approvedUser);
   await postInterviewSignup(ctx, approvedUser);
 }
@@ -66,6 +68,8 @@ export async function reject(ctx: Context) {
   if (user === undefined || user.status !== UserStatus.PendingApproval) return;
 
   const rejectedUser = await rejectUser(user.id, ctx.user.id);
+
+  await refreshAdminGroupUserMenu(ctx, rejectedUser);
 
   await sendMessageToAdminGroupTopic(
     ctx,

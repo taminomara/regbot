@@ -13,6 +13,7 @@ import {
   updateUser,
 } from "#root/backend/user.js";
 import { Context } from "#root/bot/context.js";
+import { refreshAdminGroupUserMenu } from "#root/bot/features/admin-group-menu.js";
 import {
   copyMessageToAdminGroupTopic,
   ensureHasAdminGroupTopic,
@@ -56,7 +57,12 @@ export const interviewConversation = conversation<Context>(
     } else {
       await ctx.reply(ctx.t("interview.i_dont_know_you"));
     }
-    await updateUser(ctx.user.id, { status: UserStatus.InterviewInProgress });
+    const user = await updateUser(ctx.user.id, {
+      status: UserStatus.InterviewInProgress,
+    });
+    if (user !== null) {
+      await refreshAdminGroupUserMenu(ctx, user);
+    }
   })
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("interview.name"));
@@ -222,7 +228,10 @@ export const interviewPostConversation = conversation<
       .replace(new RegExp(`^\\s*@${ctx.me.username}`), "")
       .trim();
 
-    await updateUser(ctx.user.id, { aboutMeHtml });
+    const user = await updateUser(ctx.user.id, { aboutMeHtml });
+    if (user !== null) {
+      await refreshAdminGroupUserMenu(ctx, user);
+    }
     return params;
   })
   .done()
@@ -233,11 +242,21 @@ export const interviewPostConversation = conversation<
 
     if (isApproved) {
       ctx.user.status = UserStatus.Approved;
-      await updateUser(ctx.user.id, { status: UserStatus.Approved });
+      const user = await updateUser(ctx.user.id, {
+        status: UserStatus.Approved,
+      });
+      if (user !== null) {
+        await refreshAdminGroupUserMenu(ctx, user);
+      }
       await sendApproveMessage(ctx, ctx.user);
       await postInterviewSignup(ctx);
     } else {
-      await updateUser(ctx.user.id, { status: UserStatus.PendingApproval });
+      const user = await updateUser(ctx.user.id, {
+        status: UserStatus.PendingApproval,
+      });
+      if (user !== null) {
+        await refreshAdminGroupUserMenu(ctx, user);
+      }
       await sendInterviewFinishNotificationToAdminGroupTopic(ctx, ctx.user);
       await ctx.reply(ctx.t("interview.interview_replies_saved"));
     }
