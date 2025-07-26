@@ -1,6 +1,6 @@
 {
   "name": "regbot",
-  "version": "1.16.0",
+  "version": "1.17.1",
   "type": "module",
   "imports": {
     "#root/*": "./build/src/*"
