@@ -71,11 +71,16 @@ export class User {
 
   @Property()
   pendingSignup: number | null = null;
+
+  // User's data was filled out from invitation, we need to ask them
+  // to check it when convenient.
+  @Property()
+  hasUnverifiedFields: boolean = false;
 }
 
 @Entity({
   expression:
-    "select id, status, username, admin_group_topic, name, locale from user",
+    "select id, status, username, admin_group_topic, name, locale, has_unverified_fields from user",
 })
 export class UserLite {
   @Property()
@@ -95,4 +100,7 @@ export class UserLite {
 
   @Property()
   name: string | null;
+
+  @Property()
+  hasUnverifiedFields: boolean;
 }

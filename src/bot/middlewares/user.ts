@@ -1,8 +1,10 @@
 import { Middleware } from "grammy";
 
-import { getUserLite, updateUser } from "#root/backend/user.js";
+import { getOrInsertUserLite, updateUser } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
 import { updateAdminGroupTopicTitle } from "#root/bot/features/admin-group.js";
+
+import { applyInvitationIfAny } from "../features/invitation.js";
 
 export function user(): Middleware<Context> {
   return async (ctx, next) => {
@@ -15,7 +17,8 @@ export function user(): Middleware<Context> {
           .join(" ")
       : undefined;
 
-    ctx.user = await getUserLite(userId, name);
+    const [user, inserted] = await getOrInsertUserLite(userId, name);
+    ctx.user = user;
     ctx.logger.debug({ msg: "Fetched user data", user: ctx.user });
 
     if (
@@ -27,6 +30,11 @@ export function user(): Middleware<Context> {
       if (ctx.user.adminGroupTopic !== null) {
         await updateAdminGroupTopicTitle(ctx, ctx.user);
       }
+    }
+
+    ctx.logger.info({ msg: "User data", user: ctx.user, inserted });
+    if (inserted) {
+      await applyInvitationIfAny(ctx);
     }
 
     const locale = await ctx.i18n.getLocale();

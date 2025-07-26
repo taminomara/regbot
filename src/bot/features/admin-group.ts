@@ -17,6 +17,7 @@ import type { Context } from "#root/bot/context.js";
 import {
   adminPostInterviewMenu,
   sendAdminGroupUserMenu,
+  sendAdminGroupUserTextWithoutMenu,
 } from "#root/bot/features/admin-group-menu.js";
 import {
   copyMessageTo,
@@ -66,7 +67,12 @@ export async function ensureHasAdminGroupTopic(
     topic.message_thread_id,
   );
 
-  await sendAdminGroupUserMenu(ctx, userWithTopic);
+  try {
+    await sendAdminGroupUserMenu(ctx, userWithTopic);
+  } catch (error) {
+    ctx.logger.error(error);
+    await sendAdminGroupUserTextWithoutMenu(ctx, userWithTopic);
+  }
 
   return topic.message_thread_id;
 }
@@ -135,6 +141,23 @@ export async function sendInterviewFinishNotificationToAdminGroupTopic(
     {
       reply_markup: adminPostInterviewMenu,
     },
+  );
+}
+
+export async function sendInvitationApprovalNotificationToAdminGroupTopic(
+  ctx: Context,
+  userLite: UserLite,
+) {
+  await sendMessageToAdminGroupTopic(
+    ctx,
+    userLite,
+    i18n.t(
+      config.DEFAULT_LOCALE,
+      "admin_group.message_invite_confirmation_needed",
+      {
+        botUsername: ctx.me.username,
+      },
+    ),
   );
 }
 

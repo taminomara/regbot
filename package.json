@@ -16,7 +16,8 @@
     "prepare": "(husky && node scripts/compile-locales.js) || true",
     "start": "npm run build || exit 1 && node ./build/src/main.js",
     "start:prod": "node ./build/src/main.js",
-    "test": "npm run build && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" REGBOT_ENV_FILE_PATH=\"./.env.test\" npx jest"
+    "test": "npm run build && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" REGBOT_ENV_FILE_PATH=\"./.env.test\" npx jest",
+    "extract_data_from_history": "node scripts/extract_data_from_history.js"
   },
   "author": "Tamika Nomara <taminomara@gmail.com>",
   "license": "MIT",

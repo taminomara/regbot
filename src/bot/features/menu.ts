@@ -1,6 +1,7 @@
 import { Other } from "@grammyjs/hydrate";
 import { Menu } from "@grammyjs/menu";
 import { Composer } from "grammy";
+import { or } from "grammy-guard";
 
 import {
   Event,
@@ -10,7 +11,7 @@ import {
   getEventWithUserSignup,
   upcomingEventsWithUserSignup,
 } from "#root/backend/event.js";
-import { User, getUserOrFail } from "#root/backend/user.js";
+import { User, UserLite, getUserOrFail } from "#root/backend/user.js";
 import { Context } from "#root/bot/context.js";
 import {
   enterEditAboutMe,
@@ -29,7 +30,13 @@ import {
   CommandScope,
   registerCommandHelp,
 } from "#root/bot/features/help.js";
-import { isApproved } from "#root/bot/filters/is-approved.js";
+import { maybeNotifyAboutOutdatedProfile } from "#root/bot/features/invitation.js";
+import {
+  isApproved,
+  isInterviewFinished,
+  isInterviewInProgress,
+  isNew,
+} from "#root/bot/filters/index.js";
 import { editMessageTextSafe } from "#root/bot/helpers/edit-text.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import {
@@ -37,6 +44,8 @@ import {
   sanitizeHtmlOrEmpty,
 } from "#root/bot/helpers/sanitize-html.js";
 import { withPayload } from "#root/bot/helpers/with-payload.js";
+import { i18n } from "#root/bot/i18n.js";
+import { config } from "#root/config.js";
 
 import { formatEventText, formatEventTitleForMenu } from "../helpers/event.js";
 import { userLink } from "../helpers/links.js";
@@ -45,10 +54,17 @@ import { makeOutdatedHandler, patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
 
-export async function sendEditProfileMenu(ctx: Context, chatId: number) {
-  const user = await getUserOrFail(ctx.user.id);
-  await ctx.api.sendMessage(chatId, formatAbout(ctx, user), {
+export async function sendEditProfileMenu(ctx: Context, userLite: UserLite) {
+  const user = await getUserOrFail(userLite.id);
+  await ctx.api.sendMessage(user.id, formatAbout(ctx, user), {
     reply_markup: eventsMenu.at("editProfileMenu"),
+  });
+}
+
+export async function sendProfileMenu(ctx: Context, userLite: UserLite) {
+  const user = await getUserOrFail(userLite.id);
+  await ctx.api.sendMessage(user.id, formatAbout(ctx, user), {
+    reply_markup: eventsMenu.at("profileMenu"),
   });
 }
 
@@ -121,6 +137,7 @@ const eventsMenu = new Menu<Context>("eventsMenu", {
     }
   });
 composer.use(eventsMenu);
+
 async function updateEventsMenu(ctx: Context) {
   await editMessageTextSafe(ctx, ctx.t("menu.events"));
 }
@@ -146,6 +163,7 @@ const profileMenu = new Menu<Context>("profileMenu", {
     updateEventsMenu,
   );
 eventsMenu.register(profileMenu);
+
 async function updateProfileMenu(ctx: Context) {
   const user = await getUserOrFail(ctx.user.id);
 
@@ -153,7 +171,7 @@ async function updateProfileMenu(ctx: Context) {
 }
 
 function formatAbout(ctx: Context, user: User) {
-  let about = ctx.t("menu.about", {
+  let about = i18n.t(user.locale ?? config.DEFAULT_LOCALE, "menu.about", {
     name: sanitizeHtmlOrEmpty(user.name),
     pronouns: sanitizeHtmlOrEmpty(user.pronouns),
     gender: sanitizeHtmlOrEmpty(user.gender),
@@ -240,6 +258,7 @@ const editProfileMenu = new Menu<Context>("editProfileMenu", {
     },
   );
 profileMenu.register(editProfileMenu);
+
 async function updateEditProfileMenu(ctx: Context) {
   await updateProfileMenu(ctx);
 }
@@ -329,6 +348,7 @@ const eventMenu = new Menu<Context>("eventMenu", {
     updateEventsMenu,
   );
 eventsMenu.register(eventMenu);
+
 async function updateEventMenu(ctx: Context) {
   if (!(await isApproved(ctx))) return;
 
@@ -401,6 +421,7 @@ const eventParticipantsMenu = new Menu<Context>("eventParticipantsMenu", {
     updateEventMenu,
   );
 eventMenu.register(eventParticipantsMenu);
+
 async function updateEventParticipantsMenu(ctx: Context) {
   if (!(await isApproved(ctx))) return;
 
@@ -448,6 +469,7 @@ const eventParticipantMenu = new Menu<Context>("eventParticipantMenu", {
     updateEventParticipantsMenu,
   );
 eventParticipantsMenu.register(eventParticipantMenu);
+
 async function updateEventParticipantMenu(ctx: Context) {
   if (!(await isApproved(ctx))) return;
 
@@ -500,6 +522,7 @@ async function updateEventParticipantMenu(ctx: Context) {
 
   await editMessageTextSafe(ctx, text);
 }
+
 async function eventParticipantMenuNext(ctx: Context, n: number) {
   if (!(await isApproved(ctx))) return;
 
@@ -526,7 +549,7 @@ async function eventParticipantMenuNext(ctx: Context, n: number) {
   }
 }
 
-export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu", {
+const cancelSignupMenu = new Menu<Context>("cancelSignupMenu", {
   onMenuOutdated: makeOutdatedHandler(updateCancelSignupMenu),
 })
   .back(
@@ -546,6 +569,7 @@ export const cancelSignupMenu = new Menu<Context>("cancelSignupMenu", {
     },
   );
 eventMenu.register(cancelSignupMenu);
+
 async function updateCancelSignupMenu(ctx: Context) {
   await editMessageTextSafe(ctx, ctx.t("menu.cancel_signup_confirmation"));
 }
@@ -607,6 +631,7 @@ const optionsMenu = new Menu<Context>("optionsMenu", {
   );
 });
 eventMenu.register(optionsMenu);
+
 async function updateOptionsMenu(ctx: Context) {
   // Do not edit message text.
   //
@@ -702,7 +727,30 @@ composer
   .chatType("private")
   .filter(isApproved)
   .command("menu", logHandle("command:menu"), async (ctx) => {
-    await sendEventsMenu(ctx, ctx.chatId);
+    await maybeNotifyAboutOutdatedProfile(ctx, ctx.user);
+    if (!ctx.user.hasUnverifiedFields) {
+      await sendEventsMenu(ctx, ctx.chatId);
+    }
+  });
+
+composer
+  .chatType("private")
+  .filter(isNew)
+  .command("menu", logHandle("command:menu"), async (ctx) => {
+    await maybeNotifyAboutOutdatedProfile(ctx, ctx.user);
+    if (!ctx.user.hasUnverifiedFields) {
+      await ctx.reply(ctx.t("menu.new_user"));
+    }
+  });
+
+composer
+  .chatType("private")
+  .filter(or(isInterviewInProgress, isInterviewFinished))
+  .command("menu", logHandle("command:menu"), async (ctx) => {
+    await maybeNotifyAboutOutdatedProfile(ctx, ctx.user);
+    if (!ctx.user.hasUnverifiedFields) {
+      await ctx.reply(ctx.t("menu.in_progress_user"));
+    }
   });
 
 registerCommandHelp({

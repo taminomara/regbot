@@ -26,7 +26,7 @@ import {
 } from "#root/bot/features/admin-group-menu.js";
 import { sendMessageToAdminGroupTopic } from "#root/bot/features/admin-group.js";
 import { sendEventMenu } from "#root/bot/features/menu.js";
-import { isApproved } from "#root/bot/filters/is-approved.js";
+import { isApproved } from "#root/bot/filters/index.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";

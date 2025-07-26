@@ -45,7 +45,7 @@ const editName = conversation<Context, { userId: number; sendMenu?: boolean }>(
   })
   .done()
   .proceed(async (ctx, opts) => {
-    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.user);
   })
   .build();
 composer.use(editName);
@@ -93,7 +93,7 @@ const editPronouns = conversation<
   })
   .done()
   .proceed(async (ctx, opts) => {
-    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.user);
   })
   .build();
 composer.use(editPronouns);
@@ -139,7 +139,7 @@ const editGender = conversation<
   })
   .done()
   .proceed(async (ctx, opts) => {
-    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.user);
   })
   .build();
 composer.use(editGender);
@@ -187,7 +187,7 @@ const editSexuality = conversation<
   })
   .done()
   .proceed(async (ctx, opts) => {
-    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.user);
   })
   .build();
 composer.use(editSexuality);
@@ -233,7 +233,7 @@ const editPositioning = conversation<
   })
   .done()
   .proceed(async (ctx, opts) => {
-    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.user);
   })
   .build();
 composer.use(editPositioning);
@@ -295,7 +295,7 @@ const editAboutMe = conversation<
   })
   .done()
   .proceed(async (ctx, opts) => {
-    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.chatId!);
+    if (opts?.sendMenu) await sendEditProfileMenu(ctx, ctx.user);
   })
   .build();
 composer.use(editAboutMe);

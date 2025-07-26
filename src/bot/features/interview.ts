@@ -10,6 +10,7 @@ import {
   sendMessageToAdminGroupTopic,
 } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
+import { maybeNotifyAboutOutdatedProfile } from "#root/bot/features/invitation.js";
 import { toFluentDateTime } from "#root/bot/helpers/i18n.js";
 import { sanitizeHtmlOrEmpty } from "#root/bot/helpers/sanitize-html.js";
 import { i18n } from "#root/bot/i18n.js";
@@ -56,6 +57,8 @@ export async function sendApproveMessage(ctx: Context, approvedUser: UserLite) {
       } as object),
     },
   );
+
+  await maybeNotifyAboutOutdatedProfile(ctx, approvedUser);
 }
 
 export async function reject(ctx: Context) {
