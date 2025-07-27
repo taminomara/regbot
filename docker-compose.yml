@@ -2,17 +2,16 @@
 services:
   regbot:
     container_name: regbot
-    environment:
-      REGBOT_VERSION: 1.17.0
-    image: ghcr.io/taminomara/regbot:${REGBOT_VERSION:-1.17.0}
-    env_file: /Stacks/queer-bot/config.env
-    ports:
-      - "8585:8080"
+    image: ghcr.io/taminomara/regbot:1.18.2
+    labels:
+      grafana_metrics.enable: true
+      grafana_metrics.label.environment: production
     restart: unless-stopped
     volumes:
       - /Data/queer-bot:/prod_data
+      - /Stacks/queer-bot:/prod_config
     healthcheck:
-      test: "curl --fail http://localhost:8581/ || exit 1"
+      test: "curl --fail http://localhost:8080/metrics || exit 1"
       interval: 60s
       timeout: 10s
       retries: 3
