@@ -18,3 +18,6 @@ export const isInterviewInProgress = (ctx: Context) =>
 
 export const isInterviewFinished = (ctx: Context) =>
   ctx.user.status === UserStatus.PendingApproval;
+
+export const chatIsMembersGroup = (ctx: Context) =>
+  ctx.chatId === config.MEMBERS_GROUP;

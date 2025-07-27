@@ -17,6 +17,7 @@ import { composer as manageEventsMenuComposer } from "./manage-events-menu.js";
 import { composer as menuComposer } from "./menu.js";
 import { composer as startComposer } from "./start.js";
 import { composer as unhandledComposer } from "./unhandled.js";
+import { composer as whoisComposer } from "./whois.js";
 
 export const composer = new Composer<Context>();
 
@@ -32,6 +33,7 @@ composer.use(adminGroupComposer);
 composer.use(languageComposer);
 composer.use(startComposer);
 composer.use(eventRemindersComposer);
+composer.use(whoisComposer);
 
 composer.use(unhandledComposer); // Must be the last composer.
 
