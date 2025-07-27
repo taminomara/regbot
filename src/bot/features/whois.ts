@@ -75,6 +75,11 @@ registerCommandHelp({
   scope: CommandScope.MembersGroup,
   privileges: CommandPrivileges.AllUsers,
 });
+registerCommandHelp({
+  command: "whois",
+  scope: CommandScope.MembersGroup,
+  privileges: CommandPrivileges.Admins,
+});
 
 function formatAbout(ctx: Context, user: User) {
   let about = i18n.t(user.locale ?? config.DEFAULT_LOCALE, "whois.about", {
