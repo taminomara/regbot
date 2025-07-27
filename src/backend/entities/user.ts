@@ -54,7 +54,7 @@ export class User {
   @Property()
   name: string | null = null;
 
-  @Property()
+  @Property({ index: true })
   username: string | null = null;
 
   @Property()

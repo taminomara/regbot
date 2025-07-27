@@ -1,4 +1,4 @@
-import { EntityDTO, wrap } from "@mikro-orm/core";
+import { EntityDTO, raw, wrap } from "@mikro-orm/core";
 
 import { orm } from "#root/backend/data-source.js";
 import {
@@ -46,6 +46,14 @@ export async function getUser(id: number): Promise<User | null> {
 
 export async function getUserOrFail(id: number): Promise<User> {
   return wrap(await orm.em.findOneOrFail(UserObject, { id })).toObject();
+}
+
+export async function findUser(username: string): Promise<User | null> {
+  const user = await orm.em
+    .createQueryBuilder(UserObject)
+    .where({ username: raw(":username collate nocase", { username }) })
+    .getSingleResult();
+  return user === null ? null : wrap(user).toObject();
 }
 
 export async function updateUser(
