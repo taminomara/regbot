@@ -1,6 +1,7 @@
 import { Menu } from "@grammyjs/menu";
 import { createCallbackData } from "callback-data";
 import { Composer, InlineKeyboard } from "grammy";
+import { guard } from "grammy-guard";
 
 import {
   User,
@@ -45,8 +46,6 @@ import { logHandle } from "../helpers/logging.js";
 import { makeOutdatedHandler, patchCtx } from "../helpers/menu.js";
 
 export const composer = new Composer<Context>();
-
-const feature = composer.filter(isAdmin);
 
 export async function sendAdminGroupUserMenu(
   ctx: Context,
@@ -130,12 +129,14 @@ const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
   .text(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.update")),
     logHandle("menu:adminGroupUserMenu:update"),
+    guard(isAdmin),
     updateAdminGroupUserMenu,
   )
   .submenu(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit")),
     "adminGroupEditUserMenu",
     logHandle("menu:adminGroupUserMenu:edit"),
+    guard(isAdmin),
     updateAdminGroupEditUserMenu,
   )
   .row()
@@ -152,6 +153,7 @@ const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
       range.text(
         withPayload(i18n.t(config.DEFAULT_LOCALE, "admin_group.reject")),
         logHandle("menu:adminGroupUserMenu:reject"),
+        guard(isAdmin),
         async (ctx) => {
           await reject(ctx);
           await updateAdminGroupUserMenu(ctx);
@@ -160,6 +162,7 @@ const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
       range.text(
         withPayload(i18n.t(config.DEFAULT_LOCALE, "admin_group.approve")),
         logHandle("menu:adminGroupUserMenu:approve"),
+        guard(isAdmin),
         async (ctx) => {
           await approve(ctx);
           await updateAdminGroupUserMenu(ctx);
@@ -170,6 +173,7 @@ const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
         withPayload(i18n.t(config.DEFAULT_LOCALE, "admin_group.ban")),
         "adminGroupBanUserMenu",
         logHandle("menu:adminGroupUserMenu:ban"),
+        guard(isAdmin),
         updateAdminGroupBanUserMenu,
       );
     } else if (user.status === UserStatus.Banned) {
@@ -177,11 +181,12 @@ const adminGroupUserMenu = new Menu<Context>("adminGroupUserMenu", {
         withPayload(i18n.t(config.DEFAULT_LOCALE, "admin_group.unban")),
         "adminGroupUnbanUserMenu",
         logHandle("menu:adminGroupUserMenu:unban"),
+        guard(isAdmin),
         updateAdminGroupUnbanUserMenu,
       );
     }
   });
-feature.use(adminGroupUserMenu);
+composer.use(adminGroupUserMenu);
 
 async function updateAdminGroupUserMenu(ctx: Context) {
   const user = await getUserFromMatch(ctx);
@@ -203,6 +208,7 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_name")),
         logHandle("menu:adminGroupEditUserMenu:edit-name"),
+        guard(isAdmin),
         async (ctx) => {
           if (await enterEditName(ctx, user.id)) {
             await ctx.answerCallbackQuery();
@@ -212,6 +218,7 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_pronouns")),
         logHandle("menu:adminGroupEditUserMenu:edit-pronouns"),
+        guard(isAdmin),
         async (ctx) => {
           if (await enterEditPronouns(ctx, user.id)) {
             await ctx.answerCallbackQuery();
@@ -222,6 +229,7 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_gender")),
         logHandle("menu:adminGroupEditUserMenu:edit-gender"),
+        guard(isAdmin),
         async (ctx) => {
           if (await enterEditGender(ctx, user.id)) {
             await ctx.answerCallbackQuery();
@@ -231,6 +239,7 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_sexuality")),
         logHandle("menu:adminGroupEditUserMenu:edit-sexuality"),
+        guard(isAdmin),
         async (ctx) => {
           if (await enterEditSexuality(ctx, user.id)) {
             await ctx.answerCallbackQuery();
@@ -243,6 +252,7 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
           i18n.t(config.DEFAULT_LOCALE, "menu.edit_positioning"),
         ),
         logHandle("menu:adminGroupEditUserMenu:edit-positioning"),
+        guard(isAdmin),
         async (ctx) => {
           if (await enterEditPositioning(ctx, user.id)) {
             await ctx.answerCallbackQuery();
@@ -252,6 +262,7 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
       .text(
         withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.edit_about_me")),
         logHandle("menu:adminGroupEditUserMenu:edit-aboutMe"),
+        guard(isAdmin),
         async (ctx) => {
           if (await enterEditAboutMe(ctx, user.id)) {
             await ctx.answerCallbackQuery();
@@ -262,6 +273,7 @@ const adminGroupEditUserMenu = new Menu<Context>("adminGroupEditUserMenu", {
   })
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.back")),
+    guard(isAdmin),
     async (ctx) => {
       await updateAdminGroupUserMenu(ctx);
       await ctx.answerCallbackQuery();
@@ -286,11 +298,13 @@ const adminGroupBanUserMenu = new Menu<Context>("adminGroupBanUserMenu", {
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.back")),
     logHandle("menu:adminGroupBanUserMenu:back"),
+    guard(isAdmin),
     updateAdminGroupUserMenu,
   )
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "admin_group.ban")),
     logHandle("menu:adminGroupBanUserMenu:ban"),
+    guard(isAdmin),
     async (ctx) => {
       const user = await getUserFromMatch(ctx);
       if (user === undefined) return;
@@ -321,11 +335,13 @@ const adminGroupUnbanUserMenu = new Menu<Context>("adminGroupUnbanUserMenu", {
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "menu.back")),
     logHandle("menu:adminGroupUnbanUserMenu:back"),
+    guard(isAdmin),
     updateAdminGroupUserMenu,
   )
   .back(
     withPayload(() => i18n.t(config.DEFAULT_LOCALE, "admin_group.unban")),
     logHandle("menu:adminGroupUnbanUserMenu:unban"),
+    guard(isAdmin),
     async (ctx) => {
       const user = await getUserFromMatch(ctx);
       if (user === undefined) return;
@@ -357,15 +373,17 @@ export const adminPostInterviewMenu = new Menu<Context>(
     withPayload(i18n.t(config.DEFAULT_LOCALE, "admin_group.reject")),
     "adminPostInterviewDecisionMadeMenu",
     logHandle("menu:adminPostInterviewMenu:reject"),
+    guard(isAdmin),
     reject,
   )
   .submenu(
     withPayload(i18n.t(config.DEFAULT_LOCALE, "admin_group.approve")),
     "adminPostInterviewDecisionMadeMenu",
     logHandle("menu:adminPostInterviewMenu:approve"),
+    guard(isAdmin),
     approve,
   );
-feature.use(adminPostInterviewMenu);
+composer.use(adminPostInterviewMenu);
 
 const adminPostInterviewDecisionMadeMenu = new Menu<Context>(
   "adminPostInterviewDecisionMadeMenu",
@@ -409,57 +427,65 @@ export function createConfirmPaymentKeyboard(eventId: number, userId: number) {
     );
 }
 
-feature.callbackQuery(
-  confirmSignupData.filter(),
-  logHandle("callback:confirmSignup"),
-  async (ctx) => {
-    const { eventId, userId } = confirmSignupData.unpack(
-      ctx.callbackQuery.data,
-    );
+composer
+  .filter(isAdmin)
+  .callbackQuery(
+    confirmSignupData.filter(),
+    logHandle("callback:confirmSignup"),
+    async (ctx) => {
+      const { eventId, userId } = confirmSignupData.unpack(
+        ctx.callbackQuery.data,
+      );
 
-    const user = await getUser(userId);
-    if (user === null) return;
+      const user = await getUser(userId);
+      if (user === null) return;
 
-    await confirmSignup(ctx, eventId, user);
-    await ctx.editMessageReplyMarkup({
-      reply_markup: new InlineKeyboard(),
-    });
-  },
-);
+      await confirmSignup(ctx, eventId, user);
+      await ctx.editMessageReplyMarkup({
+        reply_markup: new InlineKeyboard(),
+      });
+    },
+  );
 
-feature.callbackQuery(
-  confirmPaymentData.filter(),
-  logHandle("callback:confirmPayment"),
-  async (ctx) => {
-    const { eventId, userId } = confirmPaymentData.unpack(
-      ctx.callbackQuery.data,
-    );
+composer
+  .filter(isAdmin)
+  .callbackQuery(
+    confirmPaymentData.filter(),
+    logHandle("callback:confirmPayment"),
+    async (ctx) => {
+      const { eventId, userId } = confirmPaymentData.unpack(
+        ctx.callbackQuery.data,
+      );
 
-    const user = await getUser(userId);
-    if (user === null) return;
+      const user = await getUser(userId);
+      if (user === null) return;
 
-    await confirmPayment(ctx, eventId, user);
-    await ctx.editMessageReplyMarkup({
-      reply_markup: new InlineKeyboard(),
-    });
-  },
-);
+      await confirmPayment(ctx, eventId, user);
+      await ctx.editMessageReplyMarkup({
+        reply_markup: new InlineKeyboard(),
+      });
+    },
+  );
 
-feature.callbackQuery(
-  rejectSignupData.filter(),
-  logHandle("callback:rejectSignup"),
-  async (ctx) => {
-    const { eventId, userId } = rejectSignupData.unpack(ctx.callbackQuery.data);
+composer
+  .filter(isAdmin)
+  .callbackQuery(
+    rejectSignupData.filter(),
+    logHandle("callback:rejectSignup"),
+    async (ctx) => {
+      const { eventId, userId } = rejectSignupData.unpack(
+        ctx.callbackQuery.data,
+      );
 
-    const user = await getUser(userId);
-    if (user === null) return;
+      const user = await getUser(userId);
+      if (user === null) return;
 
-    await rejectSignup(ctx, eventId, user);
-    await ctx.editMessageReplyMarkup({
-      reply_markup: new InlineKeyboard(),
-    });
-  },
-);
+      await rejectSignup(ctx, eventId, user);
+      await ctx.editMessageReplyMarkup({
+        reply_markup: new InlineKeyboard(),
+      });
+    },
+  );
 
 async function getUserFromMatch(ctx: Context): Promise<User | undefined> {
   const userId = Number(ctx.match);

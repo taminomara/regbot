@@ -5,10 +5,10 @@ import {
   rejectUser,
 } from "#root/backend/user.js";
 import type { Context } from "#root/bot/context.js";
-import { refreshAdminGroupUserMenu } from "#root/bot/features/admin-group-menu.js";
 import {
   getUserForTopic,
   sendMessageToAdminGroupTopic,
+  updateAdminGroupTopicTitleAndHeader,
 } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import { maybeNotifyAboutOutdatedProfile } from "#root/bot/features/invitation.js";
@@ -35,7 +35,7 @@ export async function approve(ctx: Context) {
     }),
   );
 
-  await refreshAdminGroupUserMenu(ctx, approvedUser);
+  await updateAdminGroupTopicTitleAndHeader(ctx, approvedUser);
   await sendApproveMessage(ctx, approvedUser);
   await postInterviewSignup(ctx, approvedUser);
 }
@@ -69,7 +69,7 @@ export async function reject(ctx: Context) {
 
   const rejectedUser = await rejectUser(user.id, ctx.user.id);
 
-  await refreshAdminGroupUserMenu(ctx, rejectedUser);
+  await updateAdminGroupTopicTitleAndHeader(ctx, rejectedUser);
 
   await sendMessageToAdminGroupTopic(
     ctx,

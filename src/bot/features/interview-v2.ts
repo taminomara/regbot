@@ -13,12 +13,12 @@ import {
   updateUser,
 } from "#root/backend/user.js";
 import { Context } from "#root/bot/context.js";
-import { refreshAdminGroupUserMenu } from "#root/bot/features/admin-group-menu.js";
 import {
   copyMessageToAdminGroupTopic,
   ensureHasAdminGroupTopic,
   sendInterviewFinishNotificationToAdminGroupTopic,
   sendInterviewQuestionToAdminGroupTopic,
+  updateAdminGroupTopicTitleAndHeader,
 } from "#root/bot/features/admin-group.js";
 import { postInterviewSignup } from "#root/bot/features/event-signup.js";
 import { sendApproveMessage } from "#root/bot/features/interview.js";
@@ -57,12 +57,9 @@ export const interviewConversation = conversation<Context>(
     } else {
       await ctx.reply(ctx.t("interview.i_dont_know_you"));
     }
-    const user = await updateUser(ctx.user.id, {
+    await updateUser(ctx.user.id, {
       status: UserStatus.InterviewInProgress,
     });
-    if (user !== null) {
-      await refreshAdminGroupUserMenu(ctx, user);
-    }
   })
   .proceed(async (ctx) => {
     await ctx.reply(ctx.t("interview.name"));
@@ -230,7 +227,7 @@ export const interviewPostConversation = conversation<
 
     const user = await updateUser(ctx.user.id, { aboutMeHtml });
     if (user !== null) {
-      await refreshAdminGroupUserMenu(ctx, user);
+      await updateAdminGroupTopicTitleAndHeader(ctx, user);
     }
     return params;
   })
@@ -246,7 +243,7 @@ export const interviewPostConversation = conversation<
         status: UserStatus.Approved,
       });
       if (user !== null) {
-        await refreshAdminGroupUserMenu(ctx, user);
+        await updateAdminGroupTopicTitleAndHeader(ctx, user);
       }
       await sendApproveMessage(ctx, ctx.user);
       await postInterviewSignup(ctx);
@@ -255,7 +252,7 @@ export const interviewPostConversation = conversation<
         status: UserStatus.PendingApproval,
       });
       if (user !== null) {
-        await refreshAdminGroupUserMenu(ctx, user);
+        await updateAdminGroupTopicTitleAndHeader(ctx, user);
       }
       await sendInterviewFinishNotificationToAdminGroupTopic(ctx, ctx.user);
       await ctx.reply(ctx.t("interview.interview_replies_saved"));
