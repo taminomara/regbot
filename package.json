@@ -28,7 +28,7 @@
     "@grammyjs/hydrate": "1.4.1",
     "@grammyjs/i18n": "1.0.2",
     "@grammyjs/menu": "^1.2.1",
-    "@grammyjs/parse-mode": "1.10.0",
+    "@grammyjs/parse-mode": "2.3.0",
     "@grammyjs/types": "3.7.0",
     "@mikro-orm/better-sqlite": "^6.2.7",
     "@mikro-orm/core": "^6.2.7",
