@@ -2,6 +2,7 @@ import { pino } from "pino";
 import { Counter } from "prom-client";
 
 import { config } from "#root/config.js";
+import { redactBotToken } from "#root/helpers/redact.js";
 
 const metrics = {
   logMessages: new Counter({
@@ -28,7 +29,19 @@ const stderrFile = pino.transport(
       },
 );
 
-const stream = logFile ? pino.multistream([logFile, stderrFile]) : stderrFile;
+// Strip the bot token from every serialized line before it is written anywhere.
+const redacted = (
+  destination: pino.DestinationStream,
+): pino.DestinationStream => ({
+  write: (line) => destination.write(redactBotToken(line, config.BOT_TOKEN)),
+});
+
+const stream = logFile
+  ? pino.multistream([
+      { stream: redacted(logFile) },
+      { stream: redacted(stderrFile) },
+    ])
+  : redacted(stderrFile);
 
 export const logger = pino(
   {
