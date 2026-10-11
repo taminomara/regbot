@@ -1,0 +1,67 @@
+import { FlatCompat } from "@eslint/eslintrc";
+
+// airbnb-base only ships eslintrc-style configs, so load the legacy config
+// through the compat layer.
+const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
+
+export default [
+  {
+    ignores: [
+      "build/**",
+      "scripts/**",
+      "src/backend/migrations/**",
+      "src/_messages.ts",
+      "jest.config.js",
+      "eslint.config.js",
+      "temp/**",
+    ],
+  },
+  ...compat.config({
+    env: { es2021: true, node: true },
+    extends: [
+      "airbnb-base",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:prettier/recommended",
+    ],
+    parser: "@typescript-eslint/parser",
+    parserOptions: { project: ["tsconfig.json"] },
+    plugins: ["@typescript-eslint", "prettier", "import"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { varsIgnorePattern: "^_", argsIgnorePattern: "^_" },
+      ],
+      "arrow-body-style": "off",
+      "max-classes-per-file": "off",
+      "no-use-before-define": "off",
+      "no-continue": "off",
+      "no-shadow": "off",
+      "no-else-return": "off",
+      "prefer-arrow-callback": "off",
+      "consistent-return": "off",
+      "default-case": "off",
+      "import/prefer-default-export": "off",
+      "import/extensions": "off",
+      "import/no-cycle": "off",
+      "no-underscore-dangle": "off",
+      "class-methods-use-this": "off",
+      "no-await-in-loop": "off",
+      "no-constant-condition": "off",
+      "no-param-reassign": "off",
+      "lines-between-class-members": "off",
+      "no-nested-ternary": "off",
+      "no-restricted-syntax": ["off", "ForOfStatement"],
+      "prettier/prettier": "warn",
+    },
+    overrides: [
+      {
+        files: ["**/*.test.*", "test/**/*"],
+        rules: { "import/no-extraneous-dependencies": "off" },
+      },
+    ],
+    settings: {
+      "import/parsers": { "@typescript-eslint/parser": [".ts"] },
+      "import/resolver": { typescript: { extensions: [".js", ".ts"] } },
+    },
+  }),
+];

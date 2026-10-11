@@ -1,7 +1,6 @@
 /**
  * Simple linear conversations, finite state machine style.
  */
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   CallbackQueryContext,
@@ -134,8 +133,7 @@ type Step<C> = {
 export class Conversation<
   C extends LinearConversationContext,
   IP extends Payload,
-> implements MiddlewareObj<C>
-{
+> implements MiddlewareObj<C> {
   /**
    * Unique name of this conversation.
    */

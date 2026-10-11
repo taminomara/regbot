@@ -639,12 +639,12 @@ async function updateManageEventParticipantsMenu(ctx: Context) {
 async function getEventFromMatch(ctx: Context) {
   const eventId = Number(ctx.match);
   if (!Number.isFinite(eventId)) {
-    ctx.logger.error("Can't get event id form match", { match: ctx.match });
+    ctx.logger.error({ match: ctx.match }, "Can't get event id form match");
     return;
   }
   const event = await getEventWithSignupStats(eventId);
   if (event === null) {
-    ctx.logger.error("Can't get event form match", { match: ctx.match });
+    ctx.logger.error({ match: ctx.match }, "Can't get event form match");
     return;
   }
   return event;
