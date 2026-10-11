@@ -1,8 +1,13 @@
 import { FlatCompat } from "@eslint/eslintrc";
+import js from "@eslint/js";
+import tsParser from "@typescript-eslint/parser";
+import prettierRecommended from "eslint-plugin-prettier/recommended";
+import globals from "globals";
 
-// airbnb-base only ships eslintrc-style configs, so load the legacy config
-// through the compat layer.
-const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
+const compat = new FlatCompat({
+  baseDirectory: import.meta.dirname,
+  recommendedConfig: js.configs.recommended,
+});
 
 export default [
   {
@@ -13,19 +18,22 @@ export default [
       "src/_messages.ts",
       "jest.config.js",
       "eslint.config.js",
-      "temp/**",
     ],
   },
-  ...compat.config({
-    env: { es2021: true, node: true },
-    extends: [
-      "airbnb-base",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:prettier/recommended",
-    ],
-    parser: "@typescript-eslint/parser",
-    parserOptions: { project: ["tsconfig.json"] },
-    plugins: ["@typescript-eslint", "prettier", "import"],
+  ...compat.extends("airbnb-base"),
+  ...compat.extends("plugin:@typescript-eslint/recommended"),
+  prettierRecommended,
+  {
+    languageOptions: {
+      ecmaVersion: 2021,
+      globals: globals.node,
+      parser: tsParser,
+      parserOptions: { project: ["tsconfig.json"] },
+    },
+    settings: {
+      "import/parsers": { "@typescript-eslint/parser": [".ts"] },
+      "import/resolver": { typescript: { extensions: [".js", ".ts"] } },
+    },
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",
@@ -50,18 +58,12 @@ export default [
       "no-param-reassign": "off",
       "lines-between-class-members": "off",
       "no-nested-ternary": "off",
-      "no-restricted-syntax": ["off", "ForOfStatement"],
+      "no-restricted-syntax": "off",
       "prettier/prettier": "warn",
     },
-    overrides: [
-      {
-        files: ["**/*.test.*", "test/**/*"],
-        rules: { "import/no-extraneous-dependencies": "off" },
-      },
-    ],
-    settings: {
-      "import/parsers": { "@typescript-eslint/parser": [".ts"] },
-      "import/resolver": { typescript: { extensions: [".js", ".ts"] } },
-    },
-  }),
+  },
+  {
+    files: ["**/*.test.*", "test/**/*"],
+    rules: { "import/no-extraneous-dependencies": "off" },
+  },
 ];
