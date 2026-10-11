@@ -1,9 +1,6 @@
 import { config as loadEnv } from "dotenv";
 import { parseEnv, z } from "znv";
 
-// fix for https://github.com/microsoft/TypeScript/issues/47663
-import * as _ from "#root/../node_modules/znv/dist/util.js";
-
 loadEnv({ path: process.env.REGBOT_ENV_FILE_PATH });
 
 const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
@@ -35,7 +32,5 @@ const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
     isProd: process.env.NODE_ENV === "production",
   };
 };
-
-export type Config = ReturnType<typeof createConfigFromEnvironment>;
 
 export const config = createConfigFromEnvironment(process.env);

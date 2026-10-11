@@ -1,7 +1,6 @@
 /**
  * Simple linear conversations, finite state machine style.
  */
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   CallbackQueryContext,
@@ -96,8 +95,8 @@ export function switchConversation<
 
 type Next<T> = T extends Finish ? never : T extends Repeat<any> ? never : T;
 
-export type MaybePromise<T> = T | Promise<T>;
-export type MaybeArray<T> = T | T[];
+type MaybePromise<T> = T | Promise<T>;
+type MaybeArray<T> = T | T[];
 
 type Step<C> = {
   filter?: (ctx: C, payload: any) => MaybePromise<boolean>;
@@ -134,8 +133,7 @@ type Step<C> = {
 export class Conversation<
   C extends LinearConversationContext,
   IP extends Payload,
-> implements MiddlewareObj<C>
-{
+> implements MiddlewareObj<C> {
   /**
    * Unique name of this conversation.
    */

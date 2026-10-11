@@ -11,8 +11,3 @@ export async function shutDownConnection() {
 export async function runMigrations(from?: string, to?: string) {
   await orm.migrator.up({ from, to });
 }
-
-export async function needsMigrations() {
-  const pendingMigrations = await orm.migrator.getPendingMigrations();
-  return pendingMigrations.length > 0;
-}

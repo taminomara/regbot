@@ -68,7 +68,7 @@ export async function sendProfileMenu(ctx: Context, userLite: UserLite) {
   });
 }
 
-export async function sendEventsMenu(
+async function sendEventsMenu(
   ctx: Context,
   chatId: number,
   text?: string,

@@ -14,9 +14,9 @@ export type Payload =
   | { [key: string]: Payload }
   | Payload[];
 
-export class SessionStorage<P extends Payload>
-  implements StorageAdapter<Enhance<P>>
-{
+export class SessionStorage<P extends Payload> implements StorageAdapter<
+  Enhance<P>
+> {
   async delete(key: string): Promise<void> {
     return del(key);
   }

@@ -1,4 +1,4 @@
-import { BotCommand } from "@grammyjs/types";
+import { BotCommand, LanguageCode } from "@grammyjs/types";
 import type { BotCommandScope } from "@grammyjs/types/settings.js";
 import { Bot } from "grammy";
 
@@ -59,7 +59,7 @@ async function setCommandsFor(
       bot.api.setMyCommands(
         getCommands(scope, privileges, config.DEFAULT_LOCALE),
         {
-          language_code: locale,
+          language_code: locale as LanguageCode,
           scope: tgScope,
         },
       ),
