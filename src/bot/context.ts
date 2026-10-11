@@ -1,7 +1,6 @@
 import { AutoChatActionFlavor } from "@grammyjs/auto-chat-action";
 import { HydrateFlavor } from "@grammyjs/hydrate";
 import { MenuFlavor } from "@grammyjs/menu";
-import { ParseModeFlavor } from "@grammyjs/parse-mode";
 import { Context as DefaultContext, SessionFlavor } from "grammy";
 
 import { I18nFlavor } from "#root/_messages.js";
@@ -14,13 +13,11 @@ type ExtendedContextFlavor = {
   user: UserLite;
 };
 
-export type Context = ParseModeFlavor<
-  HydrateFlavor<
-    DefaultContext &
-      ExtendedContextFlavor &
-      SessionFlavor<SessionData> &
-      I18nFlavor &
-      AutoChatActionFlavor &
-      MenuFlavor
-  >
+export type Context = HydrateFlavor<
+  DefaultContext &
+    ExtendedContextFlavor &
+    SessionFlavor<SessionData> &
+    I18nFlavor &
+    AutoChatActionFlavor &
+    MenuFlavor
 >;

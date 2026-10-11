@@ -1,6 +1,5 @@
 import { autoChatAction } from "@grammyjs/auto-chat-action";
 import { hydrate } from "@grammyjs/hydrate";
-import { hydrateReply, parseMode } from "@grammyjs/parse-mode";
 import { RequestContext } from "@mikro-orm/core";
 import { Bot, ErrorHandler, Bot as TelegramBot } from "grammy";
 import { Counter } from "prom-client";
@@ -12,6 +11,7 @@ import { startBackgroundProcess } from "#root/bot/features/event-reminders.js";
 import { setCommands } from "#root/bot/features/help.js";
 import { composer as featuresComposer } from "#root/bot/features/index.js";
 import { getUpdateInfo } from "#root/bot/helpers/logging.js";
+import { parseMode } from "#root/bot/helpers/parse-mode.js";
 import { i18n } from "#root/bot/i18n.js";
 import {
   autoRetry as autoRetryMw,
@@ -56,7 +56,6 @@ export function createBot(token: string) {
   protectedBot.use(dataSourceMw());
   protectedBot.use(errorReporterMw());
   protectedBot.use(autoChatAction(bot.api));
-  protectedBot.use(hydrateReply);
   protectedBot.use(hydrate());
   protectedBot.use(session());
   protectedBot.use(i18n);
