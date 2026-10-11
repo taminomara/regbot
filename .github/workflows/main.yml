@@ -13,16 +13,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Use Node.js 22.2
+      - name: Use Node.js 22.12
         uses: actions/setup-node@v4
         with:
-          node-version: 22.2
+          node-version: 22.12
       - name: Generate .env file
         run: cp .env.example .env
       - name: Install packages
         run: npm ci
       - name: Lint the code
         run: npm run lint
+      - name: Check for dead code and unused exports
+        run: npm run lint:dead
       - name: Build and test the code
         run: npm run test
       - name: Upload artifact

@@ -198,7 +198,7 @@ export const interviewConversation = conversation<Context>(
   .build();
 feature.chatType("private").use(interviewConversation);
 
-export const interviewPostConversation = conversation<
+const interviewPostConversation = conversation<
   Context,
   { isApproved: boolean }
 >("interview:post", logHandle("conversation:interview"))

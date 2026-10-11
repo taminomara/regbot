@@ -95,8 +95,8 @@ export function switchConversation<
 
 type Next<T> = T extends Finish ? never : T extends Repeat<any> ? never : T;
 
-export type MaybePromise<T> = T | Promise<T>;
-export type MaybeArray<T> = T | T[];
+type MaybePromise<T> = T | Promise<T>;
+type MaybeArray<T> = T | T[];
 
 type Step<C> = {
   filter?: (ctx: C, payload: any) => MaybePromise<boolean>;

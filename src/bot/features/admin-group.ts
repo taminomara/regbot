@@ -234,7 +234,7 @@ export async function formatAboutMe(user: User) {
     .join("\n\n");
 }
 
-export function formatTopicName(userLite: UserLite) {
+function formatTopicName(userLite: UserLite) {
   return i18n.t(config.DEFAULT_LOCALE, "admin_group.topic_name", {
     name: userLite.name ?? "???",
     username: userLite.username ?? "???",

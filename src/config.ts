@@ -33,6 +33,4 @@ const createConfigFromEnvironment = (environment: NodeJS.ProcessEnv) => {
   };
 };
 
-export type Config = ReturnType<typeof createConfigFromEnvironment>;
-
 export const config = createConfigFromEnvironment(process.env);

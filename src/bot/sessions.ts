@@ -8,7 +8,7 @@ import { LinearConversationSessionData } from "./helpers/conversations-v2.js";
 
 export type SessionData = LinearConversationSessionData;
 
-export function getSessionKey(ctx: Omit<Context, "session">) {
+function getSessionKey(ctx: Omit<Context, "session">) {
   return ctx.chatId === config.ADMIN_GROUP
     ? `${ctx.chatId}/${ctx.msg?.message_thread_id}`
     : ctx.chat?.id.toString();

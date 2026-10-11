@@ -51,7 +51,7 @@ export function formatEventTitleForMenu(ctx: Context, event: EventWithSignup) {
   });
 }
 
-export function formatEventTitleForPost(ctx: Context, event: Event) {
+function formatEventTitleForPost(ctx: Context, event: Event) {
   let titlePrefix = "";
   if (event.cancelled) {
     titlePrefix = `${ctx.t("event.title_cancelled_prefix")} `;
@@ -78,7 +78,7 @@ export function formatEventText(ctx: Context, event: Event) {
   });
 }
 
-export function formatEventPrice(ctx: Context, event: Event) {
+function formatEventPrice(ctx: Context, event: Event) {
   switch (event.payment) {
     case EventPayment.NotRequired:
       return ctx.t("event.free");
